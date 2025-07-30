@@ -1,14 +1,10 @@
 # --- Compiled binaries and debug files ---
-*.exe             # Windows executables
-*.pdb             # Program debug database (MSVC)
+*.exe              # Windows executables
+*.pdb              # Program debug database (MSVC)
 
 
 # --- Build/Output directories ---
-out/              # Ignore 'out' folder in root
+out/               # Ignore 'out' folder in root
 
 # --- IDE/Editor cruft ---
 .vscode/           # VS Code settings
-
-# --- Version control noise ---
-*.orig             # Merge conflict files
-*.rej              # Patch reject files
