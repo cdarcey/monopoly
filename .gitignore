@@ -1,0 +1,12 @@
+
+# directories
+.vs/
+.vscode/
+.out/
+
+
+# random files
+src/*.pdb
+src/*.bat
+src/*.sh
+
