@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+  {
+    "name": "(Windows) Launch",
+    "type": "cppvsdbg",
+      "program": "${workspaceFolder}/out/simple_testing.exe",
+      "console": "integratedTerminal",
+      "request": "launch",
+      "args": [
+
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/out/",
+      "environment": []
+    }
+  ]
+}

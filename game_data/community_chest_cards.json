@@ -1,0 +1,84 @@
+{
+  "community_chest_cards": [
+    {
+      "id": 1,
+      "description": "Advance to Go (Collect $200)",
+      "action": 0
+    },
+    {
+      "id": 2,
+      "description": "Bank error in your favor. Collect $200.",
+      "action": 1
+    },
+    {
+      "id": 3,
+      "description": "Doctor's fee. Pay $50.",
+      "action": 4
+    },
+    {
+      "id": 4,
+      "description": "From sale of stock, you get $50.",
+      "action": 1
+    },
+    {
+      "id": 5,
+      "description": "You inherit $100.",
+      "action": 2
+    },
+    {
+      "id": 6,
+      "description": "Go to Jail. Move directly to Jail. Do not pass Go. Do not collect $200.",
+      "action": 3
+    },
+    {
+      "id": 7,
+      "description": "Holiday fund matures. Receive $100.",
+      "action": 1
+    },
+    {
+      "id": 8,
+      "description": "Income tax refund. Collect $20.",
+      "action": 1
+    },
+    {
+      "id": 9,
+      "description": "It is your birthday. Collect $10 from every player.",
+      "action": 1
+    },
+    {
+      "id": 10,
+      "description": "Life insurance matures. Collect $100.",
+      "action": 1
+    },
+    {
+      "id": 11,
+      "description": "Pay hospital fees of $100.",
+      "action": 4
+    },
+    {
+      "id": 12,
+      "description": "Pay school fees of $50.",
+      "action": 4
+    },
+    {
+      "id": 13,
+      "description": "Receive $25 consultancy fee.",
+      "action": 1
+    },
+    {
+      "id": 14,
+      "description": "You are assessed for street repairs. Pay $40 per house and $115 per hotel you own.",
+      "action": 4
+    },
+    {
+      "id": 15,
+      "description": "You have won second prize in a beauty contest. Collect $10.",
+      "action": 1
+    },
+    {
+      "id": 16,
+      "description": "Get Out of Jail Free. This card may be kept until needed or sold.",
+      "action": 1
+    }
+  ]
+}
