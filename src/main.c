@@ -15,7 +15,8 @@ void m_game_loop(mGameData* game);
         : trading system
         : mortgaging detection for paying intrest
         : impliment ai decsion making 
-        : m_buy_house / m_buy_hotel rework
+        : m_buy_house needs to be reworked
+        : m_buy_hotel & m_sell_hotel need to be created
 */
 
 int

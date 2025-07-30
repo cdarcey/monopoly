@@ -104,17 +104,10 @@ m_buy_railroad(mRailroad* railroadToBuy, mPlayer* playerBuying)
 void
 m_buy_house(mProperty* mPropertyToAddHouse, mPlayer* mPropertyOwner, bool bHouseCanBeAdded)
 {
-    if(bHouseCanBeAdded == false)
-    {
-        return;
-    }
+    assert(bHouseCanBeAdded == false);
+    assert(mPropertyToAddHouse->eOwner != mPropertyOwner->ePlayerTurnPosition && mPropertyToAddHouse->eOwner != NO_PLAYER);
 
-    if(mPropertyToAddHouse->eOwner != mPropertyOwner->ePlayerTurnPosition && mPropertyToAddHouse->eOwner != NO_PLAYER)
-    {
-        printf("you do not owne this propery\n");
-        return;
-    }
-    else if(mPropertyToAddHouse->uHouseCost > mPropertyOwner->uMoney)
+    if(mPropertyToAddHouse->uHouseCost > mPropertyOwner->uMoney)
     {
         printf("not enout money to buy house\n");
         return;
@@ -126,6 +119,29 @@ m_buy_house(mProperty* mPropertyToAddHouse, mPlayer* mPropertyOwner, bool bHouse
         {
             mPropertyToAddHouse->uNumberOfHouses++;
             mPropertyOwner->uMoney -= mPropertyToAddHouse->uHouseCost;
+        }
+
+    }
+}
+
+void
+m_buy_hotel(mProperty* mPropertyToAddHotel, mPlayer* mPropertyOwner, bool bHotelCanBeAdded)
+{
+    assert(bHotelCanBeAdded == false);
+    assert(mPropertyToAddHotel->eOwner != mPropertyOwner->ePlayerTurnPosition && mPropertyToAddHotel->eOwner != NO_PLAYER);
+
+    if(mPropertyToAddHotel->uHouseCost > mPropertyOwner->uMoney)
+    {
+        printf("not enout money to buy hotel\n");
+        return;
+    }
+
+    else
+    {
+        if(mPropertyToAddHotel == true)
+        {
+            mPropertyToAddHotel->uNumberOfHotels++;
+            mPropertyOwner->uMoney -= mPropertyToAddHotel->uRent[5];
         }
 
     }

@@ -119,6 +119,7 @@ void m_buy_property(mProperty* propertyToBuy, mPlayer* playerBuying);
 void m_buy_railroad(mRailroad* railroadToBuy, mPlayer* playerBuying);
 void m_buy_utility (mUtility* utilityToBuy, mPlayer* playerBuying);
 void m_buy_house   (mProperty* mPropertyToAddHouse, mPlayer* mPropertyOwner, bool bHouseCanBeAdded);
+void m_buy_hotel(mProperty* mPropertyToAddHotel, mPlayer* mPropertyOwner, bool bHotelCanBeAdded);
 
 // Rent Handling
 void m_pay_rent_property(mPlayer* mPayee, mPlayer* mPayer, mProperty* mPropertyForRent, bool bColorSetOwned);
@@ -146,7 +147,6 @@ mPropertyColor m_string_color_to_enum      (const char* colorStr);
 mPropertyName  m_string_to_property        (const char* property_str);
 mRailroadName  m_string_to_railroad        (const char* railroad_str);
 mUtilityName   m_string_to_utility         (const char* utility_str);
-mPropertyName  m_get_player_property_choice(mPlayer* mCurrentPlayer);
 const char*    m_property_enum_to_string   (mPropertyName property);
 const char*    m_railroad_enum_to_string   (mRailroadName mRailroad);
 const char*    m_utility_enum_to_string    (mUtilityName mUtility);

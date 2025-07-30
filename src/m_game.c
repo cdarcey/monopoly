@@ -597,7 +597,8 @@ m_show_building_managment_menu(mGameData* mGame)
             }
             else
             {
-                m_buy_house(current_property, current_player, current_property->eColor);
+                bool bHouseCanBeAdded = m_house_can_be_added(mGame, current_player, current_property->eColor);
+                m_buy_house(current_property, current_player, bHouseCanBeAdded);
             }
                 break;
         }
@@ -608,11 +609,21 @@ m_show_building_managment_menu(mGameData* mGame)
         }
         case BUY_HOTELS:
         {
-            // Handle buying hotels
+            if(false /*m_hotel_can_be_added()*/)
+            {
+                printf("You cannot add a hotel at this time");
+                return;
+            }
+            else
+            {
+                bool bHotelCanBeAdded = true; // TODO: m_hotel_can_be_added();
+                m_buy_hotel(current_property, current_player, bHotelCanBeAdded);
+            }
             break;
         }
         case MORTGAGE_PROPERTY:
         {
+            m_execute_mortgage_flow(current_property, current_player);
             break;
         }
         case UNMORTGAGE_PROPERTY:
