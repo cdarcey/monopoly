@@ -4,7 +4,7 @@
   {
     "name": "(Windows) Launch",
     "type": "cppvsdbg",
-      "program": "${workspaceFolder}/out/simple_testing.exe",
+      "program": "${workspaceFolder}/out/monopoly.exe",
       "console": "integratedTerminal",
       "request": "launch",
       "args": [
