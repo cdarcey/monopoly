@@ -294,6 +294,7 @@ m_get_player_pre_roll_choice()
     }
 }
 
+
 // ==================== POST-ROLL ACTIONS ==================== //
 void
 m_phase_post_roll(mGameData* mGame)
@@ -373,7 +374,23 @@ m_phase_post_roll(mGameData* mGame)
         }
         case UTILITY_SQUARE_TYPE:
         {
-            // Utility-specific logic
+            mUtilityName current_utility_name = m_utility_landed_on(current_player->uPosition);
+            mUtility* current_utility = &mGame->mGameUtilities[current_utility_name];
+            if(m_is_utility_owned(current_utility))
+            {
+                if(m_is_utility_owner(current_player, current_utility))
+                {
+                    return;
+                }
+                else if(!m_is_utility_owner)
+                {
+                    m_pay_rent_utility(mGame->mGamePlayers[current_utility->eOwner], current_player, current_utility, mGame->mGameDice);
+                }
+            }
+            else if(!m_is_utility_owned(current_utility))
+            {
+                m_show_post_roll_menu(mGame);
+            }
             break;
         }
         case INCOME_TAX_SQUARE_TYPE:
@@ -434,6 +451,10 @@ m_phase_post_roll(mGameData* mGame)
             if(!current_player->bInJail)
             {
                 m_show_post_roll_menu(mGame);
+            }
+            else
+            {
+                return;
             }
            break;
         }
@@ -556,18 +577,29 @@ m_show_post_roll_menu(mGameData* mGame)
 void
 m_show_building_managment_menu(mGameData* mGame)
 {
+    mPlayer* current_player = mGame->mGamePlayers[mGame->uCurrentPlayer];
+    mProperty* current_property = &mGame->mGameProperties[m_get_player_property(current_player)];
+
     mActions subAction = m_get_building_managment_choice();
     switch(subAction)
     {
         case SELL_HOUSES:
         {
-            // Handle selling houses
+            m_execute_house_sale(mGame, current_property, current_player);
             break;
         }
         case BUY_HOUSES:
         {
-            // Handle buying houses
-            break;
+            if(!m_house_can_be_added(mGame, current_player, current_property->eColor))
+            {
+                printf("You cannot add a house at this time");
+                return;
+            }
+            else
+            {
+                m_buy_house(current_property, current_player, current_property->eColor);
+            }
+                break;
         }
         case SELL_HOTELS:
         {

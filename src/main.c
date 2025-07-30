@@ -15,6 +15,7 @@ void m_game_loop(mGameData* game);
         : trading system
         : mortgaging detection for paying intrest
         : impliment ai decsion making 
+        : m_buy_house / m_buy_hotel rework
 */
 
 int
@@ -52,12 +53,17 @@ m_game_loop(mGameData* game)
                 m_set_player_piece(game, RACE_CAR, PLAYER_ONE);
                 m_set_player_piece(game, TOP_HAT, PLAYER_TWO);
                 m_set_player_piece(game, THIMBLE, PLAYER_THREE);
+
                 game->mCurrentState = PHASE_PRE_ROLL;
                 break;
             }
             case PHASE_PRE_ROLL:
             {
                 printf("\nPlayer %d\n", (game->mGamePlayers[game->uCurrentPlayer]->ePlayerTurnPosition + 1));
+
+                game->mGamePlayers[PLAYER_ONE]->ePropertyOwned[0] = MEDITERRANEAN_AVENUE;
+
+                m_get_player_property(game->mGamePlayers[PLAYER_ONE]);
                 m_pre_roll_phase(game);
                 break;
             }

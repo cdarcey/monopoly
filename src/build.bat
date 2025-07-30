@@ -21,7 +21,7 @@
 @if not exist "../out" @mkdir "../out"
 
 @rem cleanup binaries if not hot reloading
-@if exist "../out/simple_testing.exe" del "..\out\simple_testing.exe"
+@if exist "../out/monopoly.exe" del "..\out\monopoly.exe"
 
 @rem run compiler (and linker)
 @echo.
@@ -29,7 +29,7 @@
 @echo [1m[36mCompiling and Linking...[0m
 
 @rem call compiler
-cl main.c m_game.c m_property.c m_board_cards.c m_init_game.c m_player.c m_ai.c -Fe"../out/simple_testing.exe" -Fo"../out/" -Od -Zi -nologo -I"../dependencies" -MD -link -incremental:no 
+cl main.c m_game.c m_property.c m_board_cards.c m_init_game.c m_player.c m_ai.c -Fe"../out/monopoly.exe" -Fo"../out/" -Od -Zi -nologo -I"../dependencies" -MD -link -incremental:no 
 
 @rem check build status
 @set PL_BUILD_STATUS=%ERRORLEVEL%

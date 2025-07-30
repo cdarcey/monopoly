@@ -1,6 +1,8 @@
 #ifndef M_INIT_GAME_H
 #define M_INIT_GAME_H
 
+#include <assert.h>
+
 
 #include "pl_json.h"
 #include "m_property.h"

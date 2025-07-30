@@ -135,7 +135,7 @@ void m_transfer_assets_to_player(mGameData* mGame, mPlayerNumber losingAssets, m
 bool m_player_has_mortgagable_props(mPlayer* mCurrentPlayer, mProperty* mGameProperties);
 bool m_player_has_buildings        (mPlayer* mCurrentPlayermProperty, mProperty* mGameProperties);
 void m_execute_mortgage_flow       (mProperty* mPropToMortgage, mPlayer* mPlayerMortgaging) ;
-void m_execute_house_sale          (mProperty* mPropWithHouses, mPlayer* mPlayerSelling);
+void m_execute_house_sale          (mGameData* mGame, mProperty* mPropWithHouses, mPlayer* mPlayerSelling);
 void m_execute_hotel_sale          (mProperty* mPropWithHouses, mPlayer* mPlayerSelling);
 
 
@@ -157,6 +157,7 @@ void           m_show_utils_owned          (mPlayer* currentPlayer);
 // Property Rules & Validation
 bool          m_color_set_owned   (mGameData* mGame, mPlayer* mPlayerBuyingHouse, mPropertyColor eColorOfSet);
 bool          m_house_can_be_added(mGameData* mGame, mPlayer* mPlayerBuyingHouse, mPropertyColor eColorOfSet);
+bool          m_house_can_be_sold (mGameData* mGame, mPlayer* mPlayerSellingHouse, mPropertyColor eColorOfSet); 
 bool          m_is_property_owned (mProperty* mPropertyToCheck);
 bool          m_is_property_owner (mPlayer* mPlayerToCheck, mProperty* mPropertyToCheck);
 mPropertyName m_property_landed_on(uint32_t uPosition);
@@ -166,5 +167,7 @@ mRailroadName m_railroad_landed_on(uint32_t uPosition);
 bool          m_is_utility_owned  (mUtility* mUtilityToCheck);
 bool          m_is_utility_owner  (mPlayer* mPlayerToCheck, mUtility* mUtilityToCheck);
 mUtilityName  m_utility_landed_on (uint32_t uPosition);
+
+mPropertyName m_get_player_property(mPlayer* mCurrentPlayer);
 
 #endif
