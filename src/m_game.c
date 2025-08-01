@@ -590,33 +590,33 @@ m_show_building_managment_menu(mGameData* mGame)
         }
         case BUY_HOUSES:
         {
-            if(!m_house_can_be_added(mGame, current_player, current_property->eColor))
+            bool bHouseCanBeAdded = m_house_can_be_added(mGame, current_property, current_player, current_property->eColor);
+            if(!bHouseCanBeAdded)
             {
                 printf("You cannot add a house at this time");
                 return;
             }
             else
             {
-                bool bHouseCanBeAdded = m_house_can_be_added(mGame, current_player, current_property->eColor);
                 m_buy_house(current_property, current_player, bHouseCanBeAdded);
             }
                 break;
         }
         case SELL_HOTELS:
         {
-            // Handle selling hotels
+            m_execute_hotel_sale(current_property, current_player);
             break;
         }
         case BUY_HOTELS:
         {
-            if(false /*m_hotel_can_be_added()*/)
+            bool bHotelCanBeAdded = m_hotel_can_be_added(mGame, current_player, current_property->eColor);
+            if(!bHotelCanBeAdded)
             {
                 printf("You cannot add a hotel at this time");
                 return;
             }
             else
             {
-                bool bHotelCanBeAdded = true; // TODO: m_hotel_can_be_added();
                 m_buy_hotel(current_property, current_player, bHotelCanBeAdded);
             }
             break;

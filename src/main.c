@@ -13,10 +13,9 @@ void m_game_loop(mGameData* game);
     TODO -
         : auction system
         : trading system
-        : mortgaging detection for paying intrest
         : impliment ai decsion making 
-        : m_buy_house needs to be reworked
         : m_buy_hotel & m_sell_hotel need to be created
+        : need to add check for if prop has hotel you cannot sell houses - selling hotel will not downgrade to hotels
 */
 
 int
@@ -62,9 +61,18 @@ m_game_loop(mGameData* game)
             {
                 printf("\nPlayer %d\n", (game->mGamePlayers[game->uCurrentPlayer]->ePlayerTurnPosition + 1));
 
-                game->mGamePlayers[PLAYER_ONE]->ePropertyOwned[0] = MEDITERRANEAN_AVENUE;
+                game->mGameProperties[MEDITERRANEAN_AVENUE].bOwned = true;
+                game->mGameProperties[BALTIC_AVENUE].bOwned = true;
 
-                m_get_player_property(game->mGamePlayers[PLAYER_ONE]);
+                game->mGameProperties[MEDITERRANEAN_AVENUE].eOwner = PLAYER_ONE;
+                game->mGameProperties[BALTIC_AVENUE].eOwner = PLAYER_ONE;
+
+                game->mGameProperties[MEDITERRANEAN_AVENUE].uNumberOfHouses = 4;
+                game->mGameProperties[BALTIC_AVENUE].uNumberOfHouses = 4;
+
+                game->mGamePlayers[game->uCurrentPlayer]->ePropertyOwned[0] = MEDITERRANEAN_AVENUE;
+                game->mGamePlayers[game->uCurrentPlayer]->ePropertyOwned[1] = BALTIC_AVENUE;
+
                 m_pre_roll_phase(game);
                 break;
             }
