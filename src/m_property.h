@@ -157,7 +157,7 @@ void           m_show_utils_owned          (mPlayer* currentPlayer);
 // Property Rules & Validation
 bool          m_color_set_owned   (mGameData* mGame, mPlayer* mPlayerBuyingHouse, mPropertyColor eColorOfSet);
 bool          m_house_can_be_added(mGameData* mGame, mProperty* mCurrentProperty, mPlayer* mPlayerBuyingHouse, mPropertyColor eColorOfSet);
-bool          m_hotel_can_be_added(mGameData* mGame, mPlayer* mPlayerBuyingHotel, mPropertyColor eColorOfSet);
+bool          m_hotel_can_be_added(mGameData* mGame, mPropertyColor eColorOfSet);
 bool          m_house_can_be_sold (mGameData* mGame, mPlayer* mPlayerSellingHouse, mPropertyColor eColorOfSet); 
 bool          m_is_property_owned (mProperty* mPropertyToCheck);
 bool          m_is_property_owner (mPlayer* mPlayerToCheck, mProperty* mPropertyToCheck);

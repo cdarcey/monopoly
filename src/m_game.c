@@ -160,7 +160,7 @@ m_get_player_jail_choice()
     printf("> ");
 
     int choice;
-    scanf("%d", &choice);
+    scanf_s("%d", &choice);
     while(getchar() != '\n'); // Clear input buffer
 
     switch(choice)
@@ -280,7 +280,7 @@ m_get_player_pre_roll_choice()
     printf("> ");
 
     int choice;
-    scanf("%d", &choice);
+    scanf_s("%d", &choice);
     while(getchar() != '\n'); // Clear input buffer
 
     switch(choice)
@@ -487,7 +487,7 @@ m_get_player_post_roll_choice()
     printf("> ");
 
     int choice;
-    scanf("%d", &choice);
+    scanf_s("%d", &choice);
     while(getchar() != '\n'); // Clear input buffer
 
     switch(choice)
@@ -609,7 +609,7 @@ m_show_building_managment_menu(mGameData* mGame)
         }
         case BUY_HOTELS:
         {
-            bool bHotelCanBeAdded = m_hotel_can_be_added(mGame, current_player, current_property->eColor);
+            bool bHotelCanBeAdded = m_hotel_can_be_added(mGame, current_property->eColor);
             if(!bHotelCanBeAdded)
             {
                 printf("You cannot add a hotel at this time");
@@ -651,7 +651,7 @@ m_get_building_managment_choice()
     printf("> ");
 
     int choice;
-    scanf("%d", &choice);
+    scanf_s("%d", &choice);
     while(getchar() != '\n');
 
     switch(choice) 
@@ -672,13 +672,14 @@ void
 m_enter_trade_phase(mGameData* mGame)
 {
     // TODO: complete
+    mGame->uCurrentPlayer += 0; // dummy code for warnings
 }
 
 // ==================== END TURN ACTIONS ==================== //
 
 // ==================== FINANCIAL MANAGEMENT ==================== //
 bool
-m_can_player_afford(mPlayer* mCurrentPlayer, uint8_t uExpense)
+m_can_player_afford(mPlayer* mCurrentPlayer, uint32_t uExpense)
 {
     if(mCurrentPlayer->uMoney >= uExpense)
     {
@@ -761,6 +762,7 @@ bool
 m_player_has_forced_actions(mGameData* mGame)
 {
     // TODO: handle logic here
+    mGame->uCurrentPlayer += 0; // dummy codes for warnings 
     return true;
 }
 
@@ -768,6 +770,7 @@ void
 m_handle_emergency_actions(mGameData* mGame)
 {
     // TODO: handle logic here
+    mGame->uCurrentPlayer += 0; //dummy code for warnings
 }
 
 // ==================== HELPERS ==================== //

@@ -180,7 +180,7 @@ m_pay_rent_property(mPlayer* mPayee, mPlayer* mPayer, mProperty* mPropertyForRen
         return; // cannot collect rent on mortgaged property
     }
 
-    uint8_t uRent = 0;
+    uint32_t uRent = 0;
     if(bColorSetOwned && mPropertyForRent->uNumberOfHouses == 0)
     {
         uRent = mPropertyForRent->uRent[mPropertyForRent->uNumberOfHouses] * 2;
@@ -680,9 +680,9 @@ bool m_house_can_be_added(mGameData* mGame, mProperty* mCurrentProperty, mPlayer
         {
             if(m_color_set_owned(mGame, mPlayerBuyingHouse, PURPLE))
             {
-                uint8_t medHouses = mGame->mGameProperties[MEDITERRANEAN_AVENUE].uNumberOfHouses;
-                uint8_t balHouses = mGame->mGameProperties[BALTIC_AVENUE].uNumberOfHouses;
-                uint8_t minHouses = min(medHouses, balHouses);
+                uint32_t medHouses = mGame->mGameProperties[MEDITERRANEAN_AVENUE].uNumberOfHouses;
+                uint32_t balHouses = mGame->mGameProperties[BALTIC_AVENUE].uNumberOfHouses;
+                uint32_t minHouses = min(medHouses, balHouses);
                 if(mCurrentProperty->uNumberOfHouses <= minHouses)
                 {
                     return true;
@@ -696,10 +696,10 @@ bool m_house_can_be_added(mGameData* mGame, mProperty* mCurrentProperty, mPlayer
         {
             if(m_color_set_owned(mGame, mPlayerBuyingHouse, LIGHT_BLUE))
             {
-                uint8_t orientalHouses = mGame->mGameProperties[ORIENTAL_AVENUE].uNumberOfHouses;
-                uint8_t vermontHouses = mGame->mGameProperties[VERMONT_AVENUE].uNumberOfHouses;
-                uint8_t connecticutHouses = mGame->mGameProperties[CONNECTICUT_AVENUE].uNumberOfHouses;
-                uint8_t minHouses = min(min(orientalHouses, vermontHouses), connecticutHouses);
+                uint32_t orientalHouses = mGame->mGameProperties[ORIENTAL_AVENUE].uNumberOfHouses;
+                uint32_t vermontHouses = mGame->mGameProperties[VERMONT_AVENUE].uNumberOfHouses;
+                uint32_t connecticutHouses = mGame->mGameProperties[CONNECTICUT_AVENUE].uNumberOfHouses;
+                uint32_t minHouses = min(min(orientalHouses, vermontHouses), connecticutHouses);
                 if(mCurrentProperty->uNumberOfHouses <= minHouses)
                 {
                     return true;
@@ -713,10 +713,10 @@ bool m_house_can_be_added(mGameData* mGame, mProperty* mCurrentProperty, mPlayer
         {
             if(m_color_set_owned(mGame, mPlayerBuyingHouse, PINK))
             {
-                uint8_t stCharlesHouses = mGame->mGameProperties[ST_CHARLES_PLACE].uNumberOfHouses;
-                uint8_t statesHouses = mGame->mGameProperties[STATES_AVENUE].uNumberOfHouses;
-                uint8_t virginiaHouses = mGame->mGameProperties[VIRGINIA_AVENUE].uNumberOfHouses;
-                uint8_t minHouses = min(min(stCharlesHouses, statesHouses), virginiaHouses);
+                uint32_t stCharlesHouses = mGame->mGameProperties[ST_CHARLES_PLACE].uNumberOfHouses;
+                uint32_t statesHouses = mGame->mGameProperties[STATES_AVENUE].uNumberOfHouses;
+                uint32_t virginiaHouses = mGame->mGameProperties[VIRGINIA_AVENUE].uNumberOfHouses;
+                uint32_t minHouses = min(min(stCharlesHouses, statesHouses), virginiaHouses);
                 if(mCurrentProperty->uNumberOfHouses <= minHouses)
                 {
                     return true;
@@ -730,10 +730,10 @@ bool m_house_can_be_added(mGameData* mGame, mProperty* mCurrentProperty, mPlayer
         {
             if(m_color_set_owned(mGame, mPlayerBuyingHouse, ORANGE))
             {
-                uint8_t stJamesHouses = mGame->mGameProperties[ST_JAMES_PLACE].uNumberOfHouses;
-                uint8_t tennesseeHouses = mGame->mGameProperties[TENNESSEE_AVENUE].uNumberOfHouses;
-                uint8_t newYorkHouses = mGame->mGameProperties[NEW_YORK_AVENUE].uNumberOfHouses;
-                uint8_t minHouses = min(min(stJamesHouses, tennesseeHouses), newYorkHouses);
+                uint32_t stJamesHouses = mGame->mGameProperties[ST_JAMES_PLACE].uNumberOfHouses;
+                uint32_t tennesseeHouses = mGame->mGameProperties[TENNESSEE_AVENUE].uNumberOfHouses;
+                uint32_t newYorkHouses = mGame->mGameProperties[NEW_YORK_AVENUE].uNumberOfHouses;
+                uint32_t minHouses = min(min(stJamesHouses, tennesseeHouses), newYorkHouses);
                 if(mCurrentProperty->uNumberOfHouses <= minHouses)
                 {
                     return true;
@@ -747,10 +747,10 @@ bool m_house_can_be_added(mGameData* mGame, mProperty* mCurrentProperty, mPlayer
         {
             if(m_color_set_owned(mGame, mPlayerBuyingHouse, RED))
             {
-                uint8_t kentuckyHouses = mGame->mGameProperties[KENTUCKY_AVENUE].uNumberOfHouses;
-                uint8_t indianaHouses = mGame->mGameProperties[INDIANA_AVENUE].uNumberOfHouses;
-                uint8_t illinoisHouses = mGame->mGameProperties[ILLINOIS_AVENUE].uNumberOfHouses;
-                uint8_t minHouses = min(min(kentuckyHouses, indianaHouses), illinoisHouses);
+                uint32_t kentuckyHouses = mGame->mGameProperties[KENTUCKY_AVENUE].uNumberOfHouses;
+                uint32_t indianaHouses = mGame->mGameProperties[INDIANA_AVENUE].uNumberOfHouses;
+                uint32_t illinoisHouses = mGame->mGameProperties[ILLINOIS_AVENUE].uNumberOfHouses;
+                uint32_t minHouses = min(min(kentuckyHouses, indianaHouses), illinoisHouses);
                 if(mCurrentProperty->uNumberOfHouses <= minHouses)
                 {
                     return true;
@@ -764,10 +764,10 @@ bool m_house_can_be_added(mGameData* mGame, mProperty* mCurrentProperty, mPlayer
         {
             if(m_color_set_owned(mGame, mPlayerBuyingHouse, YELLOW))
             {
-                uint8_t atlanticHouses = mGame->mGameProperties[ATLANTIC_AVENUE].uNumberOfHouses;
-                uint8_t ventnorHouses = mGame->mGameProperties[VENTNOR_AVENUE].uNumberOfHouses;
-                uint8_t marvinHouses = mGame->mGameProperties[MARVIN_GARDENS].uNumberOfHouses;
-                uint8_t minHouses = min(min(atlanticHouses, ventnorHouses), marvinHouses);
+                uint32_t atlanticHouses = mGame->mGameProperties[ATLANTIC_AVENUE].uNumberOfHouses;
+                uint32_t ventnorHouses = mGame->mGameProperties[VENTNOR_AVENUE].uNumberOfHouses;
+                uint32_t marvinHouses = mGame->mGameProperties[MARVIN_GARDENS].uNumberOfHouses;
+                uint32_t minHouses = min(min(atlanticHouses, ventnorHouses), marvinHouses);
                 if(mCurrentProperty->uNumberOfHouses <= minHouses)
                 {
                     return true;
@@ -781,10 +781,10 @@ bool m_house_can_be_added(mGameData* mGame, mProperty* mCurrentProperty, mPlayer
         {
             if(m_color_set_owned(mGame, mPlayerBuyingHouse, GREEN))
             {
-                uint8_t pacificHouses = mGame->mGameProperties[PACIFIC_AVENUE].uNumberOfHouses;
-                uint8_t northCarolinaHouses = mGame->mGameProperties[NORTH_CAROLINA_AVENUE].uNumberOfHouses;
-                uint8_t pennsylvaniaHouses = mGame->mGameProperties[PENNSYLVANIA_AVENUE].uNumberOfHouses;
-                uint8_t minHouses = min(min(pacificHouses, northCarolinaHouses), pennsylvaniaHouses);
+                uint32_t pacificHouses = mGame->mGameProperties[PACIFIC_AVENUE].uNumberOfHouses;
+                uint32_t northCarolinaHouses = mGame->mGameProperties[NORTH_CAROLINA_AVENUE].uNumberOfHouses;
+                uint32_t pennsylvaniaHouses = mGame->mGameProperties[PENNSYLVANIA_AVENUE].uNumberOfHouses;
+                uint32_t minHouses = min(min(pacificHouses, northCarolinaHouses), pennsylvaniaHouses);
                 if(mCurrentProperty->uNumberOfHouses <= minHouses)
                 {
                     return true;
@@ -798,9 +798,9 @@ bool m_house_can_be_added(mGameData* mGame, mProperty* mCurrentProperty, mPlayer
         {
             if(m_color_set_owned(mGame, mPlayerBuyingHouse, DARK_BLUE))
             {
-                uint8_t parkHouses = mGame->mGameProperties[PARK_PLACE].uNumberOfHouses;
-                uint8_t boardwalkHouses = mGame->mGameProperties[BOARDWALK].uNumberOfHouses;
-                uint8_t minHouses = min(parkHouses, boardwalkHouses);
+                uint32_t parkHouses = mGame->mGameProperties[PARK_PLACE].uNumberOfHouses;
+                uint32_t boardwalkHouses = mGame->mGameProperties[BOARDWALK].uNumberOfHouses;
+                uint32_t minHouses = min(parkHouses, boardwalkHouses);
                 if(mCurrentProperty->uNumberOfHouses <= minHouses)
                 {
                     return true;
@@ -815,7 +815,7 @@ bool m_house_can_be_added(mGameData* mGame, mProperty* mCurrentProperty, mPlayer
     }
 }
 bool 
-m_hotel_can_be_added(mGameData* mGame, mPlayer* mPlayerBuyingHotel, mPropertyColor eColorOfSet)
+m_hotel_can_be_added(mGameData* mGame, mPropertyColor eColorOfSet)
 {
     switch(eColorOfSet)
     {
@@ -929,9 +929,9 @@ m_house_can_be_sold(mGameData* mGame, mPlayer* mPlayerSellingHouse, mPropertyCol
             if (mGame->mGameProperties[MEDITERRANEAN_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
                 mGame->mGameProperties[BALTIC_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint8_t medHouses = mGame->mGameProperties[MEDITERRANEAN_AVENUE].uNumberOfHouses;
-                uint8_t balHouses = mGame->mGameProperties[BALTIC_AVENUE].uNumberOfHouses;
-                uint8_t maxHouses = (medHouses > balHouses) ? medHouses : balHouses;
+                uint32_t medHouses = mGame->mGameProperties[MEDITERRANEAN_AVENUE].uNumberOfHouses;
+                uint32_t balHouses = mGame->mGameProperties[BALTIC_AVENUE].uNumberOfHouses;
+                uint32_t maxHouses = (medHouses > balHouses) ? medHouses : balHouses;
                 return (medHouses == maxHouses) || (balHouses == maxHouses);
             }
             return false;
@@ -944,10 +944,10 @@ m_house_can_be_sold(mGameData* mGame, mPlayer* mPlayerSellingHouse, mPropertyCol
                mGame->mGameProperties[VERMONT_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
                mGame->mGameProperties[CONNECTICUT_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint8_t oriHouses = mGame->mGameProperties[ORIENTAL_AVENUE].uNumberOfHouses;
-                uint8_t verHouses = mGame->mGameProperties[VERMONT_AVENUE].uNumberOfHouses;
-                uint8_t conHouses = mGame->mGameProperties[CONNECTICUT_AVENUE].uNumberOfHouses;
-                uint8_t maxHouses = (oriHouses > verHouses) ? 
+                uint32_t oriHouses = mGame->mGameProperties[ORIENTAL_AVENUE].uNumberOfHouses;
+                uint32_t verHouses = mGame->mGameProperties[VERMONT_AVENUE].uNumberOfHouses;
+                uint32_t conHouses = mGame->mGameProperties[CONNECTICUT_AVENUE].uNumberOfHouses;
+                uint32_t maxHouses = (oriHouses > verHouses) ? 
                                    ((oriHouses > conHouses) ? oriHouses : conHouses) :
                                    ((verHouses > conHouses) ? verHouses : conHouses);
                 return (oriHouses == maxHouses) || 
@@ -964,10 +964,10 @@ m_house_can_be_sold(mGameData* mGame, mPlayer* mPlayerSellingHouse, mPropertyCol
                mGame->mGameProperties[STATES_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
                mGame->mGameProperties[VIRGINIA_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint8_t stcHouses = mGame->mGameProperties[ST_CHARLES_PLACE].uNumberOfHouses;
-                uint8_t staHouses = mGame->mGameProperties[STATES_AVENUE].uNumberOfHouses;
-                uint8_t virHouses = mGame->mGameProperties[VIRGINIA_AVENUE].uNumberOfHouses;
-                uint8_t maxHouses = (stcHouses > staHouses) ? 
+                uint32_t stcHouses = mGame->mGameProperties[ST_CHARLES_PLACE].uNumberOfHouses;
+                uint32_t staHouses = mGame->mGameProperties[STATES_AVENUE].uNumberOfHouses;
+                uint32_t virHouses = mGame->mGameProperties[VIRGINIA_AVENUE].uNumberOfHouses;
+                uint32_t maxHouses = (stcHouses > staHouses) ? 
                                    ((stcHouses > virHouses) ? stcHouses : virHouses) :
                                    ((staHouses > virHouses) ? staHouses : virHouses);
                 return (stcHouses == maxHouses) || 
@@ -984,10 +984,10 @@ m_house_can_be_sold(mGameData* mGame, mPlayer* mPlayerSellingHouse, mPropertyCol
                mGame->mGameProperties[TENNESSEE_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
                mGame->mGameProperties[NEW_YORK_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint8_t stjHouses = mGame->mGameProperties[ST_JAMES_PLACE].uNumberOfHouses;
-                uint8_t tenHouses = mGame->mGameProperties[TENNESSEE_AVENUE].uNumberOfHouses;
-                uint8_t nyHouses = mGame->mGameProperties[NEW_YORK_AVENUE].uNumberOfHouses;
-                uint8_t maxHouses = (stjHouses > tenHouses) ? 
+                uint32_t stjHouses = mGame->mGameProperties[ST_JAMES_PLACE].uNumberOfHouses;
+                uint32_t tenHouses = mGame->mGameProperties[TENNESSEE_AVENUE].uNumberOfHouses;
+                uint32_t nyHouses = mGame->mGameProperties[NEW_YORK_AVENUE].uNumberOfHouses;
+                uint32_t maxHouses = (stjHouses > tenHouses) ? 
                                    ((stjHouses > nyHouses) ? stjHouses : nyHouses) :
                                    ((tenHouses > nyHouses) ? tenHouses : nyHouses);
                 return (stjHouses == maxHouses) || 
@@ -1004,10 +1004,10 @@ m_house_can_be_sold(mGameData* mGame, mPlayer* mPlayerSellingHouse, mPropertyCol
                mGame->mGameProperties[INDIANA_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
                mGame->mGameProperties[KENTUCKY_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint8_t illHouses = mGame->mGameProperties[ILLINOIS_AVENUE].uNumberOfHouses;
-                uint8_t indHouses = mGame->mGameProperties[INDIANA_AVENUE].uNumberOfHouses;
-                uint8_t kenHouses = mGame->mGameProperties[KENTUCKY_AVENUE].uNumberOfHouses;
-                uint8_t maxHouses = (illHouses > indHouses) ? 
+                uint32_t illHouses = mGame->mGameProperties[ILLINOIS_AVENUE].uNumberOfHouses;
+                uint32_t indHouses = mGame->mGameProperties[INDIANA_AVENUE].uNumberOfHouses;
+                uint32_t kenHouses = mGame->mGameProperties[KENTUCKY_AVENUE].uNumberOfHouses;
+                uint32_t maxHouses = (illHouses > indHouses) ? 
                                    ((illHouses > kenHouses) ? illHouses : kenHouses) :
                                    ((indHouses > kenHouses) ? indHouses : kenHouses);
                 return (illHouses == maxHouses) || 
@@ -1024,10 +1024,10 @@ m_house_can_be_sold(mGameData* mGame, mPlayer* mPlayerSellingHouse, mPropertyCol
                mGame->mGameProperties[VENTNOR_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
                mGame->mGameProperties[ATLANTIC_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint8_t marHouses = mGame->mGameProperties[MARVIN_GARDENS].uNumberOfHouses;
-                uint8_t venHouses = mGame->mGameProperties[VENTNOR_AVENUE].uNumberOfHouses;
-                uint8_t atlHouses = mGame->mGameProperties[ATLANTIC_AVENUE].uNumberOfHouses;
-                uint8_t maxHouses = (marHouses > venHouses) ? 
+                uint32_t marHouses = mGame->mGameProperties[MARVIN_GARDENS].uNumberOfHouses;
+                uint32_t venHouses = mGame->mGameProperties[VENTNOR_AVENUE].uNumberOfHouses;
+                uint32_t atlHouses = mGame->mGameProperties[ATLANTIC_AVENUE].uNumberOfHouses;
+                uint32_t maxHouses = (marHouses > venHouses) ? 
                                    ((marHouses > atlHouses) ? marHouses : atlHouses) :
                                    ((venHouses > atlHouses) ? venHouses : atlHouses);
                 return (marHouses == maxHouses) || 
@@ -1044,10 +1044,10 @@ m_house_can_be_sold(mGameData* mGame, mPlayer* mPlayerSellingHouse, mPropertyCol
                mGame->mGameProperties[NORTH_CAROLINA_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
                mGame->mGameProperties[PACIFIC_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint8_t penHouses = mGame->mGameProperties[PENNSYLVANIA_AVENUE].uNumberOfHouses;
-                uint8_t norHouses = mGame->mGameProperties[NORTH_CAROLINA_AVENUE].uNumberOfHouses;
-                uint8_t pacHouses = mGame->mGameProperties[PACIFIC_AVENUE].uNumberOfHouses;
-                uint8_t maxHouses = (penHouses > norHouses) ? 
+                uint32_t penHouses = mGame->mGameProperties[PENNSYLVANIA_AVENUE].uNumberOfHouses;
+                uint32_t norHouses = mGame->mGameProperties[NORTH_CAROLINA_AVENUE].uNumberOfHouses;
+                uint32_t pacHouses = mGame->mGameProperties[PACIFIC_AVENUE].uNumberOfHouses;
+                uint32_t maxHouses = (penHouses > norHouses) ? 
                                    ((penHouses > pacHouses) ? penHouses : pacHouses) :
                                    ((norHouses > pacHouses) ? norHouses : pacHouses);
                 return (penHouses == maxHouses) || 
@@ -1063,9 +1063,9 @@ m_house_can_be_sold(mGameData* mGame, mPlayer* mPlayerSellingHouse, mPropertyCol
             if (mGame->mGameProperties[BOARDWALK].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
                 mGame->mGameProperties[PARK_PLACE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint8_t boaHouses = mGame->mGameProperties[BOARDWALK].uNumberOfHouses;
-                uint8_t parHouses = mGame->mGameProperties[PARK_PLACE].uNumberOfHouses;
-                uint8_t maxHouses = (boaHouses > parHouses) ? boaHouses : parHouses;
+                uint32_t boaHouses = mGame->mGameProperties[BOARDWALK].uNumberOfHouses;
+                uint32_t parHouses = mGame->mGameProperties[PARK_PLACE].uNumberOfHouses;
+                uint32_t maxHouses = (boaHouses > parHouses) ? boaHouses : parHouses;
                 return (boaHouses == maxHouses) || (parHouses == maxHouses);
             }
             return false;
@@ -1261,31 +1261,8 @@ m_get_player_property(mPlayer* mCurrentPlayer)
     printf("\nSelect a property (enter number): ");
 
     int choice;
-    scanf("%d", &choice);
-    switch(choice) 
-    {
-        case 1:  return MEDITERRANEAN_AVENUE;
-        case 2:  return BALTIC_AVENUE;
-        case 3:  return ORIENTAL_AVENUE;
-        case 4:  return VERMONT_AVENUE;
-        case 5:  return CONNECTICUT_AVENUE;
-        case 6:  return ST_CHARLES_PLACE;
-        case 7:  return STATES_AVENUE;
-        case 8:  return VIRGINIA_AVENUE;
-        case 9:  return ST_JAMES_PLACE;
-        case 10: return TENNESSEE_AVENUE;
-        case 11: return NEW_YORK_AVENUE;
-        case 12: return ILLINOIS_AVENUE;
-        case 13: return INDIANA_AVENUE;
-        case 14: return KENTUCKY_AVENUE;
-        case 15: return MARVIN_GARDENS;
-        case 16: return VENTNOR_AVENUE;
-        case 17: return ATLANTIC_AVENUE;
-        case 18: return PENNSYLVANIA_AVENUE;
-        case 19: return NORTH_CAROLINA_AVENUE;
-        case 20: return PACIFIC_AVENUE;
-        case 21: return PARK_PLACE;
-        case 22: return BOARDWALK;
-        default: return NO_PROPERTY;
-    }
+    scanf_s("%d", &choice);
+
+    return mCurrentPlayer->ePropertyOwned[choice - 1]; 
+
 }

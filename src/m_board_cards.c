@@ -366,9 +366,9 @@ m_execute_community_chest_card(mGameData* mGame)
         {
             // TODO: "You are assessed for street repairs. Pay $40 per house and $115 per hotel you own."
             // TODO: needs to be tested
-            uint8_t uHousesOwned = 0;
-            uint8_t uHotelsOwned = 0;
-            for(uint16_t i = 0; i < PROPERTY_TOTAL; i++)
+            uint32_t uHousesOwned = 0;
+            uint32_t uHotelsOwned = 0;
+            for(uint8_t i = 0; i < PROPERTY_TOTAL; i++)
             {
                 for(uint8_t j = 0; j < MAX_HOUSES; j++)
                 {
@@ -382,7 +382,7 @@ m_execute_community_chest_card(mGameData* mGame)
                     }
                 }
             }
-            uint8_t uPayment = (uHousesOwned * 40) + (uHotelsOwned * 115);
+            uint32_t uPayment = (uHousesOwned * 40) + (uHotelsOwned * 115);
             if(current_player->uMoney <= uPayment)
             {
                 current_player->bBankrupt = true;

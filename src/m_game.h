@@ -120,7 +120,7 @@ void m_enter_trade_phase(mGameData* mGame);
 // ==================== END TURN ACTIONS ==================== //
 
 // ==================== FINANCIAL MANAGEMENT ==================== //
-bool m_can_player_afford        (mPlayer* mCurrentPlayer, uint8_t uExpense);
+bool m_can_player_afford        (mPlayer* mCurrentPlayer, uint32_t uExpense);
 bool m_attempt_emergency_payment(mGameData* mGame, mPlayer* currentPlayer, uint32_t uAmount);
 
 // ==================== FORCED ACTIONS ==================== //
