@@ -60,13 +60,14 @@ m_game_loop(mGameData* game)
             case PHASE_PRE_ROLL:
             {
                 printf("\nPlayer %d\n", (game->mGamePlayers[game->uCurrentPlayer]->ePlayerTurnPosition + 1));
-
+                m_show_player_status(game->mGamePlayers[game->uCurrentPlayer]);
                 m_pre_roll_phase(game);
                 break;
             }
             case PHASE_POST_ROLL:
             {
                 m_move_player(game->mGamePlayers[game->uCurrentPlayer], game->mGameDice);
+                m_show_player_status(game->mGamePlayers[game->uCurrentPlayer]);
                 m_phase_post_roll(game);
                 break;
             }
