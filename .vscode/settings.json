@@ -6,6 +6,7 @@
         "m_board_cards.h": "c",
         "m_init_game.h": "c",
         "m_game.h": "c",
-        "pl_json.h": "c"
+        "pl_json.h": "c",
+        "stdint.h": "c"
     }
 }

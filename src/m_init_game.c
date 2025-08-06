@@ -122,7 +122,6 @@ m_init_game(mGameStartSettings mSettings)
     FILE* jsonFileChanceCards = fopen("../game_data/chance_cards.json", "r");
     if (!jsonFileChanceCards) {
         printf("Failed to open chance_cards.json\n");
-        free(mGame);
         return NULL;
     }
 
@@ -155,7 +154,6 @@ m_init_game(mGameStartSettings mSettings)
     if (!jsonFileCommChest) 
     {
         printf("Failed to open community_chest_cards.json\n");
-        free(mGame);
         return NULL;
     }
 
@@ -193,7 +191,6 @@ m_init_game(mGameStartSettings mSettings)
     mGame->mGameDice = malloc(sizeof(mDice));
     if (!mGame->mGameDice) {
         printf("Failed to allocate memory for dice\n");
-        free(mGame);
         return NULL;
     }
 

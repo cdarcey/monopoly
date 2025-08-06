@@ -22,14 +22,14 @@ typedef enum _mIndexBufferNames
 // ==================== STRUCTS ==================== //
 typedef struct _mChanceCard
 {
-    uint32_t    uID;
     char        cDescription[200];
+    uint32_t    uID;
 } mChanceCard;
 
 typedef struct _mCommunityChestCard
 {
-    uint32_t    uID;
     char        cDescription[200];
+    uint32_t    uID;
 } mCommunityChestCard;
 
 typedef struct _mDeckIndexBuffer

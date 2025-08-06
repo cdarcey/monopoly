@@ -54,14 +54,14 @@ typedef enum mPlayerNumber
 // ==================== STRUCTS ==================== //
 typedef struct _mPlayer
 {
-    mPlayerPiece   ePiece;
-    mPlayerNumber  ePlayerTurnPosition;
-    uint8_t        uPosition;
     uint32_t       uMoney;
+    uint8_t        uPosition;
     uint8_t        uJailTurns;
     mPropertyName  ePropertyOwned[22];
     mRailroadName  eRailroadsOwned[4];
     mUtilityName   eUtilityOwned[2];
+    mPlayerPiece   ePiece;
+    mPlayerNumber  ePlayerTurnPosition;
     bool           bInJail;
     bool           bGetOutOfJailFreeCard;
     bool           bBankrupt;

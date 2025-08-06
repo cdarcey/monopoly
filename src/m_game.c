@@ -1,8 +1,5 @@
 
 
-#include <stdio.h>
-#include <Windows.h>
-
 #include "m_init_game.h"
 
 
@@ -628,6 +625,7 @@ m_show_building_managment_menu(mGameData* mGame)
         }
         case UNMORTGAGE_PROPERTY:
         {
+            m_execute_unmortgage_flow(current_property, current_player);
             break;
         }
         default:

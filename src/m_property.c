@@ -14,7 +14,6 @@
 void
 m_buy_property(mProperty* propertyToBuy, mPlayer* playerBuying)
 {
-    // TODO: handle not enough money with new finace management functions
     if(propertyToBuy->bOwned == true)
     {
         printf("property is owned and cannot be bought\n");
@@ -44,13 +43,12 @@ m_buy_property(mProperty* propertyToBuy, mPlayer* playerBuying)
 void
 m_buy_utility(mUtility* utilityToBuy, mPlayer* playerBuying)
 {
-    // TODO: handle not enough money with new finace management functions 
     if(utilityToBuy->bOwned == true)
     {
         printf("utility is owned and cannot be bought\n");
         return;
     }
-    else if(utilityToBuy->uPrice > playerBuying->uMoney)
+    else if(!m_can_player_afford(playerBuying, utilityToBuy->uPrice))
     {
         printf("not enough money to buy utility\n");
         return;
@@ -74,13 +72,12 @@ m_buy_utility(mUtility* utilityToBuy, mPlayer* playerBuying)
 void
 m_buy_railroad(mRailroad* railroadToBuy, mPlayer* playerBuying)
 {
-    // TODO: handle not enough money with new finace management functions 
     if(railroadToBuy->bOwned == true)
     {
         printf("railroad owned and cannot be bought\n");
         return;
     }
-    else if(railroadToBuy->uPrice > playerBuying->uMoney)
+    else if(!m_can_player_afford(playerBuying, railroadToBuy->uPrice))
     {
         printf("not enough money to buy railroad\n");
         return;
@@ -122,7 +119,7 @@ m_buy_house(mProperty* mPropertyToAddHouse, mPlayer* mPropertyOwner, bool bHouse
         return;
     }
 
-    if(mPropertyToAddHouse->uHouseCost > mPropertyOwner->uMoney)
+    if(!m_can_player_afford(mPropertyOwner, mPropertyToAddHouse->uHouseCost))
     {
         printf("Not enough money to buy house\n");
         return;
@@ -405,12 +402,37 @@ m_execute_mortgage_flow(mProperty* mPropToMortgage, mPlayer* mPlayerMortgaging)
 }
 
 void
+m_execute_unmortgage_flow(mProperty* mPropToMortgage, mPlayer* mPlayerMortgaging)
+{
+    if(!mPropToMortgage || !mPlayerMortgaging)
+    {
+        __debugbreak();
+        return;
+    }
+
+    if(mPropToMortgage->eOwner != mPlayerMortgaging->ePlayerTurnPosition)
+    {
+        printf("you do not own property\n");
+        return;
+    }
+    else if(mPropToMortgage->bMortgaged == false)
+    {
+        printf("property does not have mortgage\n");
+        return;
+    }
+    else
+    {
+        mPropToMortgage->bMortgaged = false;
+        mPlayerMortgaging->uMoney -= (uint32_t)(mPropToMortgage->uPrice * 1.1f);
+    }
+}
+
+void
 m_execute_house_sale(mGameData* mGame, mProperty* mPropWithHouses, mPlayer* mPlayerSelling) 
 {
-    // TODO: go over assert with johnny at next session
-    // assert(mPropWithHouses->uNumberOfHouses == 0);
-    // assert(mPropWithHouses->eOwner != mPlayerSelling->ePlayerTurnPosition);
-    // assert(!mPropWithHouses || !mPlayerSelling);
+    assert(mPropWithHouses->uNumberOfHouses > 0);
+    assert(mPropWithHouses->eOwner != mPlayerSelling->ePlayerTurnPosition);
+    assert(!mPropWithHouses || !mPlayerSelling);
 
     if(!m_house_can_be_sold(mGame, mPlayerSelling, mPropWithHouses->eColor))
     {
@@ -926,157 +948,180 @@ m_house_can_be_sold(mGameData* mGame, mPlayer* mPlayerSellingHouse, mPropertyCol
     {
         case PURPLE:  
         {
-            if (mGame->mGameProperties[MEDITERRANEAN_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
+            if(mGame->mGameProperties[MEDITERRANEAN_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition && 
                 mGame->mGameProperties[BALTIC_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint32_t medHouses = mGame->mGameProperties[MEDITERRANEAN_AVENUE].uNumberOfHouses;
-                uint32_t balHouses = mGame->mGameProperties[BALTIC_AVENUE].uNumberOfHouses;
-                uint32_t maxHouses = (medHouses > balHouses) ? medHouses : balHouses;
-                return (medHouses == maxHouses) || (balHouses == maxHouses);
+                if(mGame->mGameProperties[MEDITERRANEAN_AVENUE].uNumberOfHotels > 0 || 
+                    mGame->mGameProperties[BALTIC_AVENUE].uNumberOfHotels > 0)
+                {
+                    uint32_t medHouses = mGame->mGameProperties[MEDITERRANEAN_AVENUE].uNumberOfHouses;
+                    uint32_t balHouses = mGame->mGameProperties[BALTIC_AVENUE].uNumberOfHouses;
+                    uint32_t maxHouses = (medHouses > balHouses) ? medHouses : balHouses;
+                    return (medHouses == maxHouses) || (balHouses == maxHouses);
+                }
             }
             return false;
         }
         break;
-
+        
         case LIGHT_BLUE:
         {
-            if(mGame->mGameProperties[ORIENTAL_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
-               mGame->mGameProperties[VERMONT_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
-               mGame->mGameProperties[CONNECTICUT_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
+            if(mGame->mGameProperties[ORIENTAL_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition && 
+                mGame->mGameProperties[VERMONT_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition && 
+                mGame->mGameProperties[CONNECTICUT_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint32_t oriHouses = mGame->mGameProperties[ORIENTAL_AVENUE].uNumberOfHouses;
-                uint32_t verHouses = mGame->mGameProperties[VERMONT_AVENUE].uNumberOfHouses;
-                uint32_t conHouses = mGame->mGameProperties[CONNECTICUT_AVENUE].uNumberOfHouses;
-                uint32_t maxHouses = (oriHouses > verHouses) ? 
-                                   ((oriHouses > conHouses) ? oriHouses : conHouses) :
-                                   ((verHouses > conHouses) ? verHouses : conHouses);
-                return (oriHouses == maxHouses) || 
-                       (verHouses == maxHouses) || 
-                       (conHouses == maxHouses);
+                if(mGame->mGameProperties[ORIENTAL_AVENUE].uNumberOfHotels > 0 || 
+                   mGame->mGameProperties[VERMONT_AVENUE].uNumberOfHotels > 0 || 
+                   mGame->mGameProperties[CONNECTICUT_AVENUE].uNumberOfHotels > 0)
+                {
+                    uint32_t oriHouses = mGame->mGameProperties[ORIENTAL_AVENUE].uNumberOfHouses;
+                    uint32_t verHouses = mGame->mGameProperties[VERMONT_AVENUE].uNumberOfHouses;
+                    uint32_t conHouses = mGame->mGameProperties[CONNECTICUT_AVENUE].uNumberOfHouses;
+                    uint32_t maxHouses = (oriHouses > verHouses) ? 
+                                         ((oriHouses > conHouses) ? oriHouses : conHouses) : 
+                                         ((verHouses > conHouses) ? verHouses : conHouses);
+                    return (oriHouses == maxHouses) || (verHouses == maxHouses) || (conHouses == maxHouses);
+                }
             }
             return false;
         }
         break;
-
+        
         case PINK:
         {
-            if(mGame->mGameProperties[ST_CHARLES_PLACE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
-               mGame->mGameProperties[STATES_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
-               mGame->mGameProperties[VIRGINIA_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
+            if(mGame->mGameProperties[ST_CHARLES_PLACE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition && 
+                mGame->mGameProperties[STATES_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition && 
+                mGame->mGameProperties[VIRGINIA_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint32_t stcHouses = mGame->mGameProperties[ST_CHARLES_PLACE].uNumberOfHouses;
-                uint32_t staHouses = mGame->mGameProperties[STATES_AVENUE].uNumberOfHouses;
-                uint32_t virHouses = mGame->mGameProperties[VIRGINIA_AVENUE].uNumberOfHouses;
-                uint32_t maxHouses = (stcHouses > staHouses) ? 
-                                   ((stcHouses > virHouses) ? stcHouses : virHouses) :
-                                   ((staHouses > virHouses) ? staHouses : virHouses);
-                return (stcHouses == maxHouses) || 
-                       (staHouses == maxHouses) || 
-                       (virHouses == maxHouses);
+                if(mGame->mGameProperties[ST_CHARLES_PLACE].uNumberOfHotels > 0 || 
+                   mGame->mGameProperties[STATES_AVENUE].uNumberOfHotels > 0 || 
+                   mGame->mGameProperties[VIRGINIA_AVENUE].uNumberOfHotels > 0)
+                {
+                    uint32_t stcHouses = mGame->mGameProperties[ST_CHARLES_PLACE].uNumberOfHouses;
+                    uint32_t staHouses = mGame->mGameProperties[STATES_AVENUE].uNumberOfHouses;
+                    uint32_t virHouses = mGame->mGameProperties[VIRGINIA_AVENUE].uNumberOfHouses;
+                    uint32_t maxHouses = (stcHouses > staHouses) ? 
+                                         ((stcHouses > virHouses) ? stcHouses : virHouses) : 
+                                         ((staHouses > virHouses) ? staHouses : virHouses);
+                    return (stcHouses == maxHouses) || (staHouses == maxHouses) || (virHouses == maxHouses);
+                }
             }
             return false;
         }
         break;
-
+        
         case ORANGE:
         {
-            if(mGame->mGameProperties[ST_JAMES_PLACE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
-               mGame->mGameProperties[TENNESSEE_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
-               mGame->mGameProperties[NEW_YORK_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
+            if(mGame->mGameProperties[ST_JAMES_PLACE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition && 
+                mGame->mGameProperties[TENNESSEE_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition && 
+                mGame->mGameProperties[NEW_YORK_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint32_t stjHouses = mGame->mGameProperties[ST_JAMES_PLACE].uNumberOfHouses;
-                uint32_t tenHouses = mGame->mGameProperties[TENNESSEE_AVENUE].uNumberOfHouses;
-                uint32_t nyHouses = mGame->mGameProperties[NEW_YORK_AVENUE].uNumberOfHouses;
-                uint32_t maxHouses = (stjHouses > tenHouses) ? 
-                                   ((stjHouses > nyHouses) ? stjHouses : nyHouses) :
-                                   ((tenHouses > nyHouses) ? tenHouses : nyHouses);
-                return (stjHouses == maxHouses) || 
-                       (tenHouses == maxHouses) || 
-                       (nyHouses == maxHouses);
+                if(mGame->mGameProperties[ST_JAMES_PLACE].uNumberOfHotels > 0 || 
+                   mGame->mGameProperties[TENNESSEE_AVENUE].uNumberOfHotels > 0 || 
+                   mGame->mGameProperties[NEW_YORK_AVENUE].uNumberOfHotels > 0)
+                {
+                    uint32_t stjHouses = mGame->mGameProperties[ST_JAMES_PLACE].uNumberOfHouses;
+                    uint32_t tenHouses = mGame->mGameProperties[TENNESSEE_AVENUE].uNumberOfHouses;
+                    uint32_t nyHouses = mGame->mGameProperties[NEW_YORK_AVENUE].uNumberOfHouses;
+                    uint32_t maxHouses = (stjHouses > tenHouses) ? 
+                                        ((stjHouses > nyHouses) ? stjHouses : nyHouses) : 
+                                        ((tenHouses > nyHouses) ? tenHouses : nyHouses);
+                    return (stjHouses == maxHouses) || (tenHouses == maxHouses) || (nyHouses == maxHouses);
+                }
             }
             return false;
         }
         break;
-
+        
         case RED:
         {
-            if(mGame->mGameProperties[ILLINOIS_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
-               mGame->mGameProperties[INDIANA_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
-               mGame->mGameProperties[KENTUCKY_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
+            if(mGame->mGameProperties[KENTUCKY_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition && 
+                mGame->mGameProperties[INDIANA_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition && 
+                mGame->mGameProperties[ILLINOIS_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint32_t illHouses = mGame->mGameProperties[ILLINOIS_AVENUE].uNumberOfHouses;
-                uint32_t indHouses = mGame->mGameProperties[INDIANA_AVENUE].uNumberOfHouses;
-                uint32_t kenHouses = mGame->mGameProperties[KENTUCKY_AVENUE].uNumberOfHouses;
-                uint32_t maxHouses = (illHouses > indHouses) ? 
-                                   ((illHouses > kenHouses) ? illHouses : kenHouses) :
-                                   ((indHouses > kenHouses) ? indHouses : kenHouses);
-                return (illHouses == maxHouses) || 
-                       (indHouses == maxHouses) || 
-                       (kenHouses == maxHouses);
+                if(mGame->mGameProperties[KENTUCKY_AVENUE].uNumberOfHotels > 0 || 
+                   mGame->mGameProperties[INDIANA_AVENUE].uNumberOfHotels > 0 || 
+                   mGame->mGameProperties[ILLINOIS_AVENUE].uNumberOfHotels > 0)
+                {
+                    uint32_t kenHouses = mGame->mGameProperties[KENTUCKY_AVENUE].uNumberOfHouses;
+                    uint32_t indHouses = mGame->mGameProperties[INDIANA_AVENUE].uNumberOfHouses;
+                    uint32_t illHouses = mGame->mGameProperties[ILLINOIS_AVENUE].uNumberOfHouses;
+                    uint32_t maxHouses = (kenHouses > indHouses) ? 
+                                         ((kenHouses > illHouses) ? kenHouses : illHouses) : 
+                                         ((indHouses > illHouses) ? indHouses : illHouses);
+                    return (kenHouses == maxHouses) || (indHouses == maxHouses) || (illHouses == maxHouses);
+                }
             }
             return false;
         }
         break;
-
+        
         case YELLOW:
         {
-            if(mGame->mGameProperties[MARVIN_GARDENS].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
-               mGame->mGameProperties[VENTNOR_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
-               mGame->mGameProperties[ATLANTIC_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
+            if(mGame->mGameProperties[ATLANTIC_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition && 
+                mGame->mGameProperties[VENTNOR_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition && 
+                mGame->mGameProperties[MARVIN_GARDENS].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint32_t marHouses = mGame->mGameProperties[MARVIN_GARDENS].uNumberOfHouses;
-                uint32_t venHouses = mGame->mGameProperties[VENTNOR_AVENUE].uNumberOfHouses;
-                uint32_t atlHouses = mGame->mGameProperties[ATLANTIC_AVENUE].uNumberOfHouses;
-                uint32_t maxHouses = (marHouses > venHouses) ? 
-                                   ((marHouses > atlHouses) ? marHouses : atlHouses) :
-                                   ((venHouses > atlHouses) ? venHouses : atlHouses);
-                return (marHouses == maxHouses) || 
-                       (venHouses == maxHouses) || 
-                       (atlHouses == maxHouses);
+                if(mGame->mGameProperties[ATLANTIC_AVENUE].uNumberOfHotels > 0 || 
+                   mGame->mGameProperties[VENTNOR_AVENUE].uNumberOfHotels > 0 || 
+                   mGame->mGameProperties[MARVIN_GARDENS].uNumberOfHotels > 0)
+                {
+                    uint32_t atlHouses = mGame->mGameProperties[ATLANTIC_AVENUE].uNumberOfHouses;
+                    uint32_t venHouses = mGame->mGameProperties[VENTNOR_AVENUE].uNumberOfHouses;
+                    uint32_t marHouses = mGame->mGameProperties[MARVIN_GARDENS].uNumberOfHouses;
+                    uint32_t maxHouses = (atlHouses > venHouses) ? 
+                                        ((atlHouses > marHouses) ? atlHouses : marHouses) : 
+                                        ((venHouses > marHouses) ? venHouses : marHouses);
+                    return (atlHouses == maxHouses) || (venHouses == maxHouses) || (marHouses == maxHouses);
+                }
             }
             return false;
         }
         break;
-
+        
         case GREEN:
         {
-            if(mGame->mGameProperties[PENNSYLVANIA_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
-               mGame->mGameProperties[NORTH_CAROLINA_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
-               mGame->mGameProperties[PACIFIC_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
+            if(mGame->mGameProperties[PACIFIC_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition && 
+                mGame->mGameProperties[NORTH_CAROLINA_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition && 
+                mGame->mGameProperties[PENNSYLVANIA_AVENUE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint32_t penHouses = mGame->mGameProperties[PENNSYLVANIA_AVENUE].uNumberOfHouses;
-                uint32_t norHouses = mGame->mGameProperties[NORTH_CAROLINA_AVENUE].uNumberOfHouses;
-                uint32_t pacHouses = mGame->mGameProperties[PACIFIC_AVENUE].uNumberOfHouses;
-                uint32_t maxHouses = (penHouses > norHouses) ? 
-                                   ((penHouses > pacHouses) ? penHouses : pacHouses) :
-                                   ((norHouses > pacHouses) ? norHouses : pacHouses);
-                return (penHouses == maxHouses) || 
-                       (norHouses == maxHouses) || 
-                       (pacHouses == maxHouses);
+                if(mGame->mGameProperties[PACIFIC_AVENUE].uNumberOfHotels > 0 || 
+                   mGame->mGameProperties[NORTH_CAROLINA_AVENUE].uNumberOfHotels > 0 || 
+                   mGame->mGameProperties[PENNSYLVANIA_AVENUE].uNumberOfHotels > 0)
+                {
+                    uint32_t pacHouses = mGame->mGameProperties[PACIFIC_AVENUE].uNumberOfHouses;
+                    uint32_t ncHouses = mGame->mGameProperties[NORTH_CAROLINA_AVENUE].uNumberOfHouses;
+                    uint32_t penHouses = mGame->mGameProperties[PENNSYLVANIA_AVENUE].uNumberOfHouses;
+                    uint32_t maxHouses = (pacHouses > ncHouses) ? 
+                                        ((pacHouses > penHouses) ? pacHouses : penHouses) : 
+                                        ((ncHouses > penHouses) ? ncHouses : penHouses);
+                    return (pacHouses == maxHouses) || (ncHouses == maxHouses) || (penHouses == maxHouses);
+                }
             }
             return false;
         }
         break;
-
+        
         case DARK_BLUE:
         {
-            if (mGame->mGameProperties[BOARDWALK].eOwner == mPlayerSellingHouse->ePlayerTurnPosition &&
-                mGame->mGameProperties[PARK_PLACE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
+            if(mGame->mGameProperties[PARK_PLACE].eOwner == mPlayerSellingHouse->ePlayerTurnPosition && 
+                mGame->mGameProperties[BOARDWALK].eOwner == mPlayerSellingHouse->ePlayerTurnPosition) 
             {
-                uint32_t boaHouses = mGame->mGameProperties[BOARDWALK].uNumberOfHouses;
-                uint32_t parHouses = mGame->mGameProperties[PARK_PLACE].uNumberOfHouses;
-                uint32_t maxHouses = (boaHouses > parHouses) ? boaHouses : parHouses;
-                return (boaHouses == maxHouses) || (parHouses == maxHouses);
+                if(mGame->mGameProperties[PARK_PLACE].uNumberOfHotels > 0 || 
+                   mGame->mGameProperties[BOARDWALK].uNumberOfHotels > 0)
+                {
+                    uint32_t parkHouses = mGame->mGameProperties[PARK_PLACE].uNumberOfHouses;
+                    uint32_t boardHouses = mGame->mGameProperties[BOARDWALK].uNumberOfHouses;
+                    uint32_t maxHouses = (parkHouses > boardHouses) ? parkHouses : boardHouses;
+                    return (parkHouses == maxHouses) || (boardHouses == maxHouses);
+                }
             }
             return false;
         }
         break;
-
+        
         default:
-        {
-            printf("Error: Invalid property color set in m_house_can_be_sold()\n");
             return false;
-        }
     }
 }
 

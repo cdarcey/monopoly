@@ -1,8 +1,5 @@
 
 
-#include <windows.h>
-
-
 #include "m_init_game.h"
 
 
@@ -14,8 +11,9 @@ void m_game_loop(mGameData* game);
         : auction system
         : trading system
         : impliment ai decsion making 
-        : m_buy_hotel & m_sell_hotel need to be created
         : need to add check for if prop has hotel you cannot sell houses - selling hotel will not downgrade to hotels
+        : add emergency payment menu so properties can be selected and sale are not forced 
+        : check all asserts for proper logic
 */
 
 int
@@ -43,7 +41,6 @@ m_game_loop(mGameData* game)
 {
     while(game->bRunning == true)
     {
-
         switch (game->mCurrentState) 
         {
             // Initialization

@@ -1,3 +1,5 @@
+
+
 #ifndef M_GAME_H
 #define M_GAME_H
 
@@ -7,6 +9,8 @@ typedef struct _mDice mDice;
 typedef struct _mPlayer mPlayer;
 typedef struct _mProperty mProperty;
 
+
+// ==================== ENUMS ==================== //
 typedef enum _mGameState 
 {
     // meta states

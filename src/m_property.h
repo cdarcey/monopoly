@@ -80,17 +80,17 @@ typedef enum _mRailroadName // order matters
 typedef struct _mProperty 
 {
     char           cName[30];
-    mPropertyColor eColor;
-    mPlayerNumber  eOwner;
     uint32_t       uPrice;
     uint32_t       uRent[6];
     uint32_t       uHouseCost;
     uint32_t       uMortgage;
-    bool           bOwned;
-    bool           bMortgaged;
     uint32_t       uNumberOfHouses;
     uint32_t       uNumberOfHotels;
     uint32_t       uPropertiesInSet;
+    mPropertyColor eColor;
+    mPlayerNumber  eOwner;
+    bool           bOwned;
+    bool           bMortgaged;
 } mProperty;
 
 typedef struct _mRailroad 
@@ -119,7 +119,7 @@ void m_buy_property(mProperty* propertyToBuy, mPlayer* playerBuying);
 void m_buy_railroad(mRailroad* railroadToBuy, mPlayer* playerBuying);
 void m_buy_utility (mUtility* utilityToBuy, mPlayer* playerBuying);
 void m_buy_house   (mProperty* mPropertyToAddHouse, mPlayer* mPropertyOwner, bool bHouseCanBeAdded);
-void m_buy_hotel(mProperty* mPropertyToAddHotel, mPlayer* mPropertyOwner, bool bHotelCanBeAdded);
+void m_buy_hotel   (mProperty* mPropertyToAddHotel, mPlayer* mPropertyOwner, bool bHotelCanBeAdded);
 
 // Rent Handling
 void m_pay_rent_property(mPlayer* mPayee, mPlayer* mPayer, mProperty* mPropertyForRent, bool bColorSetOwned);
@@ -135,7 +135,8 @@ void m_transfer_assets_to_player(mGameData* mGame, mPlayerNumber losingAssets, m
 // Mortgage & Building Management
 bool m_player_has_mortgagable_props(mPlayer* mCurrentPlayer, mProperty* mGameProperties);
 bool m_player_has_buildings        (mPlayer* mCurrentPlayermProperty, mProperty* mGameProperties);
-void m_execute_mortgage_flow       (mProperty* mPropToMortgage, mPlayer* mPlayerMortgaging) ;
+void m_execute_mortgage_flow       (mProperty* mPropToMortgage, mPlayer* mPlayerMortgaging);
+void m_execute_unmortgage_flow     (mProperty* mPropToMortgage, mPlayer* mPlayerMortgaging);
 void m_execute_house_sale          (mGameData* mGame, mProperty* mPropWithHouses, mPlayer* mPlayerSelling);
 void m_execute_hotel_sale          (mProperty* mPropWithHouses, mPlayer* mPlayerSelling);
 

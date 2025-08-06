@@ -2,6 +2,7 @@
 
 #include "m_ai.h"
 
+
 void 
 m_ai_player_turn(mGameData* mGame)
 {
