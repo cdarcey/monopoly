@@ -246,7 +246,8 @@ m_show_pre_roll_menu(mGameData* mGame)
             }
             case PROPOSE_TRADE:
             {
-                // handle trade proposals
+                mPlayer* Player_trade_to = m_get_trade_partner(mGame);
+                m_propose_trade(mGame, current_player, Player_trade_to);
                 break;
             }
             case ROLL_DICE:
@@ -264,6 +265,29 @@ m_show_pre_roll_menu(mGameData* mGame)
     }
 }
 
+mPlayer*
+m_get_trade_partner(mGameData* mGame)
+{
+    // TODO: check if this is indexing properly 
+    printf("\n=== Choose trade partner ===\n");
+    for(uint8_t i = 0; i < mGame->uStartingPlayerCount; i++)
+    {
+        m_show_player_assets(mGame->mGamePlayers[i]);
+    }
+    for(uint8_t j = 0; j < mGame->uStartingPlayerCount; j++)
+    {
+        if(!mGame->mGamePlayers[j]->bBankrupt)
+        {
+            printf("Player %d\n", mGame->mGamePlayers[j]->ePlayerTurnPosition + 1);
+        }
+    }
+
+    int choice;
+    scanf_s("%d", &choice);
+
+    return mGame->mGamePlayers[choice];
+
+}
 
 mActions
 m_get_player_pre_roll_choice()
@@ -534,7 +558,14 @@ m_show_post_roll_menu(mGameData* mGame)
             }
             case PROPOSE_TRADE:
             {
-                m_enter_trade_phase(mGame);
+                if(current_player->bInJail)
+                {
+                    printf("You cannot trade while in jail\n");
+                }
+                else
+                {
+                    m_enter_trade_phase(mGame);
+                }
                 break;
             }
             case BUY_SQUARE:
@@ -669,9 +700,154 @@ m_get_building_managment_choice()
 void
 m_enter_trade_phase(mGameData* mGame)
 {
-    // TODO: complete
-    mGame->uCurrentPlayer += 0; // dummy code for warnings
+    mGame->mCurrentState = TRADE_NEGOTIATION; 
 }
+
+void 
+m_propose_trade(mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartner)
+{
+    if(!mGame || !mCurrentPlayer || !mTradePartner)
+    {
+        DebugBreak();
+        return;
+    }
+
+    mTradeOffer mOfferFrom = {0};
+    mTradeOffer mOffterTo = {0};
+
+    printf("Your assets\n");
+    m_show_player_assets(mCurrentPlayer);
+    printf("Other players assets\n");
+    m_show_player_assets(mTradePartner);
+
+    bool bTrading = true;
+    while (bTrading)
+    {
+        printf("\n-- Trade Negotiation --\n");
+        printf("1. Add your item to offer\n");
+        printf("2. Request item from player%d\n", mTradePartner->ePlayerTurnPosition + 1);
+        printf("3. Review current offer\n");
+        printf("4. Submit trade\n");
+        printf("5. Cancel trade\n");
+
+        int uChoice;
+        scanf("%d", &uChoice);
+
+        switch(uChoice) 
+        {
+            case 1:
+            {
+                m_add_to_offer(mCurrentPlayer, &mOfferFrom);
+                break;
+            }
+            case 2:
+            {
+                m_add_to_request(mTradePartner, &mOffterTo);
+                break;
+            }
+            case 3:
+            {
+                m_review_trade(&mOfferFrom, &mOffterTo);
+                break;
+            }
+            case 4: 
+            {
+                if(m_validate_trade(mGame, mCurrentPlayer, mTradePartner, &mOfferFrom, &mOffterTo)) 
+                {
+                    m_execute_trade(mGame, mCurrentPlayer, mTradePartner, &mOfferFrom, &mOffterTo);
+                    bTrading = false;
+                }
+                break;
+            }
+            case 5: // Cancel trade
+            {
+                bTrading = false;
+                printf("Trade cancelled.\n");
+            }
+                break;
+            default:
+            {
+                printf("Invalid choice.\n");
+            }
+        }
+    }
+
+}
+
+void m_add_to_offer(mPlayer* mPlayer, mTradeOffer* mOffer) 
+{
+    printf("\nWhat would you like to offer?\n");
+    printf("1. Properties\n");
+    printf("2. Utilities\n");
+    printf("3. Railroads\n");
+    printf("4. Cash\n");
+
+    int uChoice;
+    scanf("%d", &uChoice);
+
+    switch(uChoice) 
+    {
+        case 1: // Properties
+        {
+            m_show_props_owned(mPlayer);
+            printf("Select property to offer: \n");
+            int mOfferPropIndex;
+            scanf("%d", &mOfferPropIndex);
+
+
+
+            break;
+        }
+        case 2: // Utilities
+        {
+            break;
+        }    
+        case 3: // Railroads
+        {
+            break;
+        }
+        case 4: // Cash
+            printf("Current cash: $%u\n", mPlayer->uMoney);
+            printf("Amount to offer: ");
+            uint32_t amount;
+            scanf("%u", &amount);
+            if(m_can_player_afford(mPlayer, amount)) 
+            {
+                mOffer->uCash += amount;
+                printf("Added $%u to trade offer.\n", amount);
+            }
+            else
+            {
+                printf("You don't have that much cash!\n");
+            }
+            break;
+        default:
+            printf("Invalid choice.\n");
+    }
+}
+
+void m_add_to_request(mPlayer* partner, mTradeOffer* request) 
+{
+    // same as add to offer but for other half of trade
+}
+
+void m_review_trade(mTradeOffer* offer, mTradeOffer* request)
+{
+    // show both sides of trade once offer is final
+}
+
+bool m_validate_trade(mGameData* mGame, mPlayer* mPlayerFrom, mPlayer* mPlayerTo, mTradeOffer* mOffer, mTradeOffer* mRequest)
+{
+    bool bResult = false;
+    // validate trade is legal
+    return bResult;
+}
+
+void m_execute_trade(mGameData* mGame, mPlayer* mPlayerFrom, mPlayer* mPlayerTo, mTradeOffer* mOffer, mTradeOffer* mRequest)
+{
+
+}
+
 
 // ==================== END TURN ACTIONS ==================== //
 
@@ -694,9 +870,10 @@ m_attempt_emergency_payment(mGameData* mGame, mPlayer* currentPlayer, uint32_t u
     uint32_t uMoneyNeeded = currentPlayer->uMoney + uAmount;
 
     // sell buildings (hotels -> houses first)
-    for (uint8_t i = 0; i < PROPERTY_TOTAL; i++) {
+    for (uint8_t i = 0; i < PROPERTY_TOTAL; i++) 
+    {
         if (mGame->mGameProperties[i].eOwner != currentPlayer->ePlayerTurnPosition) continue;
-        
+
         // TODO: need to give player the option on which buildings to sell
         while (mGame->mGameProperties[i].uNumberOfHotels > 0 && currentPlayer->uMoney < uMoneyNeeded) 
         {

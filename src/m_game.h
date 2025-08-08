@@ -75,6 +75,9 @@ typedef enum _mActions
     FORCED_DECLARE_BANKRUPTCY,
     MAX_FORCED_ACTIONS,
 
+    // trade actions
+    TRADE_PROPERTIES, 
+
     MAX_ACTIONS
 } mActions;
 
@@ -93,6 +96,14 @@ typedef enum _mBoardSquareType
     JAIL_SQUARE_TYPE,
     GO_TO_JAIL_SQUARE_TYPE
 } mBoardSquareType;
+
+typedef struct _mTradeOffer
+{
+    mProperty mPropsToTrade[PROPERTY_TOTAL];
+    mUtility  mUtilsToTrade[UTILITY_TOTAL];
+    mRailroad mRailsToTrade[RAILROAD_TOTAL];
+    uint32_t  uCash;
+} mTradeOffer;
 
 // ==================== CORE GAME FLOW ==================== //
 void m_player_turn     (mGameData* mGame);
@@ -136,6 +147,13 @@ void m_handle_emergency_actions (mGameData* mGame);
 // ==================== HELPERS ==================== //
 mBoardSquareType m_get_square_type(uint32_t uPlayerPosition);
 
-
+mActions m_show_trade_menu  (mGameData* mGame);
+void     m_propose_trade    (mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartener);
+mPlayer* m_get_trade_partner(mGameData* mGame);
+void     m_add_to_offer     (mPlayer* mPlayer, mTradeOffer* mOffer); 
+void     m_add_to_request   (mPlayer* partner, mTradeOffer* request);
+void     m_review_trade     (mTradeOffer* offer, mTradeOffer* request);
+bool     m_validate_trade   (mGameData* mGame, mPlayer* mPlayerFrom, mPlayer* mPlayerTo, mTradeOffer* mOffer, mTradeOffer* mRequest);
+void     m_execute_trade    (mGameData* mGame, mPlayer* mPlayerFrom, mPlayer* mPlayerTo, mTradeOffer* mOffer, mTradeOffer* mRequest);
 
 #endif

@@ -126,6 +126,22 @@ m_show_player_status(mPlayer* mCurrentPlayer)
         printf("You are in jail\n");
     }
     printf("You are on square %s\n", m_player_position_to_string(mCurrentPlayer->uPosition));
+}
+
+void
+m_show_player_assets(mPlayer* mCurrentPlayer)
+{
+    printf("\n Player %d Status\n", mCurrentPlayer->ePlayerTurnPosition + 1);
+
+    printf("You have $%d\n", mCurrentPlayer->uMoney);
+    m_show_props_owned(mCurrentPlayer);
+    m_show_rails_owned(mCurrentPlayer);
+    m_show_utils_owned(mCurrentPlayer);
+
+    if(mCurrentPlayer->bGetOutOfJailFreeCard)
+    {
+        printf("You own a get out of jail free card\n");
+    }
 
 }
 

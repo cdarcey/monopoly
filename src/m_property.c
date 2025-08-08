@@ -139,8 +139,13 @@ m_buy_house(mProperty* mPropertyToAddHouse, mPlayer* mPropertyOwner, bool bHouse
 void
 m_buy_hotel(mProperty* mPropertyToAddHotel, mPlayer* mPropertyOwner, bool bHotelCanBeAdded)
 {
-    // assert(bHotelCanBeAdded == false);
-    // assert(mPropertyToAddHotel->eOwner != mPropertyOwner->ePlayerTurnPosition && mPropertyToAddHotel->eOwner != NO_PLAYER);
+    assert(bHotelCanBeAdded == true);
+    if(mPropertyToAddHotel->eOwner == mPropertyOwner->ePlayerTurnPosition || 
+        mPropertyToAddHotel->eOwner != NO_PLAYER)
+    {
+        DebugBreak();
+        return;
+    }
 
     if(mPropertyToAddHotel->uHouseCost > mPropertyOwner->uMoney)
     {
@@ -153,7 +158,7 @@ m_buy_hotel(mProperty* mPropertyToAddHotel, mPlayer* mPropertyOwner, bool bHotel
         if(bHotelCanBeAdded == true)
         {
             mPropertyToAddHotel->uNumberOfHotels++;
-            mPropertyOwner->uMoney -= mPropertyToAddHotel->uRent[5];
+            mPropertyOwner->uMoney -= mPropertyToAddHotel->uRent[5]; // TOD: magic number needs a more elegant solution
         }
 
     }
@@ -197,7 +202,8 @@ m_pay_rent_property(mPlayer* mPayee, mPlayer* mPayer, mProperty* mPropertyForRen
 
     if(!m_can_player_afford(mPayer, uRent))
     {
-        // TODO: cannot afford
+        DebugBreak();
+        return; // logic should be handled before this point
     }
     else 
         mPayer->uMoney -= uRent;
@@ -430,9 +436,15 @@ m_execute_unmortgage_flow(mProperty* mPropToMortgage, mPlayer* mPlayerMortgaging
 void
 m_execute_house_sale(mGameData* mGame, mProperty* mPropWithHouses, mPlayer* mPlayerSelling) 
 {
+    if(!mPropWithHouses || !mPlayerSelling || !mGame)
+    {
+        DebugBreak();
+        return;
+    }
+
     assert(mPropWithHouses->uNumberOfHouses > 0);
     assert(mPropWithHouses->eOwner != mPlayerSelling->ePlayerTurnPosition);
-    assert(!mPropWithHouses || !mPlayerSelling);
+
 
     if(!m_house_can_be_sold(mGame, mPlayerSelling, mPropWithHouses->eColor))
     {
@@ -694,7 +706,8 @@ m_color_set_owned(mGameData* mGame, mPlayer* mPlayerBuyingHouse, mPropertyColor 
     }
 }
 
-bool m_house_can_be_added(mGameData* mGame, mProperty* mCurrentProperty, mPlayer* mPlayerBuyingHouse, mPropertyColor eColorOfSet)
+bool 
+m_house_can_be_added(mGameData* mGame, mProperty* mCurrentProperty, mPlayer* mPlayerBuyingHouse, mPropertyColor eColorOfSet)
 {
     switch(eColorOfSet)
     {
@@ -1311,3 +1324,4 @@ m_get_player_property(mPlayer* mCurrentPlayer)
     return mCurrentPlayer->ePropertyOwned[choice - 1]; 
 
 }
+
