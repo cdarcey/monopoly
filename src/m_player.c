@@ -131,7 +131,7 @@ m_show_player_status(mPlayer* mCurrentPlayer)
 void
 m_show_player_assets(mPlayer* mCurrentPlayer)
 {
-    printf("\n Player %d Status\n", mCurrentPlayer->ePlayerTurnPosition + 1);
+    printf("\n Player %d Assets\n", mCurrentPlayer->ePlayerTurnPosition + 1);
 
     printf("You have $%d\n", mCurrentPlayer->uMoney);
     m_show_props_owned(mCurrentPlayer);

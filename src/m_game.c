@@ -272,20 +272,29 @@ m_get_trade_partner(mGameData* mGame)
     printf("\n=== Choose trade partner ===\n");
     for(uint8_t i = 0; i < mGame->uStartingPlayerCount; i++)
     {
-        m_show_player_assets(mGame->mGamePlayers[i]);
+        if(mGame->mGamePlayers[mGame->uCurrentPlayer] != mGame->mGamePlayers[i])
+        {
+            m_show_player_assets(mGame->mGamePlayers[i]);
+            printf("\n========================\n");
+        }
+        else continue;
     }
     for(uint8_t j = 0; j < mGame->uStartingPlayerCount; j++)
     {
         if(!mGame->mGamePlayers[j]->bBankrupt)
         {
-            printf("Player %d\n", mGame->mGamePlayers[j]->ePlayerTurnPosition + 1);
+            if(mGame->mGamePlayers[mGame->uCurrentPlayer]->ePlayerTurnPosition != mGame->mGamePlayers[j]->ePlayerTurnPosition)
+            {
+                printf("- Player %d\n", mGame->mGamePlayers[j]->ePlayerTurnPosition + 1);
+            }
+            else continue;
         }
     }
 
     int choice;
     scanf_s("%d", &choice);
 
-    return mGame->mGamePlayers[choice];
+    return mGame->mGamePlayers[choice - 1]; // adjusted for 0 index array 
 
 }
 
@@ -621,7 +630,7 @@ m_show_building_managment_menu(mGameData* mGame)
             bool bHouseCanBeAdded = m_house_can_be_added(mGame, current_property, current_player, current_property->eColor);
             if(!bHouseCanBeAdded)
             {
-                printf("You cannot add a house at this time");
+                printf("You cannot add a house at this time\n");
                 return;
             }
             else
@@ -640,7 +649,7 @@ m_show_building_managment_menu(mGameData* mGame)
             bool bHotelCanBeAdded = m_hotel_can_be_added(mGame, current_property->eColor);
             if(!bHotelCanBeAdded)
             {
-                printf("You cannot add a hotel at this time");
+                printf("You cannot add a hotel at this time\n");
                 return;
             }
             else
@@ -725,10 +734,11 @@ m_propose_trade(mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartne
     {
         printf("\n-- Trade Negotiation --\n");
         printf("1. Add your item to offer\n");
-        printf("2. Request item from player%d\n", mTradePartner->ePlayerTurnPosition + 1);
+        printf("2. Request item from player %d\n", mTradePartner->ePlayerTurnPosition + 1);
         printf("3. Review current offer\n");
         printf("4. Submit trade\n");
         printf("5. Cancel trade\n");
+        printf("> \n");
 
         int uChoice;
         scanf("%d", &uChoice);
@@ -774,13 +784,15 @@ m_propose_trade(mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartne
 
 }
 
-void m_add_to_offer(mPlayer* mPlayer, mTradeOffer* mOffer) 
+void 
+m_add_to_offer(mPlayer* mPlayer, mTradeOffer* mOffer) 
 {
     printf("\nWhat would you like to offer?\n");
     printf("1. Properties\n");
     printf("2. Utilities\n");
     printf("3. Railroads\n");
     printf("4. Cash\n");
+    printf("> \n");
 
     int uChoice;
     scanf("%d", &uChoice);
@@ -790,20 +802,40 @@ void m_add_to_offer(mPlayer* mPlayer, mTradeOffer* mOffer)
         case 1: // Properties
         {
             m_show_props_owned(mPlayer);
-            printf("Select property to offer: \n");
+            printf("Enter property index to add to offer: \n");
             int mOfferPropIndex;
             scanf("%d", &mOfferPropIndex);
-
-
-
+            if(mOfferPropIndex >= 0 && mOfferPropIndex < PROPERTY_TOTAL && mPlayer->ePropertyOwned[mOfferPropIndex] != NO_PLAYER) 
+            {
+                mOffer->mPropsToTrade[mOffer->uPropsInOffer] = mPlayer->ePropertyOwned[mOfferPropIndex];
+                mOffer->uPropsInOffer++;
+            }
             break;
         }
         case 2: // Utilities
         {
+            m_show_utils_owned(mPlayer);
+            printf("Enter utility index to add to offer: \n");
+            int mOfferUtilIndex;
+            scanf("%d", &mOfferUtilIndex);
+            if(mOfferUtilIndex >= 0 && mOfferUtilIndex < PROPERTY_TOTAL && mPlayer->ePropertyOwned[mOfferUtilIndex] != NO_PLAYER) 
+            {
+                mOffer->mPropsToTrade[mOffer->uUtilsInOffer] = mPlayer->ePropertyOwned[mOfferUtilIndex];
+                mOffer->uUtilsInOffer++;
+            }
             break;
         }    
         case 3: // Railroads
         {
+            m_show_rails_owned(mPlayer);
+            printf("Enter railroad index to add to offer: \n");
+            int mOfferRailIndex;
+            scanf("%d", &mOfferRailIndex);
+            if(mOfferRailIndex >= 0 && mOfferRailIndex < PROPERTY_TOTAL && mPlayer->ePropertyOwned[mOfferRailIndex] != NO_PLAYER) 
+            {
+                mOffer->mPropsToTrade[mOffer->uRailsInOffer] = mPlayer->ePropertyOwned[mOfferRailIndex];
+                mOffer->uRailsInOffer++;
+            }
             break;
         }
         case 4: // Cash
@@ -826,12 +858,81 @@ void m_add_to_offer(mPlayer* mPlayer, mTradeOffer* mOffer)
     }
 }
 
-void m_add_to_request(mPlayer* partner, mTradeOffer* request) 
+void 
+m_add_to_request(mPlayer* mTradePartner, mTradeOffer* mRequest) 
 {
-    // same as add to offer but for other half of trade
+    printf("\nWhat would you like to offer?\n");
+    printf("1. Properties\n");
+    printf("2. Utilities\n");
+    printf("3. Railroads\n");
+    printf("4. Cash\n");
+    printf("> \n");
+
+    int uChoice;
+    scanf("%d", &uChoice);
+
+    switch(uChoice) 
+    {
+        case 1: // Properties
+        {
+            m_show_props_owned(mTradePartner);
+            printf("Enter property index to add to offer: \n");
+            int mOfferPropIndex;
+            scanf("%d", &mOfferPropIndex);
+            if(mOfferPropIndex >= 0 && mOfferPropIndex < PROPERTY_TOTAL && mTradePartner->ePropertyOwned[mOfferPropIndex] != NO_PLAYER) 
+            {
+                mRequest->mPropsToTrade[mRequest->uPropsInOffer] = mTradePartner->ePropertyOwned[mOfferPropIndex];
+                mRequest->uPropsInOffer++;
+            }
+            break;
+        }
+        case 2: // Utilities
+        {
+            m_show_utils_owned(mTradePartner);
+            printf("Enter utility index to add to offer: \n");
+            int mOfferUtilIndex;
+            scanf("%d", &mOfferUtilIndex);
+            if(mOfferUtilIndex >= 0 && mOfferUtilIndex < PROPERTY_TOTAL && mTradePartner->ePropertyOwned[mOfferUtilIndex] != NO_PLAYER) 
+            {
+                mRequest->mPropsToTrade[mRequest->uUtilsInOffer] = mTradePartner->ePropertyOwned[mOfferUtilIndex];
+                mRequest->uUtilsInOffer++;
+            }
+            break;
+        }    
+        case 3: // Railroads
+        {
+            m_show_rails_owned(mTradePartner);
+            printf("Enter railroad index to add to offer: \n");
+            int mOfferRailIndex;
+            scanf("%d", &mOfferRailIndex);
+            if(mOfferRailIndex >= 0 && mOfferRailIndex < PROPERTY_TOTAL && mTradePartner->ePropertyOwned[mOfferRailIndex] != NO_PLAYER) 
+            {
+                mRequest->mPropsToTrade[mRequest->uRailsInOffer] = mTradePartner->ePropertyOwned[mOfferRailIndex];
+                mRequest->uRailsInOffer++;
+            }
+            break;
+        }
+        case 4: // Cash
+            printf("Current cash: $%u\n", mTradePartner->uMoney);
+            printf("Amount to offer: ");
+            uint32_t amount;
+            scanf("%u", &amount);
+            if(m_can_player_afford(mTradePartner, amount)) 
+            {
+                mRequest->uCash += amount;
+                printf("Added $%u to trade offer.\n", amount);
+            }
+            else
+            {
+                printf("You don't have that much cash!\n");
+            }
+            break;
+        default:
+            printf("Invalid choice.\n");
+    }
 }
 
-void m_review_trade(mTradeOffer* offer, mTradeOffer* request)
+void m_review_trade(mTradeOffer* mOffer, mTradeOffer* mRequest)
 {
     // show both sides of trade once offer is final
 }
@@ -839,13 +940,77 @@ void m_review_trade(mTradeOffer* offer, mTradeOffer* request)
 bool m_validate_trade(mGameData* mGame, mPlayer* mPlayerFrom, mPlayer* mPlayerTo, mTradeOffer* mOffer, mTradeOffer* mRequest)
 {
     bool bResult = false;
-    // validate trade is legal
+    // probably just move this into the add to offer and request function unless there are other validations im missing
+    // validate trade
+    // prop cannot be mortgaged
+    // no buildings on props
+
     return bResult;
 }
 
-void m_execute_trade(mGameData* mGame, mPlayer* mPlayerFrom, mPlayer* mPlayerTo, mTradeOffer* mOffer, mTradeOffer* mRequest)
-{
 
+
+// assumes trade has been validated
+void 
+m_execute_trade(mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartner, mTradeOffer* mOffer, mTradeOffer* mRequest)
+{
+    // TODO: probably want to switch to internal buffer instead of having player prop owned contain room for transfer
+    // should also have function to shift all props left in array if position before is "NO_PROPERTY" i.e defrag array
+
+    // transfer mCurrentPlayer's offer -> mTradePartner
+    uint8_t uPropOwnedSlot = m_get_empty_prop_owned_slot(mTradePartner); // index for trade partner's prop owned array
+    uint8_t uRailOwnedSlot = m_get_empty_rail_owned_slot(mTradePartner); 
+    uint8_t uUtilOwnedSlot = m_get_empty_util_owned_slot(mTradePartner);
+    
+
+    // Transfer properties from current player (offer) to trade partner
+    for(uint8_t i = 0; i < mOffer->uPropsInOffer; i++)
+    {
+        mGame->mGameProperties[mOffer->mPropsToTrade[i]].eOwner = mTradePartner->ePlayerTurnPosition;
+        mTradePartner->ePropertyOwned[uPropOwnedSlot] = mOffer->mPropsToTrade[i];
+        uPropOwnedSlot++;
+    }
+    for(uint8_t j = 0; j < mOffer->uUtilsInOffer; j++)
+    {
+        mGame->mGameUtilities[mOffer->mUtilsToTrade[j]].eOwner = mTradePartner->ePlayerTurnPosition;
+        mTradePartner->eUtilityOwned[uUtilOwnedSlot] = mOffer->mUtilsToTrade[j];
+        uUtilOwnedSlot++;
+    }
+    for(uint8_t k = 0; k < mOffer->uRailsInOffer; k++)
+    {
+        mGame->mGameRailroads[mOffer->mRailsToTrade[k]].eOwner = mTradePartner->ePlayerTurnPosition;
+        mTradePartner->eRailroadsOwned[uRailOwnedSlot] = mOffer->mRailsToTrade[k];
+        uRailOwnedSlot++;
+    }
+
+    // transfer mTradePartner's request -> mCurrentPlayer
+    uint8_t uPropOwnedSlotCurrent = m_get_empty_prop_owned_slot(mCurrentPlayer); // index for current player's prop owned array
+    uint8_t uRailOwnedSlotCurrent = m_get_empty_rail_owned_slot(mCurrentPlayer); 
+    uint8_t uUtilOwnedSlotCurrent = m_get_empty_util_owned_slot(mCurrentPlayer);
+
+    // Transfer properties from trade partner (request) to current player
+    for(uint8_t l = 0; l < mRequest->uPropsInOffer; l++)
+    {
+        mGame->mGameProperties[mRequest->mPropsToTrade[l]].eOwner = mCurrentPlayer->ePlayerTurnPosition;
+        mCurrentPlayer->ePropertyOwned[uPropOwnedSlotCurrent] = mRequest->mPropsToTrade[l];
+        uPropOwnedSlotCurrent++;
+    }
+    for(uint8_t m = 0; m < mRequest->uUtilsInOffer; m++)
+    {
+        mGame->mGameUtilities[mRequest->mUtilsToTrade[m]].eOwner = mCurrentPlayer->ePlayerTurnPosition;
+        mCurrentPlayer->eUtilityOwned[uUtilOwnedSlotCurrent] = mRequest->mUtilsToTrade[m];
+        uUtilOwnedSlotCurrent++;
+    }
+    for(uint8_t n = 0; n < mRequest->uRailsInOffer; n++)
+    {
+        mGame->mGameRailroads[mRequest->mRailsToTrade[n]].eOwner = mCurrentPlayer->ePlayerTurnPosition;
+        mCurrentPlayer->eRailroadsOwned[uRailOwnedSlotCurrent] = mRequest->mRailsToTrade[n];
+        uRailOwnedSlotCurrent++;
+    }
+
+    // Transfer cash
+    mCurrentPlayer->uMoney += mRequest->uCash;    // Current player receives cash from request
+    mTradePartner->uMoney += mOffer->uCash;       // Trade partner receives cash from offer
 }
 
 
@@ -1021,3 +1186,44 @@ m_get_square_type(uint32_t uPlayerPosition)
     }
 }
 
+uint8_t 
+m_get_empty_prop_owned_slot(mPlayer* mPlayer)
+{
+    uint8_t uPropOwnedSlot = 0;
+    for(uPropOwnedSlot = 0; uPropOwnedSlot < PROP_OWNED_WITH_BUFFER; uPropOwnedSlot++)
+    {
+        if(mPlayer->ePropertyOwned[uPropOwnedSlot] == NO_PROPERTY)
+        {
+            break;
+        }
+    }
+    return uPropOwnedSlot;
+}
+
+uint8_t 
+m_get_empty_rail_owned_slot(mPlayer* mPlayer)
+{
+    uint8_t uRailOwnedSlot = 0;
+    for(uRailOwnedSlot = 0; uRailOwnedSlot < RAIL_OWNED_WITH_BUFFER; uRailOwnedSlot++)
+    {
+        if(mPlayer->eRailroadsOwned[uRailOwnedSlot] == NO_RAILROAD)
+        {
+            break;
+        }
+    }
+    return uRailOwnedSlot;
+}
+
+uint8_t 
+m_get_empty_util_owned_slot(mPlayer* mPlayer)
+{
+    uint8_t uUtilOwnedSlot = 0;
+    for(uUtilOwnedSlot = 0; uUtilOwnedSlot < UTIL_OWNED_WITH_BUFFER; uUtilOwnedSlot++)
+    {
+        if(mPlayer->eUtilityOwned[uUtilOwnedSlot] == NO_UTILITY)
+        {
+            break;
+        }
+    }
+    return uUtilOwnedSlot;
+}

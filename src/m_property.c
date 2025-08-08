@@ -1246,7 +1246,7 @@ m_show_props_owned(mPlayer* currentPlayer)
             printf("Properties Owned :\n");
         }
         const char* propName = m_property_enum_to_string(prop);
-        printf("- %s\n", propName);
+        printf("%d. %s\n", i, propName);
         ownedCount++;
 
     }
@@ -1274,7 +1274,7 @@ m_show_rails_owned(mPlayer* currentPlayer)
             printf("Railroads Owned :\n");
         }
         const char* railName = m_railroad_enum_to_string(rail);
-        printf("- %s\n", railName);
+        printf("%d. %s\n", i, railName);
         ownedCount++;
 
     }
@@ -1302,7 +1302,7 @@ m_show_utils_owned(mPlayer* currentPlayer)
             printf("Utilities Owned :\n");
         }
         const char* utilName = m_utility_enum_to_string(utils);
-        printf("- %s\n", utilName);
+        printf("%d. %s\n", i, utilName);
         ownedCount++;
 
     }

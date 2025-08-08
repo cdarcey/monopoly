@@ -99,10 +99,14 @@ typedef enum _mBoardSquareType
 
 typedef struct _mTradeOffer
 {
-    mProperty mPropsToTrade[PROPERTY_TOTAL];
-    mUtility  mUtilsToTrade[UTILITY_TOTAL];
-    mRailroad mRailsToTrade[RAILROAD_TOTAL];
-    uint32_t  uCash;
+    uint32_t      uCash;
+    uint8_t       uPropsInOffer;
+    uint8_t       uRailsInOffer;
+    uint8_t       uUtilsInOffer;
+    mPropertyName mPropsToTrade[PROPERTY_TOTAL];
+    mUtilityName  mUtilsToTrade[UTILITY_TOTAL];
+    mRailroadName mRailsToTrade[RAILROAD_TOTAL];
+
 } mTradeOffer;
 
 // ==================== CORE GAME FLOW ==================== //
@@ -155,5 +159,8 @@ void     m_add_to_request   (mPlayer* partner, mTradeOffer* request);
 void     m_review_trade     (mTradeOffer* offer, mTradeOffer* request);
 bool     m_validate_trade   (mGameData* mGame, mPlayer* mPlayerFrom, mPlayer* mPlayerTo, mTradeOffer* mOffer, mTradeOffer* mRequest);
 void     m_execute_trade    (mGameData* mGame, mPlayer* mPlayerFrom, mPlayer* mPlayerTo, mTradeOffer* mOffer, mTradeOffer* mRequest);
+uint8_t  m_get_empty_prop_owned_slot(mPlayer* mPlayer);
+uint8_t  m_get_empty_rail_owned_slot(mPlayer* mPlayer);
+uint8_t  m_get_empty_util_owned_slot(mPlayer* mPlayer);
 
 #endif

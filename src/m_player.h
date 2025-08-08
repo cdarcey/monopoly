@@ -57,9 +57,9 @@ typedef struct _mPlayer
     uint32_t       uMoney;
     uint8_t        uPosition;
     uint8_t        uJailTurns;
-    mPropertyName  ePropertyOwned[22];
-    mRailroadName  eRailroadsOwned[4];
-    mUtilityName   eUtilityOwned[2];
+    mPropertyName  ePropertyOwned[PROP_OWNED_WITH_BUFFER]; // more than total prop count as a buffer for trade system
+    mRailroadName  eRailroadsOwned[UTIL_OWNED_WITH_BUFFER]; // more than total rail count as a buffer for trade system
+    mUtilityName   eUtilityOwned[RAIL_OWNED_WITH_BUFFER]; // more than total util count as a buffer for trade system
     mPlayerPiece   ePiece;
     mPlayerNumber  ePlayerTurnPosition;
     bool           bInJail;

@@ -10,10 +10,10 @@ void m_game_loop(mGameData* game);
     TODO -
         : auction system
         : trading system
-        : impliment ai decsion making 
+        : ai decsion making 
         : need to add check for if prop has hotel you cannot sell houses - selling hotel will not downgrade to hotels
         : add emergency payment menu so properties can be selected and sale are not forced 
-        : check all asserts for proper logic
+        : function to defrag prop, util, and rail arrays after trade
 */
 
 int

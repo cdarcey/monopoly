@@ -53,7 +53,8 @@ typedef enum _mPropertyName // order matters
     PARK_PLACE,
     BOARDWALK,
     PROPERTY_TOTAL,
-    NO_PROPERTY
+    NO_PROPERTY,
+    PROP_OWNED_WITH_BUFFER = 30
 
 } mPropertyName;
 
@@ -62,7 +63,8 @@ typedef enum _mUtilityName // order matters
     ELECTRIC_COMPANY,
     WATER_WORKS,
     UTILITY_TOTAL,
-    NO_UTILITY
+    NO_UTILITY,
+    UTIL_OWNED_WITH_BUFFER = 8
 } mUtilityName;
 
 typedef enum _mRailroadName // order matters
@@ -72,7 +74,8 @@ typedef enum _mRailroadName // order matters
     B_AND_O_RAILROAD,
     SHORT_LINE_RAILROAD,
     RAILROAD_TOTAL,
-    NO_RAILROAD
+    NO_RAILROAD,
+    RAIL_OWNED_WITH_BUFFER = 4
 } mRailroadName;
 
 
