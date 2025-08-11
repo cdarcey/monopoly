@@ -58,7 +58,7 @@ typedef struct _mPlayer
     uint8_t        uPosition;
     uint8_t        uJailTurns;
     mPropertyName  ePropertyOwned[PROP_OWNED_WITH_BUFFER]; // more than total prop count as a buffer for trade system
-    mRailroadName  eRailroadsOwned[UTIL_OWNED_WITH_BUFFER]; // more than total rail count as a buffer for trade system
+    mRailroadName  eRailroadOwned[UTIL_OWNED_WITH_BUFFER]; // more than total rail count as a buffer for trade system
     mUtilityName   eUtilityOwned[RAIL_OWNED_WITH_BUFFER]; // more than total util count as a buffer for trade system
     mPlayerPiece   ePiece;
     mPlayerNumber  ePlayerTurnPosition;
@@ -84,6 +84,7 @@ void m_trigger_bankruptcy(mGameData* mGame, mPlayerNumber playerBankrupting, boo
 void        m_show_player_status       (mPlayer* mCurrentPlayer);
 void        m_show_player_assets(mPlayer* mCurrentPlayer);
 const char* m_player_position_to_string(uint8_t uPosition);
+void        m_defrag_asset_arrays(mPlayer *mPlayer);
 
 
 #endif

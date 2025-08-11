@@ -29,7 +29,7 @@ m_create_player(uint8_t uPlayerPositionInIndex, mGameStartSettings mSettings)
     }
     for(uint8_t uRailroadCount = 0; uRailroadCount < RAILROAD_TOTAL; uRailroadCount++)
     {
-        newPlayer->eRailroadsOwned[uRailroadCount] = NO_RAILROAD;
+        newPlayer->eRailroadOwned[uRailroadCount] = NO_RAILROAD;
     }
     for(uint8_t uUtilityCount = 0; uUtilityCount < UTILITY_TOTAL; uUtilityCount++)
     {
@@ -196,5 +196,55 @@ m_player_position_to_string(uint8_t uPosition)
         case LUXURY_TAX_SQUARE:            return "Luxury Tax";
         case BOARDWALK_SQUARE:             return "Boardwalk";
         default:                           return "UNKNOWN_SQUARE";
+    }
+}
+
+void 
+m_defrag_asset_arrays(mPlayer *mPlayer) 
+{
+    uint8_t uWritePos = 0;
+    for (uint8_t uReadPos = 0; uReadPos < PROP_OWNED_WITH_BUFFER; uReadPos++) 
+    {
+        if (mPlayer->ePropertyOwned[uReadPos] != NO_PROPERTY) 
+        {
+            mPlayer->ePropertyOwned[uWritePos] = mPlayer->ePropertyOwned[uReadPos];
+            uWritePos++;
+        }
+    }
+    while (uWritePos < PROP_OWNED_WITH_BUFFER) 
+    {
+        mPlayer->ePropertyOwned[uWritePos] = NO_PROPERTY;
+        uWritePos++;
+    }
+
+    uWritePos = 0;
+    for (uint8_t uReadPos = 0; uReadPos < UTIL_OWNED_WITH_BUFFER; uReadPos++) 
+    {
+        if (mPlayer->eUtilityOwned[uReadPos] != NO_UTILITY) 
+        {
+            mPlayer->eUtilityOwned[uWritePos] = mPlayer->eUtilityOwned[uReadPos];
+            uWritePos++;
+        }
+    }
+    while (uWritePos < UTIL_OWNED_WITH_BUFFER) 
+    {
+        mPlayer->eUtilityOwned[uWritePos] = NO_UTILITY;
+        uWritePos++;
+    }
+
+    // Defragment Railroad Array
+    uWritePos = 0;
+    for (uint8_t uReadPos = 0; uReadPos < RAIL_OWNED_WITH_BUFFER; uReadPos++) 
+    {
+        if (mPlayer->eRailroadOwned[uReadPos] != NO_RAILROAD) 
+        {
+            mPlayer->eRailroadOwned[uWritePos] = mPlayer->eRailroadOwned[uReadPos];
+            uWritePos++;
+        }
+    }
+    while (uWritePos < RAIL_OWNED_WITH_BUFFER) 
+    {
+        mPlayer->eRailroadOwned[uWritePos] = NO_RAILROAD;
+        uWritePos++;
     }
 }

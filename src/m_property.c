@@ -89,9 +89,9 @@ m_buy_railroad(mRailroad* railroadToBuy, mPlayer* playerBuying)
         railroadToBuy->eOwner = playerBuying->ePlayerTurnPosition;
         for(uint32_t railroadOwnedIndex = 0; railroadOwnedIndex < RAILROAD_TOTAL; railroadOwnedIndex++)
         {
-            if(playerBuying->eRailroadsOwned[railroadOwnedIndex] == NO_RAILROAD)
+            if(playerBuying->eRailroadOwned[railroadOwnedIndex] == NO_RAILROAD)
             {
-                playerBuying->eRailroadsOwned[railroadOwnedIndex] = m_string_to_railroad(railroadToBuy->cName);
+                playerBuying->eRailroadOwned[railroadOwnedIndex] = m_string_to_railroad(railroadToBuy->cName);
                 break;
             }
         }
@@ -224,7 +224,7 @@ m_pay_rent_railroad(mPlayer* mPayee, mPlayer* mPayer, mRailroad* mRailroadForRen
     uint8_t uRentArrayIndex = 0;
     for(uint8_t uRailroadsChecked = 0; uRailroadsChecked < RAILROAD_TOTAL; uRailroadsChecked++)
     {
-        if(mPayee->eRailroadsOwned[uRailroadsChecked] != NO_RAILROAD)
+        if(mPayee->eRailroadOwned[uRailroadsChecked] != NO_RAILROAD)
         {
             uRentArrayIndex++;
         }
@@ -1263,9 +1263,9 @@ m_show_rails_owned(mPlayer* currentPlayer)
     uint8_t ownedCount = 0;
     for (int i = 0; i < RAILROAD_TOTAL; i++)
     {
-        mRailroadName rail = currentPlayer->eRailroadsOwned[i];
+        mRailroadName rail = currentPlayer->eRailroadOwned[i];
 
-        if(currentPlayer->eRailroadsOwned[i] == NO_RAILROAD)
+        if(currentPlayer->eRailroadOwned[i] == NO_RAILROAD)
         {
             break;
         }

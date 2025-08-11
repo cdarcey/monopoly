@@ -14,6 +14,7 @@ void m_game_loop(mGameData* game);
         : need to add check for if prop has hotel you cannot sell houses - selling hotel will not downgrade to hotels
         : add emergency payment menu so properties can be selected and sale are not forced 
         : function to defrag prop, util, and rail arrays after trade
+        : need to propmt trade partner to sell houses/hotels and unmortgage if applicable before being able to accept trade
 */
 
 int

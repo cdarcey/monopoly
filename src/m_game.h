@@ -77,6 +77,9 @@ typedef enum _mActions
 
     // trade actions
     TRADE_PROPERTIES, 
+    ACCEPT_TRADE,
+    REJECT_TRADE,
+    COUNTER_OFFER,
 
     MAX_ACTIONS
 } mActions;
@@ -154,10 +157,9 @@ mBoardSquareType m_get_square_type(uint32_t uPlayerPosition);
 mActions m_show_trade_menu  (mGameData* mGame);
 void     m_propose_trade    (mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartener);
 mPlayer* m_get_trade_partner(mGameData* mGame);
-void     m_add_to_offer     (mPlayer* mPlayer, mTradeOffer* mOffer); 
+void     m_add_to_offer     (mGameData* mGame, mPlayer* mPlayer, mTradeOffer* mOffer); 
 void     m_add_to_request   (mPlayer* partner, mTradeOffer* request);
-void     m_review_trade     (mTradeOffer* offer, mTradeOffer* request);
-bool     m_validate_trade   (mGameData* mGame, mPlayer* mPlayerFrom, mPlayer* mPlayerTo, mTradeOffer* mOffer, mTradeOffer* mRequest);
+bool     m_review_trade     (mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartner, mTradeOffer* mOffer, mTradeOffer* mRequest);
 void     m_execute_trade    (mGameData* mGame, mPlayer* mPlayerFrom, mPlayer* mPlayerTo, mTradeOffer* mOffer, mTradeOffer* mRequest);
 uint8_t  m_get_empty_prop_owned_slot(mPlayer* mPlayer);
 uint8_t  m_get_empty_rail_owned_slot(mPlayer* mPlayer);
