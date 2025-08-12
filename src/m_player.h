@@ -82,9 +82,9 @@ void m_trigger_bankruptcy(mGameData* mGame, mPlayerNumber playerBankrupting, boo
 
 // ==================== HELPERS ==================== //
 void        m_show_player_status       (mPlayer* mCurrentPlayer);
-void        m_show_player_assets(mPlayer* mCurrentPlayer);
+void        m_show_player_assets       (mPlayer* mCurrentPlayer);
 const char* m_player_position_to_string(uint8_t uPosition);
-void        m_defrag_asset_arrays(mPlayer *mPlayer);
+void        m_defrag_asset_arrays      (mPlayer *mPlayer);
 
 
 #endif

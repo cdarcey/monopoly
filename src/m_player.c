@@ -23,15 +23,15 @@ m_create_player(uint8_t uPlayerPositionInIndex, mGameStartSettings mSettings)
     newPlayer->uPosition             = GO_SQUARE;
     newPlayer->uJailTurns            = 0;
 
-    for(uint8_t uPropCount = 0; uPropCount < PROPERTY_TOTAL; uPropCount++)
+    for(uint8_t uPropCount = 0; uPropCount < PROP_OWNED_WITH_BUFFER; uPropCount++)
     {
         newPlayer->ePropertyOwned[uPropCount] = NO_PROPERTY;
     }
-    for(uint8_t uRailroadCount = 0; uRailroadCount < RAILROAD_TOTAL; uRailroadCount++)
+    for(uint8_t uRailroadCount = 0; uRailroadCount < RAIL_OWNED_WITH_BUFFER; uRailroadCount++)
     {
         newPlayer->eRailroadOwned[uRailroadCount] = NO_RAILROAD;
     }
-    for(uint8_t uUtilityCount = 0; uUtilityCount < UTILITY_TOTAL; uUtilityCount++)
+    for(uint8_t uUtilityCount = 0; uUtilityCount < UTIL_OWNED_WITH_BUFFER; uUtilityCount++)
     {
         newPlayer->eUtilityOwned[uUtilityCount] = NO_UTILITY;
     }
@@ -231,8 +231,6 @@ m_defrag_asset_arrays(mPlayer *mPlayer)
         mPlayer->eUtilityOwned[uWritePos] = NO_UTILITY;
         uWritePos++;
     }
-
-    // Defragment Railroad Array
     uWritePos = 0;
     for (uint8_t uReadPos = 0; uReadPos < RAIL_OWNED_WITH_BUFFER; uReadPos++) 
     {

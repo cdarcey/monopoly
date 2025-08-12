@@ -64,7 +64,7 @@ typedef enum _mUtilityName // order matters
     WATER_WORKS,
     UTILITY_TOTAL,
     NO_UTILITY,
-    UTIL_OWNED_WITH_BUFFER = 8
+    UTIL_OWNED_WITH_BUFFER = 6
 } mUtilityName;
 
 typedef enum _mRailroadName // order matters
@@ -75,7 +75,7 @@ typedef enum _mRailroadName // order matters
     SHORT_LINE_RAILROAD,
     RAILROAD_TOTAL,
     NO_RAILROAD,
-    RAIL_OWNED_WITH_BUFFER = 4
+    RAIL_OWNED_WITH_BUFFER = 8
 } mRailroadName;
 
 

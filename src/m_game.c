@@ -265,37 +265,29 @@ m_show_pre_roll_menu(mGameData* mGame)
     }
 }
 
-mPlayer*
+mPlayer* 
 m_get_trade_partner(mGameData* mGame)
 {
-    // TODO: check if this is indexing properly 
     printf("\n=== Choose trade partner ===\n");
+
+    uint8_t validPlayers = 0;
     for(uint8_t i = 0; i < mGame->uStartingPlayerCount; i++)
     {
-        if(mGame->mGamePlayers[mGame->uCurrentPlayer] != mGame->mGamePlayers[i])
-        {
-            m_show_player_assets(mGame->mGamePlayers[i]);
-            printf("\n========================\n");
-        }
-        else continue;
-    }
-    for(uint8_t j = 0; j < mGame->uStartingPlayerCount; j++)
-    {
-        if(!mGame->mGamePlayers[j]->bBankrupt)
-        {
-            if(mGame->mGamePlayers[mGame->uCurrentPlayer]->ePlayerTurnPosition != mGame->mGamePlayers[j]->ePlayerTurnPosition)
-            {
-                printf("- Player %d\n", mGame->mGamePlayers[j]->ePlayerTurnPosition + 1);
-            }
-            else continue;
-        }
+        // Skip current player and bankrupt players
+        if(i == mGame->uCurrentPlayer || mGame->mGamePlayers[i]->bBankrupt)
+            continue;
+
+        printf("- Player %d\n", i + 1);  // Show 1-based number to user
+        m_show_player_assets(mGame->mGamePlayers[i]);
+        printf("\n========================\n");
+        validPlayers++;
     }
 
     int choice;
     scanf_s("%d", &choice);
+    while(getchar() != '\n'); // Clear input buffer
 
-    return mGame->mGamePlayers[choice - 1]; // adjusted for 0 index array 
-
+    return mGame->mGamePlayers[choice - 1]; // Convert back to 0-based index
 }
 
 mActions
@@ -730,18 +722,19 @@ m_propose_trade(mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartne
     m_show_player_assets(mTradePartner);
 
     bool bTrading = true;
+    bool bTradeAccepted = false;
     while (bTrading)
     {
         printf("\n-- Trade Negotiation --\n");
         printf("1. Add your item to offer\n");
         printf("2. Request item from player %d\n", mTradePartner->ePlayerTurnPosition + 1);
-        printf("3. Review current offer\n");
-        printf("4. Submit trade\n");
-        printf("5. Cancel trade\n");
+        printf("3. Review and submit current offer\n");
+        printf("4. Cancel trade\n");
         printf("> \n");
 
         int uChoice;
-        scanf("%d", &uChoice);
+        scanf_s("%d", &uChoice);
+        while(getchar() != '\n');
 
         switch(uChoice) 
         {
@@ -757,16 +750,11 @@ m_propose_trade(mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartne
             }
             case 3:
             {
-                m_review_trade(mGame, mCurrentPlayer, mTradePartner, &mOfferFrom, &mOffterTo);
-                break;
-            }
-            case 4: 
-            {
-                m_execute_trade(mGame, mCurrentPlayer, mTradePartner, &mOfferFrom, &mOffterTo);
+                bTradeAccepted = m_review_trade(mGame, mCurrentPlayer, mTradePartner, &mOfferFrom, &mOffterTo);
                 bTrading = false;
                 break;
             }
-            case 5: // Cancel trade
+            case 4: // Cancel trade
             {
                 bTrading = false;
                 printf("Trade cancelled.\n");
@@ -778,6 +766,11 @@ m_propose_trade(mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartne
             }
         }
     }
+    if(bTradeAccepted)
+    {
+        m_execute_trade(mGame, mCurrentPlayer, mTradePartner, &mOfferFrom, &mOffterTo);
+    }
+    else return;
 }
 
 void 
@@ -792,6 +785,7 @@ m_add_to_offer(mGameData* mGame, mPlayer* mPlayer, mTradeOffer* mOffer)
 
     int uChoice;
     scanf("%d", &uChoice);
+    while(getchar() != '\n');
 
     switch(uChoice) 
     {
@@ -883,6 +877,7 @@ m_add_to_request(mPlayer* mTradePartner, mTradeOffer* mRequest)
 
     int uChoice;
     scanf("%d", &uChoice);
+    while(getchar() != '\n');
 
     switch(uChoice) 
     {
@@ -945,7 +940,8 @@ m_add_to_request(mPlayer* mTradePartner, mTradeOffer* mRequest)
     }
 }
 
-bool m_review_trade(mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartner, mTradeOffer* mOffer, mTradeOffer* mRequest)
+bool 
+m_review_trade(mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartner, mTradeOffer* mOffer, mTradeOffer* mRequest)
 {
     printf("\nTrade partner option\n");
     printf("1. Accept\n");
@@ -955,26 +951,38 @@ bool m_review_trade(mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePa
 
     int uChoice;
     scanf("%d", &uChoice);
+    while(getchar() != '\n');
 
     switch(uChoice)
     {
-        case ACCEPT_TRADE:
+        case 1:
         {
             printf("Trade accepted\n");
-            m_execute_trade(mGame, mCurrentPlayer, mTradePartner, mOffer, mRequest);
+            for(uint8_t uPropIndex = 0; uPropIndex < PROPERTY_TOTAL; uPropIndex++)
+            {
+                if(mGame->mGameProperties[mRequest->mPropsToTrade[uPropIndex]].uNumberOfHotels > 0 ||
+                    mGame->mGameProperties[mRequest->mPropsToTrade[uPropIndex]].uNumberOfHouses > 0)
+                    {
+                        printf("You need to sell buildings to trade properties");
+                        m_show_building_managment_menu(mGame);
+                    }
+            }
+            return true;
             break;
         }
-        case REJECT_TRADE:
+        case 2:
         {
             printf("Trade rejected\n");
+            return false;
             break;
         }
-        case COUNTER_OFFER:
+        case 3:
         {
             m_propose_trade(mGame, mCurrentPlayer, mTradePartner);
+            return false; // need testing to make sure this loop doesnt break the game 
             break;
         }
-        default: break;
+        default: return false; break;
     }
 }
 
@@ -1038,7 +1046,10 @@ m_execute_trade(mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartne
 
     // Transfer cash
     mCurrentPlayer->uMoney += mRequest->uCash;    // Current player receives cash from request
+    mCurrentPlayer->uMoney -= mOffer->uCash;
+
     mTradePartner->uMoney += mOffer->uCash;       // Trade partner receives cash from offer
+    mTradePartner->uMoney -= mRequest->uCash;
 
     // pack data in asset arrays 
     m_defrag_asset_arrays(mTradePartner);

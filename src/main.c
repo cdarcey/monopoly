@@ -74,15 +74,6 @@ m_game_loop(mGameData* game)
                 m_next_player_turn(game);
                 break;
             }
-            // Special cases
-            case AUCTION_IN_PROGRESS:
-            {
-                break;
-            }
-            case TRADE_NEGOTIATION:
-            {
-                break;
-            }
             case GAME_OVER:
             {
                 // any other clean up from game needs to go here

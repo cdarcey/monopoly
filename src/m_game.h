@@ -77,9 +77,6 @@ typedef enum _mActions
 
     // trade actions
     TRADE_PROPERTIES, 
-    ACCEPT_TRADE,
-    REJECT_TRADE,
-    COUNTER_OFFER,
 
     MAX_ACTIONS
 } mActions;
