@@ -963,7 +963,8 @@ m_review_trade(mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartner
                 if(mGame->mGameProperties[mRequest->mPropsToTrade[uPropIndex]].uNumberOfHotels > 0 ||
                     mGame->mGameProperties[mRequest->mPropsToTrade[uPropIndex]].uNumberOfHouses > 0)
                     {
-                        printf("You need to sell buildings to trade properties");
+                        printf("You need to sell buildings to trade properties\n");
+                        m_show_props_owned(mTradePartner);
                         m_show_building_managment_menu(mGame);
                     }
             }

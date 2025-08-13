@@ -9,12 +9,11 @@ void m_game_loop(mGameData* game);
 /*
     TODO -
         : auction system
-        : trading system
         : ai decsion making 
         : need to add check for if prop has hotel you cannot sell houses - selling hotel will not downgrade to hotels
         : add emergency payment menu so properties can be selected and sale are not forced 
-        : function to defrag prop, util, and rail arrays after trade
         : need to propmt trade partner to sell houses/hotels and unmortgage if applicable before being able to accept trade
+        : if set is broken up from trade check is needed to force sale of any houses on the other properties 
 */
 
 int
@@ -51,6 +50,17 @@ m_game_loop(mGameData* game)
                 m_set_player_piece(game, RACE_CAR, PLAYER_ONE);
                 m_set_player_piece(game, TOP_HAT, PLAYER_TWO);
                 m_set_player_piece(game, THIMBLE, PLAYER_THREE);
+
+                game->mGamePlayers[PLAYER_TWO]->ePropertyOwned[0] = MEDITERRANEAN_AVENUE;
+                game->mGamePlayers[PLAYER_TWO]->ePropertyOwned[1] = BALTIC_AVENUE;
+
+                game->mGameProperties[MEDITERRANEAN_AVENUE].bOwned = true;
+                game->mGameProperties[MEDITERRANEAN_AVENUE].eOwner = PLAYER_TWO;
+
+                game->mGameProperties[BALTIC_AVENUE].bOwned = true;
+                game->mGameProperties[BALTIC_AVENUE].eOwner = PLAYER_TWO;
+
+                game->mGameProperties[BALTIC_AVENUE].uNumberOfHouses = 1;
 
                 game->mCurrentState = PHASE_PRE_ROLL;
                 break;
