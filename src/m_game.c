@@ -366,11 +366,12 @@ m_phase_post_roll(mGameData* mGame)
             else if(!m_is_property_owned(current_property))
             {
                 m_show_post_roll_menu(mGame);
+                if(!m_is_property_owned(current_property))
+                {
+                    m_enter_auction_prop(mGame, current_property);
+                }
             }
-            else if(current_property->eOwner == NO_PLAYER)
-            {
-                // forced auction for property
-            }
+            else 
             break;
         }
         case RAILROAD_SQUARE_TYPE:
@@ -391,6 +392,10 @@ m_phase_post_roll(mGameData* mGame)
             else if(!m_is_railroad_owned(current_railroad))
             {
                 m_show_post_roll_menu(mGame);
+                if(!m_is_railroad_owned(current_railroad))
+                {
+                    m_enter_auction_rail(mGame, current_railroad);
+                }
             }
             break;
         }
@@ -412,6 +417,10 @@ m_phase_post_roll(mGameData* mGame)
             else if(!m_is_utility_owned(current_utility))
             {
                 m_show_post_roll_menu(mGame);
+                if(!m_is_utility_owned(current_utility))
+                {
+                    m_enter_auction_util(mGame, current_utility);
+                }
             }
             break;
         }
@@ -698,6 +707,205 @@ m_get_building_managment_choice()
 
 
 // ==================== SPECIAL PHASES ==================== //
+void 
+m_enter_auction_prop(mGameData* mGame, mProperty* mPropForAuction)
+{
+    mPropertyName propForAuction = m_string_to_property(mPropForAuction->cName);
+    const char* propName = m_property_enum_to_string(propForAuction);
+    printf("Property for auction: %s\n", propName);
+
+    bool bAuctionInProgess = true;
+    while(bAuctionInProgess)
+    {
+        uint32_t uHighestBid = 0;
+        uint8_t  uBidOwner = 0;
+        // find active players to participate in auction
+        for(uint8_t i = 0; i < mGame->uStartingPlayerCount; i++)
+        {
+            if(mGame->mGamePlayers[i]->bBankrupt == true)
+            {
+                mGame->mGamePlayers[i]->bActiveInAuction = false;
+            }
+            else
+            {
+                mGame->mGamePlayers[i]->bActiveInAuction = true;
+            }
+        }
+
+        for(uint8_t j = 0; j < mGame->uStartingPlayerCount; j++)
+        {
+            if(mGame->mGamePlayers[j]->bActiveInAuction)
+            {
+                printf("Player %d - Enter Bid\n", j + 1);
+                int iBid;
+                scanf_s("%d", &iBid);
+                while(getchar() != '\n');
+                if(iBid == 0)
+                {
+                        mGame->mGamePlayers[j]->bActiveInAuction = false;
+                }
+                else
+                {
+                    if(!m_can_player_afford(mGame->mGamePlayers[j], iBid))
+                    {
+                        printf("You do not have enough money\n");
+                    }
+                    else if(iBid > uHighestBid)
+                    {
+                        uHighestBid = iBid;
+                        uBidOwner = j;
+                    }
+                }
+            }
+        }
+        if(m_exit_auction)
+        {
+            mPropForAuction->eOwner = mGame->mGamePlayers[uBidOwner]->ePlayerTurnPosition;
+            mGame->mGamePlayers[uBidOwner]->uMoney -= uHighestBid;
+        }
+    }
+}
+
+
+void 
+m_enter_auction_rail(mGameData* mGame, mRailroad* mRailForAuction)
+{
+    mRailroadName railroadForAuction = m_string_to_railroad(mRailForAuction->cName);
+    const char* railroadName = m_railroad_enum_to_string(railroadForAuction);
+    printf("Railroad for auction: %s\n", railroadName);
+
+    bool bAuctionInProgess = true;
+    while(bAuctionInProgess)
+    {
+        uint32_t uHighestBid = 0;
+        uint8_t  uBidOwner = 0;
+        // find active players to participate in auction
+        for(uint8_t i = 0; i < mGame->uStartingPlayerCount; i++)
+        {
+            if(mGame->mGamePlayers[i]->bBankrupt == true)
+            {
+                mGame->mGamePlayers[i]->bActiveInAuction = false;
+            }
+            else
+            {
+                mGame->mGamePlayers[i]->bActiveInAuction = true;
+            }
+        }
+        for(uint8_t j = 0; j < mGame->uStartingPlayerCount; j++)
+        {
+            if(mGame->mGamePlayers[j]->bActiveInAuction)
+            {
+                printf("Player %d - Enter Bid for Railroad\n", j + 1);
+                int iBid;
+                scanf_s("%d", &iBid);
+                while(getchar() != '\n');
+                if(iBid == 0)
+                {
+                    mGame->mGamePlayers[j]->bActiveInAuction = false;
+                }
+                else
+                {
+                    if(!m_can_player_afford(mGame->mGamePlayers[j], iBid))
+                    {
+                        printf("You do not have enough money\n");
+                    }
+                    else if(iBid > uHighestBid)
+                    {
+                        uHighestBid = iBid;
+                        uBidOwner = j;
+                    }
+                }
+            }
+        }
+        if(m_exit_auction)
+        {
+            mRailForAuction->eOwner = mGame->mGamePlayers[uBidOwner]->ePlayerTurnPosition;
+            mGame->mGamePlayers[uBidOwner]->uMoney -= uHighestBid;
+        }
+    }
+}
+
+void 
+m_enter_auction_util(mGameData* mGame, mUtility* mUtilForAuction)
+{
+    // TODO: fix bid loop being infinate
+    mUtilityName utilityForAuction = m_string_to_utility(mUtilForAuction->cName);
+    const char* utilityName = m_utility_enum_to_string(utilityForAuction);
+    printf("Utility for auction: %s\n", utilityName);
+
+    bool bAuctionInProgess = true;
+    while(bAuctionInProgess)
+    {
+        uint32_t uHighestBid = 0;
+        uint8_t  uBidOwner = 0;
+        // find active players to participate in auction
+        for(uint8_t i = 0; i < mGame->uStartingPlayerCount; i++)
+        {
+            if(mGame->mGamePlayers[i]->bBankrupt == true)
+            {
+                mGame->mGamePlayers[i]->bActiveInAuction = false;
+            }
+            else
+            {
+                mGame->mGamePlayers[i]->bActiveInAuction = true;
+            }
+        }
+        for(uint8_t j = 0; j < mGame->uStartingPlayerCount; j++)
+        {
+            if(mGame->mGamePlayers[j]->bActiveInAuction)
+            {
+                printf("Player %d - Enter Bid for Utility\n", j + 1);
+                int iBid;
+                scanf_s("%d", &iBid);
+                while(getchar() != '\n');
+                if(iBid == 0)
+                {
+                    mGame->mGamePlayers[j]->bActiveInAuction = false;
+                }
+                else
+                {
+                    if(!m_can_player_afford(mGame->mGamePlayers[j], iBid))
+                    {
+                        printf("You do not have enough money\n");
+                    }
+                    else if(iBid > uHighestBid)
+                    {
+                        uHighestBid = iBid;
+                        uBidOwner = j;
+                    }
+                }
+            }
+        }
+        if(m_exit_auction)
+        {
+            mUtilForAuction->eOwner = mGame->mGamePlayers[uBidOwner]->ePlayerTurnPosition;
+            mGame->mGamePlayers[uBidOwner]->uMoney -= uHighestBid;
+        }
+    }
+}
+
+bool 
+m_exit_auction(mGameData* mGame)
+{
+    uint8_t uActivePlayers = mGame->uStartingPlayerCount;
+    for(uint8_t i = 0; i < mGame->uStartingPlayerCount; i++)
+    {
+        if(mGame->mGamePlayers[i]->bActiveInAuction == false)
+        {
+            uActivePlayers--;
+        }
+    }
+    if(uActivePlayers < 2)
+    {
+        return true;
+    }
+
+    else 
+    {
+        return true;
+    }
+}
+
 void
 m_enter_trade_phase(mGameData* mGame)
 {

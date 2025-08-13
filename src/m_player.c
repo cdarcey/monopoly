@@ -18,6 +18,7 @@ m_create_player(uint8_t uPlayerPositionInIndex, mGameStartSettings mSettings)
     newPlayer->bInJail               = false;
     newPlayer->bBankrupt             = false;
     newPlayer->bPlayerIsAI           = false;
+    newPlayer->bActiveInAuction      = false;
     newPlayer->ePiece                = NO_PIECE_ASSIGNED;
     newPlayer->uMoney                = mSettings.uStartingMoney;
     newPlayer->uPosition             = GO_SQUARE;

@@ -135,6 +135,10 @@ mActions m_get_building_managment_choice(void);
 
 // ==================== SPECIAL PHASES ==================== //
 void m_enter_trade_phase(mGameData* mGame);
+void m_enter_auction_prop(mGameData* mGame, mProperty* mPropForAuction);
+void m_enter_auction_rail(mGameData* mGame, mRailroad* mRailForAuction);
+void m_enter_auction_util(mGameData* mGame, mUtility* mUtilForAuction);
+bool m_exit_auction     (mGameData* mGame);
 
 // ==================== END TURN ACTIONS ==================== //
 

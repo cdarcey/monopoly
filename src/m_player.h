@@ -66,6 +66,7 @@ typedef struct _mPlayer
     bool           bGetOutOfJailFreeCard;
     bool           bBankrupt;
     bool           bPlayerIsAI;
+    bool           bActiveInAuction;
 } mPlayer;
 
 // ==================== PLAYER CREATION ==================== //
