@@ -363,7 +363,7 @@ m_phase_post_roll(mGameData* mGame)
                     m_pay_rent_property(mGame->mGamePlayers[current_property->eOwner], current_player, current_property, bSetOwned);
                 }
             }
-            else if(!m_is_property_owned(current_property))
+            if(!m_is_property_owned(current_property))
             {
                 m_show_post_roll_menu(mGame);
                 if(!m_is_property_owned(current_property))
@@ -371,7 +371,6 @@ m_phase_post_roll(mGameData* mGame)
                     m_enter_auction_prop(mGame, current_property);
                 }
             }
-            else 
             break;
         }
         case RAILROAD_SQUARE_TYPE:
@@ -389,7 +388,7 @@ m_phase_post_roll(mGameData* mGame)
                     m_pay_rent_railroad(mGame->mGamePlayers[current_railroad->eOwner], current_player, current_railroad);
                 }
             }
-            else if(!m_is_railroad_owned(current_railroad))
+            if(!m_is_railroad_owned(current_railroad))
             {
                 m_show_post_roll_menu(mGame);
                 if(!m_is_railroad_owned(current_railroad))
@@ -414,7 +413,7 @@ m_phase_post_roll(mGameData* mGame)
                     m_pay_rent_utility(mGame->mGamePlayers[current_utility->eOwner], current_player, current_utility, mGame->mGameDice);
                 }
             }
-            else if(!m_is_utility_owned(current_utility))
+            if(!m_is_utility_owned(current_utility))
             {
                 m_show_post_roll_menu(mGame);
                 if(!m_is_utility_owned(current_utility))
@@ -715,25 +714,27 @@ m_enter_auction_prop(mGameData* mGame, mProperty* mPropForAuction)
     printf("Property for auction: %s\n", propName);
 
     bool bAuctionInProgess = true;
+    uint32_t uHighestBid = 0;
+    int  uBidOwner = -1; // set to negative one so bid owner skip logic doesnt skip player "0" on first run
+    // find active players to participate in auction
+    for(uint8_t i = 0; i < mGame->uStartingPlayerCount; i++)
+    {
+        if(mGame->mGamePlayers[i]->bBankrupt == true)
+        {
+            mGame->mGamePlayers[i]->bActiveInAuction = false;
+        }
+        else
+        {
+            mGame->mGamePlayers[i]->bActiveInAuction = true;
+        }
+    }
+
     while(bAuctionInProgess)
     {
-        uint32_t uHighestBid = 0;
-        uint8_t  uBidOwner = 0;
-        // find active players to participate in auction
-        for(uint8_t i = 0; i < mGame->uStartingPlayerCount; i++)
-        {
-            if(mGame->mGamePlayers[i]->bBankrupt == true)
-            {
-                mGame->mGamePlayers[i]->bActiveInAuction = false;
-            }
-            else
-            {
-                mGame->mGamePlayers[i]->bActiveInAuction = true;
-            }
-        }
-
         for(uint8_t j = 0; j < mGame->uStartingPlayerCount; j++)
         {
+            if(mGame->mGamePlayers[j]->ePlayerTurnPosition == uBidOwner)
+            continue;
             if(mGame->mGamePlayers[j]->bActiveInAuction)
             {
                 printf("Player %d - Enter Bid\n", j + 1);
@@ -742,7 +743,11 @@ m_enter_auction_prop(mGameData* mGame, mProperty* mPropForAuction)
                 while(getchar() != '\n');
                 if(iBid == 0)
                 {
-                        mGame->mGamePlayers[j]->bActiveInAuction = false;
+                    mGame->mGamePlayers[j]->bActiveInAuction = false;
+                }
+                else if(iBid < uHighestBid)
+                {
+                    printf("Bid is too low\n");
                 }
                 else
                 {
@@ -758,10 +763,14 @@ m_enter_auction_prop(mGameData* mGame, mProperty* mPropForAuction)
                 }
             }
         }
-        if(m_exit_auction)
+        if(m_exit_auction(mGame))
         {
             mPropForAuction->eOwner = mGame->mGamePlayers[uBidOwner]->ePlayerTurnPosition;
+            mPropForAuction->bOwned = true;
+            uint8_t uIndex = m_get_empty_prop_owned_slot(mGame->mGamePlayers[uBidOwner]);
+            mGame->mGamePlayers[uBidOwner]->ePropertyOwned[uIndex] = m_string_to_property(mPropForAuction->cName);
             mGame->mGamePlayers[uBidOwner]->uMoney -= uHighestBid;
+            bAuctionInProgess = false;
         }
     }
 }
@@ -775,22 +784,24 @@ m_enter_auction_rail(mGameData* mGame, mRailroad* mRailForAuction)
     printf("Railroad for auction: %s\n", railroadName);
 
     bool bAuctionInProgess = true;
+    uint32_t uHighestBid = 0;
+    int  uBidOwner = -1; // set to negative one so bid owner skip logic doesnt skip player "0" on first run
+
+    // find active players to participate in auction
+    for(uint8_t i = 0; i < mGame->uStartingPlayerCount; i++)
+    {
+        if(mGame->mGamePlayers[i]->bBankrupt == true)
+        {
+            mGame->mGamePlayers[i]->bActiveInAuction = false;
+        }
+        else
+        {
+            mGame->mGamePlayers[i]->bActiveInAuction = true;
+        }
+    }
+
     while(bAuctionInProgess)
     {
-        uint32_t uHighestBid = 0;
-        uint8_t  uBidOwner = 0;
-        // find active players to participate in auction
-        for(uint8_t i = 0; i < mGame->uStartingPlayerCount; i++)
-        {
-            if(mGame->mGamePlayers[i]->bBankrupt == true)
-            {
-                mGame->mGamePlayers[i]->bActiveInAuction = false;
-            }
-            else
-            {
-                mGame->mGamePlayers[i]->bActiveInAuction = true;
-            }
-        }
         for(uint8_t j = 0; j < mGame->uStartingPlayerCount; j++)
         {
             if(mGame->mGamePlayers[j]->bActiveInAuction)
@@ -802,6 +813,10 @@ m_enter_auction_rail(mGameData* mGame, mRailroad* mRailForAuction)
                 if(iBid == 0)
                 {
                     mGame->mGamePlayers[j]->bActiveInAuction = false;
+                }
+                else if(iBid < uHighestBid)
+                {
+                    printf("Bid is too low\n");
                 }
                 else
                 {
@@ -820,7 +835,11 @@ m_enter_auction_rail(mGameData* mGame, mRailroad* mRailForAuction)
         if(m_exit_auction)
         {
             mRailForAuction->eOwner = mGame->mGamePlayers[uBidOwner]->ePlayerTurnPosition;
+            mRailForAuction->bOwned = true;
+            uint8_t uIndex = m_get_empty_rail_owned_slot(mGame->mGamePlayers[uBidOwner]);
+            mGame->mGamePlayers[uBidOwner]->ePropertyOwned[uIndex] = m_string_to_property(mRailForAuction->cName);
             mGame->mGamePlayers[uBidOwner]->uMoney -= uHighestBid;
+            bAuctionInProgess = false;
         }
     }
 }
@@ -828,28 +847,29 @@ m_enter_auction_rail(mGameData* mGame, mRailroad* mRailForAuction)
 void 
 m_enter_auction_util(mGameData* mGame, mUtility* mUtilForAuction)
 {
-    // TODO: fix bid loop being infinate
     mUtilityName utilityForAuction = m_string_to_utility(mUtilForAuction->cName);
     const char* utilityName = m_utility_enum_to_string(utilityForAuction);
     printf("Utility for auction: %s\n", utilityName);
 
     bool bAuctionInProgess = true;
+    uint32_t uHighestBid = 0;
+    int  uBidOwner = -1; // set to negative one so bid owner skip logic doesnt skip player "0" on first run
+
+    // find active players to participate in auction
+    for(uint8_t i = 0; i < mGame->uStartingPlayerCount; i++)
+    {
+        if(mGame->mGamePlayers[i]->bBankrupt == true)
+        {
+            mGame->mGamePlayers[i]->bActiveInAuction = false;
+        }
+        else
+        {
+            mGame->mGamePlayers[i]->bActiveInAuction = true;
+        }
+    }
+
     while(bAuctionInProgess)
     {
-        uint32_t uHighestBid = 0;
-        uint8_t  uBidOwner = 0;
-        // find active players to participate in auction
-        for(uint8_t i = 0; i < mGame->uStartingPlayerCount; i++)
-        {
-            if(mGame->mGamePlayers[i]->bBankrupt == true)
-            {
-                mGame->mGamePlayers[i]->bActiveInAuction = false;
-            }
-            else
-            {
-                mGame->mGamePlayers[i]->bActiveInAuction = true;
-            }
-        }
         for(uint8_t j = 0; j < mGame->uStartingPlayerCount; j++)
         {
             if(mGame->mGamePlayers[j]->bActiveInAuction)
@@ -861,6 +881,10 @@ m_enter_auction_util(mGameData* mGame, mUtility* mUtilForAuction)
                 if(iBid == 0)
                 {
                     mGame->mGamePlayers[j]->bActiveInAuction = false;
+                }
+                else if(iBid < uHighestBid)
+                {
+                    printf("Bid is too low\n");
                 }
                 else
                 {
@@ -879,7 +903,11 @@ m_enter_auction_util(mGameData* mGame, mUtility* mUtilForAuction)
         if(m_exit_auction)
         {
             mUtilForAuction->eOwner = mGame->mGamePlayers[uBidOwner]->ePlayerTurnPosition;
+            mUtilForAuction->bOwned = true;
+            uint8_t uIndex = m_get_empty_util_owned_slot(mGame->mGamePlayers[uBidOwner]);
+            mGame->mGamePlayers[uBidOwner]->ePropertyOwned[uIndex] = m_string_to_property(mUtilForAuction->cName);
             mGame->mGamePlayers[uBidOwner]->uMoney -= uHighestBid;
+            bAuctionInProgess = false;
         }
     }
 }
@@ -902,7 +930,7 @@ m_exit_auction(mGameData* mGame)
 
     else 
     {
-        return true;
+        return false;
     }
 }
 
