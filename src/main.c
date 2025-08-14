@@ -51,16 +51,6 @@ m_game_loop(mGameData* game)
                 m_set_player_piece(game, TOP_HAT, PLAYER_TWO);
                 m_set_player_piece(game, THIMBLE, PLAYER_THREE);
 
-                game->mGamePlayers[PLAYER_TWO]->ePropertyOwned[0] = MEDITERRANEAN_AVENUE;
-                game->mGamePlayers[PLAYER_TWO]->ePropertyOwned[1] = BALTIC_AVENUE;
-
-                game->mGameProperties[MEDITERRANEAN_AVENUE].bOwned = true;
-                game->mGameProperties[MEDITERRANEAN_AVENUE].eOwner = PLAYER_TWO;
-
-                game->mGameProperties[BALTIC_AVENUE].bOwned = true;
-                game->mGameProperties[BALTIC_AVENUE].eOwner = PLAYER_TWO;
-
-                game->mGameProperties[BALTIC_AVENUE].uNumberOfHouses = 1;
 
                 game->mCurrentState = PHASE_PRE_ROLL;
                 break;
