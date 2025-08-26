@@ -763,6 +763,14 @@ m_enter_auction_prop(mGameData* mGame, mProperty* mPropForAuction)
                 }
             }
         }
+        if(uHighestBid == 0)
+        {
+            mPropForAuction->eOwner = NO_PLAYER;
+            mPropForAuction->uNumberOfHouses = 0;
+            mPropForAuction->uNumberOfHouses = 0;
+            mPropForAuction->bMortgaged = false;
+            mPropForAuction->bOwned = false;
+        }
         if(m_exit_auction(mGame))
         {
             mPropForAuction->eOwner = mGame->mGamePlayers[uBidOwner]->ePlayerTurnPosition;

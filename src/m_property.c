@@ -326,12 +326,19 @@ m_transfer_assets_to_player(mGameData* mGame, mPlayerNumber losingAssets, mPlaye
                 }
                 else
                 {
-                    // TODO: prop needs to be auctioned and if auction fails returned to bank
-                    mGame->mGameProperties[i].eOwner = NO_PLAYER;
-                    mGame->mGameProperties[i].uNumberOfHouses = 0;
-                    mGame->mGameProperties[i].uNumberOfHouses = 0;
-                    mGame->mGameProperties[i].bMortgaged = false;
-                    mGame->mGameProperties[i].bOwned = false;
+                    for(uint8_t j = 0; j < PROPERTY_TOTAL; j++)
+                    {
+                        m_enter_auction_prop(mGame, &mGame->mGameProperties[i]);
+
+                        if(mGame->mGameProperties[i].eOwner == NO_PLAYER)
+                        {
+                            mGame->mGameProperties[i].eOwner = NO_PLAYER;
+                            mGame->mGameProperties[i].uNumberOfHouses = 0;
+                            mGame->mGameProperties[i].uNumberOfHouses = 0;
+                            mGame->mGameProperties[i].bMortgaged = false;
+                            mGame->mGameProperties[i].bOwned = false;
+                        }
+                    }
                 }
             }
         }
