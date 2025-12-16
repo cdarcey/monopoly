@@ -29,7 +29,7 @@
 @echo [1m[36mCompiling and Linking...[0m
 
 @rem call compiler
-cl main.c m_game.c m_property.c m_board_cards.c m_init_game.c m_player.c m_ai.c -Fe"../out/monopoly.exe" -Fo"../out/" -Od -Zi -nologo -I"../dependencies" -MD -link -incremental:no 
+cl main.c m_game.c m_property.c m_board_cards.c m_init_game.c m_player.c -Fe"../out/monopoly.exe" -Fo"../out/" -Od -Zi -nologo -I"../dependencies" -MD -link -incremental:no 
 
 @rem check build status
 @set PL_BUILD_STATUS=%ERRORLEVEL%
