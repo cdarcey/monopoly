@@ -1,5 +1,4 @@
 
-
 #include <string.h>
 #include <math.h> // min function
 
@@ -326,18 +325,14 @@ m_transfer_assets_to_player(mGameData* mGame, mPlayerNumber losingAssets, mPlaye
                 }
                 else
                 {
-                    for(uint8_t j = 0; j < PROPERTY_TOTAL; j++)
+                    // TODO: Non-blocking auction system
+                    if(mGame->mGameProperties[i].eOwner == NO_PLAYER)
                     {
-                        m_enter_auction_prop(mGame, &mGame->mGameProperties[i]);
-
-                        if(mGame->mGameProperties[i].eOwner == NO_PLAYER)
-                        {
-                            mGame->mGameProperties[i].eOwner = NO_PLAYER;
-                            mGame->mGameProperties[i].uNumberOfHouses = 0;
-                            mGame->mGameProperties[i].uNumberOfHouses = 0;
-                            mGame->mGameProperties[i].bMortgaged = false;
-                            mGame->mGameProperties[i].bOwned = false;
-                        }
+                        mGame->mGameProperties[i].eOwner = NO_PLAYER;
+                        mGame->mGameProperties[i].uNumberOfHouses = 0;
+                        mGame->mGameProperties[i].uNumberOfHouses = 0;
+                        mGame->mGameProperties[i].bMortgaged = false;
+                        mGame->mGameProperties[i].bOwned = false;
                     }
                 }
             }
@@ -479,7 +474,6 @@ m_execute_hotel_sale(mProperty* mPropWithHotels, mPlayer* mPlayerSelling)
         mPlayerSelling->uMoney += (mPropWithHotels->uHouseCost * 4) / 2;
     }
 }
-
 
 
 // ==================== HELPERS ==================== //
@@ -856,6 +850,7 @@ m_house_can_be_added(mGameData* mGame, mProperty* mCurrentProperty, mPlayer* mPl
             return false; 
     }
 }
+
 bool 
 m_hotel_can_be_added(mGameData* mGame, mPropertyColor eColorOfSet)
 {
@@ -1318,17 +1313,3 @@ m_show_utils_owned(mPlayer* currentPlayer)
         printf("(No utilities owned)\n");
     }
 }
-
-mPropertyName 
-m_get_player_property(mPlayer* mCurrentPlayer) 
-{
-    m_show_props_owned(mCurrentPlayer);
-    printf("\nSelect a property (enter number): ");
-
-    int choice;
-    scanf_s("%d", &choice);
-
-    return mCurrentPlayer->ePropertyOwned[choice - 1]; 
-
-}
-
