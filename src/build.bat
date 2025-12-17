@@ -1,55 +1,56 @@
-@rem keep environment variables modifications local
+@rem
 @setlocal
 
-@rem make script directory CWD
+@rem
 @pushd %~dp0
 
-@rem modify PATH to find vcvarsall.bat
+@rem
 @set PATH=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build;%PATH%
 @set PATH=C:\Program Files\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build;%PATH%
 @set PATH=C:\Program Files (x86)\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build;%PATH%
 @set PATH=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build;%PATH%
 @set PATH=C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise/VC\Auxiliary\Build;%PATH%
 
-@rem setup environment for MSVC dev tools
+@rem
 @call vcvarsall.bat amd64 > nul
 
-@rem default compilation result
+@rem
 @set PL_RESULT=[1m[92mSuccessful.[0m
 
-@rem create main target output directoy
+@rem
 @if not exist "../out" @mkdir "../out"
 
-@rem cleanup binaries if not hot reloading
+@rem
 @if exist "../out/monopoly.exe" del "..\out\monopoly.exe"
 
-@rem run compiler (and linker)
+@rem
 @echo.
 @echo [1m[93m~~~~~~~~~~~~~~~~~~~~~~[0m
 @echo [1m[36mCompiling and Linking...[0m
 
-@rem call compiler with GLFW linking - CORRECTED PATH
+@rem
 cl main.c m_game.c m_property.c m_board_cards.c m_init_game.c m_player.c -Fe"../out/monopoly.exe" -Fo"../out/" -Od -Zi -nologo -I"../dependencies" -MD -link -incremental:no "../dependencies/glfw3.lib" user32.lib gdi32.lib shell32.lib
-@rem check build status
+
+@rem
 @set PL_BUILD_STATUS=%ERRORLEVEL%
 
-@rem failed
+@rem
 @if %PL_BUILD_STATUS% NEQ 0 (
     @echo [1m[91mCompilation Failed with error code[0m: %PL_BUILD_STATUS%
     @set PL_RESULT=[1m[91mFailed.[0m
     goto Cleanupcpptest
 )
 
-@rem cleanup obj files
+@rem
 :Cleanupcpptest
     @echo [1m[36mCleaning...[0m
     @del "..\out\*.obj"  > nul 2> nul
 
 
-@rem print results
+@rem
 @echo.
 @echo [36mResult: [0m %PL_RESULT%
 @echo [36m~~~~~~~~~~~~~~~~~~~~~~[0m
 
-@rem return CWD to previous CWD
+@rem
 @popd
