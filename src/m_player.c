@@ -82,23 +82,24 @@ m_move_player_to(mPlayer* currentPlayer, mBoardSquares destination)
 // ==================== FINANCIAL ==================== //
 // playerOwed will be NO_PLAYER if bank is owed
 void
-m_trigger_bankruptcy(mGameData* mGame, mPlayerNumber playerBankrupting, mGameState entityOwed, mPlayerNumber playerOwed)
+m_trigger_bankruptcy(mGameData* mGame, mPlayerNumber playerBankrupting, eGameState entityOwed, mPlayerNumber playerOwed)
 {
     mPlayer* current_player = mGame->mGamePlayers[playerBankrupting];
 
-    switch(entityOwed)
-    {
-        case OWE_PLAYER: 
-        {
-            m_transfer_assets_to_player(mGame, mGame->uCurrentPlayer, playerOwed);
-            break;
-        }
-        case OWE_BANK:
-        {
-            m_return_assets_to_bank(mGame, mGame->uCurrentPlayer);
-            break;
-        }
-    }
+    // TODO: fix from legacy system 
+    // switch(entityOwed)
+    // {
+    //     case OWE_PLAYER: 
+    //     {
+    //         m_transfer_assets_to_player(mGame, mGame->uCurrentPlayer, playerOwed);
+    //         break;
+    //     }
+    //     case OWE_BANK:
+    //     {
+    //         m_return_assets_to_bank(mGame, mGame->uCurrentPlayer);
+    //         break;
+    //     }
+    // }
     current_player->bBankrupt = true;
     current_player->uMoney = 0;
     mGame->uActivePlayers--;

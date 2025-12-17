@@ -1,86 +1,64 @@
 
 
+
 #include "m_init_game.h"
 
-
-void m_game_loop(mGameData* game);
-
-
-/*
-    TODO -
-        : auction system
-        : ai decsion making 
-        : need to add check for if prop has hotel you cannot sell houses - selling hotel will not downgrade to hotels
-        : add emergency payment menu so properties can be selected and sale are not forced 
-        : need to propmt trade partner to sell houses/hotels and unmortgage if applicable before being able to accept trade
-        : if set is broken up from trade check is needed to force sale of any houses on the other properties 
-*/
-
-int
-main()
+int main(void)
 {
-    mGameStartSettings mSettings = {
+    srand((unsigned int)time(NULL));
+    
+    // Initialize GLFW (just for input)
+    if (!glfwInit()) {
+        printf("Failed to initialize GLFW!\n");
+        return -1;
+    }
+    
+    // Create invisible window for input handling only at this point
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);  // Hidden window
+    GLFWwindow* inputWindow = glfwCreateWindow(1, 1, "Input", NULL, NULL);
+    
+    // Initialize game
+    mGameStartSettings settings = {
         .uStartingMoney       = 1500,
         .uStartingPlayerCount = 3,
         .uJailFine            = 50
     };
-
-    mGameData* game = m_init_game(mSettings);
-    if(!game)
+    
+    mGameData* game = m_init_game(settings);
+    if(!game) return 1;
+    
+    // Initialize game flow system
+    mGameFlow flow = {0};
+    flow.pGameData = game;
+    flow.pInputWindow = inputWindow;  // Store for input checking
+    
+    // Start first phase
+    mPreRollData* firstTurn    = malloc(sizeof(mPreRollData));
+    firstTurn->pPlayer         = game->mGamePlayers[0];
+    firstTurn->bWaitingForRoll = false;
+    m_push_phase(&flow, m_phase_pre_roll, firstTurn);
+    
+    printf("=== MONOPOLY GAME STARTED ===\n");
+    
+    // Main loop
+    float deltaTime = 0.016f;
+    
+    while(flow.pfCurrentPhase && game->bRunning && !glfwWindowShouldClose(inputWindow))
     {
-        return 1;
+        glfwPollEvents();  // Get input
+        
+        m_run_current_phase(&flow, deltaTime);
+        
+        // Simple timing
+        glfwWaitEventsTimeout(0.016);  // ~60fps
     }
-
-    m_game_loop(game);
-
+    
+    printf("\n=== GAME ENDED ===\n");
+    
+    // Cleanup
+    m_free_game_data(game);
+    glfwDestroyWindow(inputWindow);
+    glfwTerminate();
+    
     return 0;
 }
-
-void
-m_game_loop(mGameData* game)
-{
-    while(game->bRunning == true)
-    {
-        switch (game->mCurrentState) 
-        {
-            // Initialization
-            case GAME_STARTUP:
-            {
-                // load game assets etc...
-                m_set_player_piece(game, RACE_CAR, PLAYER_ONE);
-                m_set_player_piece(game, TOP_HAT, PLAYER_TWO);
-                m_set_player_piece(game, THIMBLE, PLAYER_THREE);
-
-
-                game->mCurrentState = PHASE_PRE_ROLL;
-                break;
-            }
-            case PHASE_PRE_ROLL:
-            {
-                printf("\nPlayer %d\n", (game->mGamePlayers[game->uCurrentPlayer]->ePlayerTurnPosition + 1));
-                m_show_player_status(game->mGamePlayers[game->uCurrentPlayer]);
-                m_pre_roll_phase(game);
-                break;
-            }
-            case PHASE_POST_ROLL:
-            {
-                m_move_player(game->mGamePlayers[game->uCurrentPlayer], game->mGameDice);
-                m_show_player_status(game->mGamePlayers[game->uCurrentPlayer]);
-                m_phase_post_roll(game);
-                break;
-            }
-            case PHASE_END_TURN:
-            {
-                m_next_player_turn(game);
-                break;
-            }
-            case GAME_OVER:
-            {
-                // any other clean up from game needs to go here
-                m_free_game_data(game);
-                break;
-            }
-        }
-    }
-}
-

@@ -146,17 +146,17 @@ void m_execute_hotel_sale          (mProperty* mPropWithHouses, mPlayer* mPlayer
 
 // ==================== PROPERTY HELPERS ==================== //
 // Enum/String Conversions
-const char*    m_color_enum_to_string      (mPropertyColor color);
-mPropertyColor m_string_color_to_enum      (const char* colorStr);
-mPropertyName  m_string_to_property        (const char* property_str);
-mRailroadName  m_string_to_railroad        (const char* railroad_str);
-mUtilityName   m_string_to_utility         (const char* utility_str);
-const char*    m_property_enum_to_string   (mPropertyName property);
-const char*    m_railroad_enum_to_string   (mRailroadName mRailroad);
-const char*    m_utility_enum_to_string    (mUtilityName mUtility);
-void           m_show_props_owned          (mPlayer* currentPlayer);
-void           m_show_rails_owned          (mPlayer* currentPlayer);
-void           m_show_utils_owned          (mPlayer* currentPlayer);
+const char*    m_color_enum_to_string   (mPropertyColor color);
+mPropertyColor m_string_color_to_enum   (const char* colorStr);
+mPropertyName  m_string_to_property     (const char* property_str);
+mRailroadName  m_string_to_railroad     (const char* railroad_str);
+mUtilityName   m_string_to_utility      (const char* utility_str);
+const char*    m_property_enum_to_string(mPropertyName property);
+const char*    m_railroad_enum_to_string(mRailroadName mRailroad);
+const char*    m_utility_enum_to_string (mUtilityName mUtility);
+void           m_show_props_owned       (mPlayer* currentPlayer);
+void           m_show_rails_owned       (mPlayer* currentPlayer);
+void           m_show_utils_owned       (mPlayer* currentPlayer);
 
 // Property Rules & Validation
 bool          m_color_set_owned   (mGameData* mGame, mPlayer* mPlayerBuyingHouse, mPropertyColor eColorOfSet);

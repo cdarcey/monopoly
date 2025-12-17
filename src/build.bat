@@ -15,7 +15,7 @@
 @call vcvarsall.bat amd64 > nul
 
 @rem default compilation result
-@set PL_RESULT=[1m[92mSuccessful.[0m
+@set PL_RESULT=[1m[92mSuccessful.[0m
 
 @rem create main target output directoy
 @if not exist "../out" @mkdir "../out"
@@ -25,32 +25,31 @@
 
 @rem run compiler (and linker)
 @echo.
-@echo [1m[93m~~~~~~~~~~~~~~~~~~~~~~[0m
-@echo [1m[36mCompiling and Linking...[0m
+@echo [1m[93m~~~~~~~~~~~~~~~~~~~~~~[0m
+@echo [1m[36mCompiling and Linking...[0m
 
-@rem call compiler
-cl main.c m_game.c m_property.c m_board_cards.c m_init_game.c m_player.c -Fe"../out/monopoly.exe" -Fo"../out/" -Od -Zi -nologo -I"../dependencies" -MD -link -incremental:no 
-
+@rem call compiler with GLFW linking - CORRECTED PATH
+cl main.c m_game.c m_property.c m_board_cards.c m_init_game.c m_player.c -Fe"../out/monopoly.exe" -Fo"../out/" -Od -Zi -nologo -I"../dependencies" -MD -link -incremental:no "../dependencies/glfw3.lib" user32.lib gdi32.lib shell32.lib
 @rem check build status
 @set PL_BUILD_STATUS=%ERRORLEVEL%
 
 @rem failed
 @if %PL_BUILD_STATUS% NEQ 0 (
-    @echo [1m[91mCompilation Failed with error code[0m: %PL_BUILD_STATUS%
-    @set PL_RESULT=[1m[91mFailed.[0m
+    @echo [1m[91mCompilation Failed with error code[0m: %PL_BUILD_STATUS%
+    @set PL_RESULT=[1m[91mFailed.[0m
     goto Cleanupcpptest
 )
 
 @rem cleanup obj files
 :Cleanupcpptest
-    @echo [1m[36mCleaning...[0m
+    @echo [1m[36mCleaning...[0m
     @del "..\out\*.obj"  > nul 2> nul
 
 
 @rem print results
 @echo.
-@echo [36mResult: [0m %PL_RESULT%
-@echo [36m~~~~~~~~~~~~~~~~~~~~~~[0m
+@echo [36mResult: [0m %PL_RESULT%
+@echo [36m~~~~~~~~~~~~~~~~~~~~~~[0m
 
 @rem return CWD to previous CWD
 @popd

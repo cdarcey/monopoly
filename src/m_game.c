@@ -1,8 +1,378 @@
 
+
 #include "m_init_game.h"
 
 
-// ==================== CORE GAME FLOW ==================== //
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+
+// ==================== PHASE SYSTEM CORE ==================== //
+
+void 
+m_push_phase(mGameFlow* tFlow, fPhaseFunc tNewPhase, void* pNewData)
+{
+    if(tFlow->pfCurrentPhase) 
+    {
+        tFlow->apReturnStack[tFlow->iStackDepth] = tFlow->pfCurrentPhase;
+        tFlow->apReturnDataStack[tFlow->iStackDepth] = tFlow->pCurrentPhaseData;
+        tFlow->iStackDepth++;
+    }
+
+    tFlow->pfCurrentPhase = tNewPhase;
+    tFlow->pCurrentPhaseData = pNewData;
+    m_clear_input(tFlow);
+}
+
+void 
+m_pop_phase(mGameFlow* tFlow)
+{
+    if(tFlow->pCurrentPhaseData) 
+    {
+        free(tFlow->pCurrentPhaseData);
+        tFlow->pCurrentPhaseData = NULL;
+    }
+
+    if(tFlow->iStackDepth > 0) 
+    {
+        tFlow->iStackDepth--;
+        tFlow->pfCurrentPhase = tFlow->apReturnStack[tFlow->iStackDepth];
+        tFlow->pCurrentPhaseData = tFlow->apReturnDataStack[tFlow->iStackDepth];
+    } 
+    else 
+    {
+        tFlow->pfCurrentPhase = NULL;
+    }
+    
+    m_clear_input(tFlow);
+}
+
+void 
+m_run_current_phase(mGameFlow* tFlow, float fDeltaTime)
+{
+    if(tFlow->pfCurrentPhase) 
+    {
+        ePhaseResult result = tFlow->pfCurrentPhase(tFlow->pCurrentPhaseData, fDeltaTime, tFlow);
+
+        if(result == PHASE_COMPLETE) 
+        {
+            m_pop_phase(tFlow);
+        }
+    }
+}
+
+bool 
+m_check_input_int(int* pOut, void* tContextWindow)
+{
+    (GLFWwindow*)tContextWindow;
+    // Check for number keys 0-9
+    for(int i = GLFW_KEY_0; i <= GLFW_KEY_9; i++)
+    {
+        if(glfwGetKey(tContextWindow, i) == GLFW_PRESS)
+        {
+            *pOut = i - GLFW_KEY_0;
+            return true;
+        }
+    }
+    
+    // Check for numpad 0-9
+    for(int i = GLFW_KEY_KP_0; i <= GLFW_KEY_KP_9; i++)
+    {
+        if(glfwGetKey(tContextWindow, i) == GLFW_PRESS)
+        {
+            *pOut = i - GLFW_KEY_KP_0;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool 
+m_check_input_yes_no(bool* pOut, void* tContextWindow)
+{
+    (GLFWwindow*)tContextWindow;
+    if(glfwGetKey(tContextWindow, GLFW_KEY_Y) == GLFW_PRESS)
+    {
+        *pOut = true;
+        return true;
+    }
+    if(glfwGetKey(tContextWindow, GLFW_KEY_N) == GLFW_PRESS)
+    {
+        *pOut = false;
+        return true;
+    }
+    return false;
+}
+
+bool
+m_check_input_space(void* tContextWindow)
+{
+    (GLFWwindow*)tContextWindow;
+    return glfwGetKey(tContextWindow, GLFW_KEY_SPACE) == GLFW_PRESS;
+}
+
+bool
+m_check_input_enter(void* tContextWindow)
+{
+    (GLFWwindow*)tContextWindow;
+    return glfwGetKey(tContextWindow, GLFW_KEY_ENTER) == GLFW_PRESS;
+}
+
+void 
+m_clear_input(mGameFlow* tFlow)
+{
+    tFlow->bInputReceived = false;
+    tFlow->iInputValue = 0;
+    tFlow->szInputString[0] = '\0';
+}
+
+// ==================== PHASE IMPLEMENTATIONS ==================== //
+
+ePhaseResult 
+m_phase_pre_roll(void* pData, float fDeltaTime, mGameFlow* tGameFlow)
+{
+    mPreRollData* ptData = (mPreRollData*)pData;
+    (void)fDeltaTime;
+
+    if(ptData->pPlayer->bInJail)
+    {
+        // TODO: add once jail phase is built
+    }
+
+    // first call - print info
+    if(!ptData->bWaitingForRoll) 
+    {
+        m_show_player_status(ptData->pPlayer);
+        ptData->bWaitingForRoll = true;
+    }
+
+
+    // TODO: show menu
+    // TODO: input handling 
+
+    return PHASE_RUNNING;
+}
+
+ePhaseResult 
+m_phase_post_roll(void* pData, float fDeltaTime, mGameFlow* tGameFlow)
+{
+    mPostRollData* ptData = (mPostRollData*)pData;
+    mPlayer* current_player = ptData->pPlayer;
+    (void)fDeltaTime;
+
+    eBoardSquareType current_square = m_get_square_type(current_player->uPosition);
+
+    switch(current_square) 
+    {
+        case GO_SQUARE_TYPE:
+        {
+            if(tGameFlow->pGameData->uGameRoundCount < 1)
+            {
+                DebugBreak();
+                return PHASE_RUNNING;
+            }
+            
+            current_player->uMoney += 200; // ubi
+            printf("Landed on GO! Collected $200\n");
+            
+            // TODO: show menu
+            // TODO: get input
+            return PHASE_COMPLETE;
+        }
+        
+        case PROPERTY_SQUARE_TYPE:
+        {
+            printf("Landed on a property!\n");
+            mPropertyName current_property_name = m_property_landed_on(current_player->uPosition);
+            mProperty*    current_property      = &tGameFlow->pGameData->mGameProperties[current_property_name];
+
+            if(m_is_property_owned(current_property))
+            {
+                if(m_is_property_owner(current_player, current_property))
+                {
+                    printf("You own this property.\n");
+                    // TODO: show menu
+                    // TODO: get input
+                    return PHASE_RUNNING;
+                }
+                else
+                {
+                    // Pay rent to owner
+                    bool bSetOwned = m_color_set_owned(tGameFlow->pGameData, current_player, current_property->eColor);
+                    m_pay_rent_property(tGameFlow->pGameData->mGamePlayers[current_property->eOwner], current_player, current_property, bSetOwned);
+                    
+                    // TODO: Check if can afford, spawn emergency payment if not
+                    return PHASE_RUNNING;
+                }
+            }
+            else
+            {
+                // Property unowned
+                // TODO: show menu (buy/pass)
+                // if player does not buy then enter auction
+                // For now, just go to auction
+                // m_enter_auction_prop(tGameFlow->pGameData, current_property);
+                return PHASE_RUNNING;
+            }
+        }
+        
+        case RAILROAD_SQUARE_TYPE:
+        {
+            printf("Landed on a railroad!\n");
+            mRailroadName current_railroad_name = m_railroad_landed_on(current_player->uPosition);
+            mRailroad*    current_railroad      = &tGameFlow->pGameData->mGameRailroads[current_railroad_name];
+
+            if(m_is_railroad_owned(current_railroad))
+            {
+                if(m_is_railroad_owner(current_player, current_railroad))
+                {
+                    printf("You own this railroad.\n");
+                    // TODO: show menu
+                    // TODO: get input
+                    return PHASE_RUNNING;
+                }
+                else
+                {
+                    // Pay rent to owner
+                    m_pay_rent_railroad(tGameFlow->pGameData->mGamePlayers[current_railroad->eOwner], current_player, current_railroad);
+                    
+                    // TODO: handle emergency/ forced payments 
+
+                    return PHASE_RUNNING;
+                }
+            }
+            else
+            {
+                // Railroad unowned
+                // TODO: show menu 
+                // if player does not buy then enter auction
+                // m_enter_auction_rail(tGameFlow->pGameData, current_railroad);
+                return PHASE_RUNNING;
+            }
+        }
+        
+        case UTILITY_SQUARE_TYPE:
+        {
+            printf("Landed on a utility!\n");
+            mUtilityName current_utility_name = m_utility_landed_on(current_player->uPosition);
+            mUtility*    current_utility      = &tGameFlow->pGameData->mGameUtilities[current_utility_name];
+
+            if(m_is_utility_owned(current_utility))
+            {
+                if(m_is_utility_owner(current_player, current_utility))
+                {
+                    printf("You own this utility.\n");
+                    // TODO: show menu
+                    return PHASE_RUNNING;
+                }
+                else
+                {
+                    // Pay rent to owner
+                    m_pay_rent_utility(tGameFlow->pGameData->mGamePlayers[current_utility->eOwner], current_player, current_utility, tGameFlow->pGameData->mGameDice);
+                    
+                    // TODO: Check if can afford, spawn emergency payment if not
+                    return PHASE_RUNNING;
+                }
+            }
+            else
+            {
+                // Utility unowned
+                // TODO: show menu 
+                // if player does not buy then enter auction
+                // For now, just go to auction
+                // m_enter_auction_util(tGameFlow->pGameData, current_utility);
+                return PHASE_RUNNING;
+            }
+        }
+        
+        case INCOME_TAX_SQUARE_TYPE:
+        {
+            printf("Income Tax: $200\n");
+            
+            if(!m_can_player_afford(current_player, 200))
+            {
+                if(!m_attempt_emergency_payment(tGameFlow->pGameData, current_player, 200))
+                {
+                    // TODO: m_trigger_bankruptcy(tGameFlow->pGameData, tGameFlow->pGameData->uCurrentPlayer, false, NO_PLAYER);
+                    return PHASE_COMPLETE;
+                }
+            }
+            else
+            {
+                current_player->uMoney -= 200;
+            }
+            
+            return PHASE_COMPLETE;
+        }
+        
+        case LUXURY_TAX_SQUARE_TYPE:
+        {
+            printf("Luxury Tax: $100\n");
+            
+            if (!m_can_player_afford(current_player, 100))
+            {
+                if (!m_attempt_emergency_payment(tGameFlow->pGameData, current_player, 100))
+                {
+                    // TODO: m_trigger_bankruptcy(tGameFlow->pGameData, tGameFlow->pGameData->uCurrentPlayer, false, NO_PLAYER);
+                    return PHASE_COMPLETE;
+                }
+            }
+            else
+            {
+                current_player->uMoney -= 100;
+            }
+            
+            return PHASE_COMPLETE;
+        }
+        
+        case CHANCE_CARD_SQUARE_TYPE:
+        {
+            printf("Drew a Chance card!\n");
+            m_execute_chance_card(tGameFlow->pGameData);
+            return PHASE_COMPLETE;
+        }
+        
+        case COMMUNITY_CHEST_SQUARE_TYPE:
+        {
+            printf("Drew a Community Chest card!\n");
+            m_execute_community_chest_card(tGameFlow->pGameData);
+            return PHASE_COMPLETE;
+        }
+        
+        case FREE_PARKING_SQUARE_TYPE:
+        {
+            printf("Free Parking - Just resting!\n");
+            return PHASE_COMPLETE;
+        }
+        
+        case JAIL_SQUARE_TYPE:
+        {
+            if(!current_player->bInJail)
+            {
+                printf("Just visiting jail.\n");
+            }
+            return PHASE_COMPLETE;
+        }
+        
+        case GO_TO_JAIL_SQUARE_TYPE:
+        {
+            printf("Go to Jail!\n");
+            m_move_player_to(current_player, JAIL_SQUARE);
+            current_player->bInJail = true;
+            return PHASE_COMPLETE;
+        }
+        
+        default:
+        {
+            printf("ERROR: Unknown square type!\n");
+            return PHASE_COMPLETE;
+        }
+    }
+}
+
+// ==================== CORE GAME LOGIC ==================== //
+
 void
 m_next_player_turn(mGameData* mGame)
 {
@@ -28,16 +398,15 @@ m_next_player_turn(mGameData* mGame)
             mGame->uGameRoundCount++;
         }
 
-        if (mGame->uCurrentPlayer >= PLAYER_PIECE_TOTAL) 
+        if (mGame->uCurrentPlayer >= PLAYER_PIECE_TOTAL) // PLAYER_PIECE_TOTAL is total max players game supports
         {
-            mGame->uCurrentPlayer = 0; // Reset to prevent crashes
+            mGame->uCurrentPlayer = 0;
             return;
         }
 
         // Check for valid player
         if (!mGame->mGamePlayers[mGame->uCurrentPlayer]->bBankrupt) 
         {
-            mGame->mCurrentState = PHASE_PRE_ROLL;
             return; // Found valid player
         }
 
@@ -53,7 +422,7 @@ m_game_over_check(mGameData* mGame)
 {
     if(!mGame)
     {
-        __debugbreak();
+        DebugBreak();
         return;
     }
 
@@ -65,7 +434,6 @@ m_game_over_check(mGameData* mGame)
     {
         mGame->bRunning = false;
     }
-
 }
 
 void
@@ -75,24 +443,6 @@ m_roll_dice(mDice* game_dice)
     game_dice->dice_two = (rand() % 6) + 1;
 }
 
-
-// ==================== JAIL MECHANICS ==================== //
-void
-m_jail_subphase(mGameData* mGame)
-{
-    mPlayer* current_player = mGame->mGamePlayers[mGame->uCurrentPlayer];
-
-    // Forced release after 3 turns safety check in case first check is missed somehow
-    if(current_player->uJailTurns >= 3) {
-        m_forced_release(mGame);
-        return;
-    }
-
-    printf("\n=== Jail (Turn %d/3) ===\n", current_player->uJailTurns + 1);
-    
-    // TODO: Non-blocking jail choice system goes here
-}
-
 bool
 m_attempt_jail_escape(mGameData* mGame)
 {
@@ -100,14 +450,13 @@ m_attempt_jail_escape(mGameData* mGame)
     if(mGame->mGameDice->dice_one == mGame->mGameDice->dice_two)
     {
         current_player->bInJail = false;
+        current_player->uJailTurns = 0;
         m_move_player_to(current_player, JAIL_SQUARE);
-        mGame->mCurrentState = PHASE_END_TURN;
         return true;
     }
     else
     {
-        mGame->mCurrentState = PHASE_END_TURN;
-        printf("attempt to escape failed\n");
+        printf("Attempt to escape failed\n");
         return false;
     }
 }
@@ -119,216 +468,17 @@ m_use_jail_free_card(mPlayer* mPlayerInJail)
     {
         mPlayerInJail->bGetOutOfJailFreeCard = false;
         mPlayerInJail->bInJail = false;
+        mPlayerInJail->uJailTurns = 0;
         mPlayerInJail->uPosition = JAIL_SQUARE;
         return true;
     }
     else 
     {
-        printf("you do not have a get out of jail free card\n");
+        printf("You do not have a get out of jail free card\n");
         return false;
     }
 }
 
-
-// ==================== PRE-ROLL ACTIONS ==================== //
-void
-m_pre_roll_phase(mGameData* mGame)
-{
-    if (!mGame || mGame->mCurrentState != PHASE_PRE_ROLL) 
-    {
-        __debugbreak();
-        return;
-    }
-
-    mPlayer* current_player = mGame->mGamePlayers[mGame->uCurrentPlayer];
-
-    if (current_player->bInJail)
-    {
-        current_player->uJailTurns++;
-        if (current_player->uJailTurns >= 3)
-        {
-            m_forced_release(mGame);
-        } 
-        else 
-        {
-            m_jail_subphase(mGame);
-        }
-        m_next_player_turn(mGame);
-        return; // turn ends even if successfully getting out of jail
-    }
-
-    // TODO: Non-blocking pre-roll menu system goes here
-}
-
-
-// ==================== POST-ROLL ACTIONS ==================== //
-void
-m_phase_post_roll(mGameData* mGame)
-{
-    mPlayer* current_player = mGame->mGamePlayers[mGame->uCurrentPlayer];
-    if(!mGame)
-    {
-        DebugBreak();
-        return;
-    }
-
-    mBoardSquareType current_square = m_get_square_type(mGame->mGamePlayers[mGame->uCurrentPlayer]->uPosition);
-
-    switch(current_square) 
-    {
-        case GO_SQUARE_TYPE:
-        {
-            if(mGame->uGameRoundCount < 1)
-            {
-                DebugBreak();
-                return;
-            }
-            else
-            {
-                current_player->uMoney += UNIVERSAL_BASIC_INCOME;
-                mGame->mCurrentState = PHASE_END_TURN;
-                return;
-            }
-            break;
-        }
-        case PROPERTY_SQUARE_TYPE:
-        {
-            mPropertyName current_property_name = m_property_landed_on(current_player->uPosition);
-            mProperty* current_property = &mGame->mGameProperties[current_property_name];
-            if(m_is_property_owned(current_property))
-            {
-                if(m_is_property_owner(current_player, current_property))
-                {
-                    return;
-                }
-                else if(!m_is_property_owner(current_player, current_property))
-                {
-                    bool bSetOwned = m_color_set_owned(mGame, current_player, current_property->eColor);
-                    m_pay_rent_property(mGame->mGamePlayers[current_property->eOwner], current_player, current_property, bSetOwned);
-                }
-            }
-            // TODO: Non-blocking property purchase/auction system
-            break;
-        }
-        case RAILROAD_SQUARE_TYPE:
-        {
-            mRailroadName current_railroad_name = m_property_landed_on(current_player->uPosition);
-            mRailroad* current_railroad = &mGame->mGameRailroads[current_railroad_name];
-            if(m_is_railroad_owned(current_railroad))
-            {
-                if(m_is_railroad_owner(current_player, current_railroad))
-                {
-                    return;
-                }
-                else if(!m_is_railroad_owner)
-                {
-                    m_pay_rent_railroad(mGame->mGamePlayers[current_railroad->eOwner], current_player, current_railroad);
-                }
-            }
-            // TODO: Non-blocking railroad purchase/auction system
-            break;
-        }
-        case UTILITY_SQUARE_TYPE:
-        {
-            mUtilityName current_utility_name = m_utility_landed_on(current_player->uPosition);
-            mUtility* current_utility = &mGame->mGameUtilities[current_utility_name];
-            if(m_is_utility_owned(current_utility))
-            {
-                if(m_is_utility_owner(current_player, current_utility))
-                {
-                    return;
-                }
-                else if(!m_is_utility_owner)
-                {
-                    m_pay_rent_utility(mGame->mGamePlayers[current_utility->eOwner], current_player, current_utility, mGame->mGameDice);
-                }
-            }
-            // TODO: Non-blocking utility purchase/auction system
-            break;
-        }
-        case INCOME_TAX_SQUARE_TYPE:
-        {
-            if (!m_can_player_afford(current_player, INCOME_TAX))
-            {
-                if (!m_attempt_emergency_payment(mGame, current_player, INCOME_TAX))
-                {
-                    m_trigger_bankruptcy(mGame, mGame->uCurrentPlayer, false, NO_PLAYER);
-                    return; 
-                }
-            }
-            else
-            {
-                current_player->uMoney -= INCOME_TAX;
-            }
-            // TODO: Non-blocking post-roll menu
-            break;
-        }
-        case LUXURY_TAX_SQUARE_TYPE:
-        {
-            if (!m_can_player_afford(current_player, LUXURY_TAX))
-            {
-                if (!m_attempt_emergency_payment(mGame, current_player, LUXURY_TAX)) 
-                {
-                    m_trigger_bankruptcy(mGame, mGame->uCurrentPlayer, false, NO_PLAYER);
-                    return; 
-                }
-            }
-            else
-            {
-                current_player->uMoney -= LUXURY_TAX;
-            }
-            // TODO: Non-blocking post-roll menu
-            break;
-        }
-        case CHANCE_CARD_SQUARE_TYPE:
-        {
-            m_execute_chance_card(mGame);
-            // TODO: Non-blocking post-roll menu
-            break;
-        }
-        case COMMUNITY_CHEST_SQUARE_TYPE:
-        {
-            m_execute_community_chest_card(mGame);
-            // TODO: Non-blocking post-roll menu
-            break;
-        }
-        case FREE_PARKING_SQUARE_TYPE:
-        {
-            // No action needed 
-            // TODO: Non-blocking post-roll menu
-            break;
-        }
-        case JAIL_SQUARE_TYPE:
-        {
-            // Either just visiting or handle jail time
-            if(!current_player->bInJail)
-            {
-                // TODO: Non-blocking post-roll menu
-            }
-            else
-            {
-                return;
-            }
-           break;
-        }
-        case GO_TO_JAIL_SQUARE_TYPE:
-        {
-            m_move_player_to(current_player, JAIL_SQUARE); // end turn
-            current_player->bInJail = true;
-            m_next_player_turn(mGame);
-            mGame->mCurrentState = PHASE_PRE_ROLL;
-            break;
-        }
-        default:
-        {
-            // Error handling
-            break;
-        }
-    }
-}
-
-
-// ==================== FINANCIAL MANAGEMENT ==================== //
 bool
 m_can_player_afford(mPlayer* mCurrentPlayer, uint32_t uExpense)
 {
@@ -342,90 +492,39 @@ m_can_player_afford(mPlayer* mCurrentPlayer, uint32_t uExpense)
 bool
 m_attempt_emergency_payment(mGameData* mGame, mPlayer* currentPlayer, uint32_t uAmount) 
 {
-    if (!mGame || !currentPlayer || uAmount == 0) return false;
+    if (!mGame || !currentPlayer || uAmount == 0) 
+        return false;
 
     uint32_t uMoneyNeeded = currentPlayer->uMoney + uAmount;
 
-    // sell buildings (hotels -> houses first)
-    for (uint8_t i = 0; i < PROPERTY_TOTAL; i++) 
+    // Sell buildings (hotels -> houses first)
+    // TODO: This should probably be a phase where player chooses
+    for (uint8_t i = 0; i < PROPERTY_TOTAL; i++)  // TODO: Replace 28 with PROPERTY_TOTAL
     {
-        if (mGame->mGameProperties[i].eOwner != currentPlayer->ePlayerTurnPosition) continue;
+        // TODO: Need property access - this assumes mGame->mGameProperties exists
+        // if (mGame->mGameProperties[i].eOwner != currentPlayer->ePlayerTurnPosition) 
+        //     continue;
 
-        // TODO: need to give player the option on which buildings to sell
-        while (mGame->mGameProperties[i].uNumberOfHotels > 0 && currentPlayer->uMoney < uMoneyNeeded) 
-        {
-            currentPlayer->uMoney += (mGame->mGameProperties[i].uHouseCost * 4) / 2; // value of hotel when sold
-            mGame->mGameProperties[i].uNumberOfHotels--;
-        }
+        // while (mGame->mGameProperties[i].uNumberOfHotels > 0 && currentPlayer->uMoney < uMoneyNeeded) 
+        // {
+        //     currentPlayer->uMoney += (mGame->mGameProperties[i].uHouseCost * 4) / 2;
+        //     mGame->mGameProperties[i].uNumberOfHotels--;
+        // }
 
-        while (mGame->mGameProperties[i].uNumberOfHouses > 0 && currentPlayer->uMoney < uMoneyNeeded) 
-        {
-            currentPlayer->uMoney += mGame->mGameProperties[i].uHouseCost / 2; // house sell for half cost to build
-            mGame->mGameProperties[i].uNumberOfHouses--;
-        }
+        // while (mGame->mGameProperties[i].uNumberOfHouses > 0 && currentPlayer->uMoney < uMoneyNeeded) 
+        // {
+        //     currentPlayer->uMoney += mGame->mGameProperties[i].uHouseCost / 2;
+        //     mGame->mGameProperties[i].uNumberOfHouses--;
+        // }
     }
 
-    // mortgage properties if still short
-    for (uint8_t i = 0; i < PROPERTY_TOTAL && currentPlayer->uMoney < uMoneyNeeded; i++) 
-    {
-        if (mGame->mGameProperties[i].eOwner != currentPlayer->ePlayerTurnPosition || mGame->mGameProperties[i].bMortgaged) continue;
-
-        currentPlayer->uMoney += mGame->mGameProperties[i].uPrice / 2;
-        mGame->mGameProperties[i].bMortgaged = true;
-    }
+    // Mortgage properties if still short
+    // TODO: Similar implementation needed
 
     return (currentPlayer->uMoney >= uMoneyNeeded);
 }
 
-
-// ==================== FORCED ACTIONS ==================== //
-void
-m_forced_release(mGameData* mGame) 
-{
-    mPlayer* current_player = mGame->mGamePlayers[mGame->uCurrentPlayer];
-
-    // card is lost if not used by this point
-    if (current_player->bGetOutOfJailFreeCard)
-    {
-        current_player->bGetOutOfJailFreeCard = false;
-    }
-
-    if (m_can_player_afford(current_player, mGame->uJailFine) == false)
-    {
-        if (m_attempt_emergency_payment(mGame, current_player, mGame->uJailFine) == false)
-        {
-            m_trigger_bankruptcy(mGame, mGame->uCurrentPlayer, false, NO_PLAYER);
-            return;
-        }
-    }
-
-    current_player->uMoney -= mGame->uJailFine;
-    // TODO: do we want fines to go to free parking for player collection
-
-    current_player->uJailTurns = 0;
-    current_player->bInJail = false;
-    m_move_player_to(current_player, JAIL_SQUARE); 
-
-}
-
-bool
-m_player_has_forced_actions(mGameData* mGame)
-{
-    // TODO: handle logic here
-    mGame->uCurrentPlayer += 0; // dummy codes for warnings 
-    return true;
-}
-
-void
-m_handle_emergency_actions(mGameData* mGame)
-{
-    // TODO: handle logic here
-    mGame->uCurrentPlayer += 0; //dummy code for warnings
-}
-
-
-// ==================== HELPERS ==================== //
-mBoardSquareType 
+eBoardSquareType 
 m_get_square_type(uint32_t uPlayerPosition)
 {
     switch(uPlayerPosition) 
@@ -537,4 +636,45 @@ m_get_empty_util_owned_slot(mPlayer* mPlayer)
         }
     }
     return uUtilOwnedSlot;
+}
+
+void
+m_forced_release(mGameData* mGame) 
+{
+    mPlayer* current_player = mGame->mGamePlayers[mGame->uCurrentPlayer];
+
+    // Card is lost if not used by this point
+    if (current_player->bGetOutOfJailFreeCard)
+    {
+        current_player->bGetOutOfJailFreeCard = false;
+    }
+    
+    if (!m_can_player_afford(current_player, mGame->uJailFine))
+    {
+        if (!m_attempt_emergency_payment(mGame, current_player, mGame->uJailFine))
+        {
+            m_trigger_bankruptcy(mGame, mGame->uCurrentPlayer, false, NO_PLAYER);
+            return;
+        }
+    }
+
+    current_player->uMoney    -= mGame->uJailFine;
+    current_player->uJailTurns = 0;
+    current_player->bInJail    = false;
+    m_move_player_to(current_player, JAIL_SQUARE);
+}
+
+bool
+m_player_has_forced_actions(mGameData* mGame)
+{
+    // TODO: Implement logic
+    (void)mGame;
+    return false;
+}
+
+void
+m_handle_emergency_actions(mGameData* mGame)
+{
+    // TODO: Implement logic
+    (void)mGame;
 }

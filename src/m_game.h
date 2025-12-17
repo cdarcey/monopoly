@@ -1,88 +1,89 @@
-
-
 #ifndef M_GAME_H
 #define M_GAME_H
 
+#include <stdint.h>
+#include <stdbool.h>
 
+// Forward declarations
 typedef struct _mGameData mGameData;
 typedef struct _mDice mDice;
 typedef struct _mPlayer mPlayer;
 typedef struct _mProperty mProperty;
+typedef struct _mRailroad mRailroad;
+typedef struct _mUtility mUtility;
 
+// ==================== PHASE SYSTEM ==================== //
 
-// ==================== ENUMS ==================== //
-typedef enum _mGameState 
+typedef enum _ePhaseResult
 {
-    // meta states
+    PHASE_RUNNING,
+    PHASE_COMPLETE
+} ePhaseResult;
+
+// Phase function pointer type
+typedef ePhaseResult (*fPhaseFunc)(void* pData, float fDeltaTime, struct _mGameFlow* pFlow);
+
+// Phase data structures
+typedef struct _mPreRollData
+{
+    mPlayer* pPlayer;
+    bool     bWaitingForRoll;
+} mPreRollData;
+
+typedef struct _mPostRollData
+{
+    mPlayer* pPlayer;
+    bool     bFirstCall;
+} mPostRollData;
+
+// Game flow system
+typedef struct _mGameFlow 
+{
+    fPhaseFunc pfCurrentPhase;
+    void*      pCurrentPhaseData;
+    
+    // Phase stack for nested operations
+    fPhaseFunc apReturnStack[16];
+    void* apReturnDataStack[16];
+    int iStackDepth;
+    
+    // Game data & glfw window 
+    mGameData* pGameData;
+    
+    // Input system
+    void* pInputWindow; // void for now TODO: properly track when graphics are added
+    bool bInputReceived;
+    int  iInputValue;
+    char szInputString[256];
+} mGameFlow;
+
+// ==================== PHASE SYSTEM FUNCTIONS ==================== //
+
+// Core phase management
+void m_push_phase       (mGameFlow* tFlow, fPhaseFunc tNewPhase, void* pNewData);
+void m_pop_phase        (mGameFlow* tFlow);
+void m_run_current_phase(mGameFlow* tFlow, float fDeltaTime);
+
+// Input helpers TODO: replace with proper input handling once graphics are decided on
+bool m_check_input_int   (int* pOut, void* tContextWindow);
+bool m_check_input_yes_no(bool* pOut, void* tContextWindow);
+bool m_check_input_space (void* tContextWindow);
+bool m_check_input_enter (void* tContextWindow);
+void m_clear_input       (mGameFlow* tFlow);
+
+// Phase functions
+ePhaseResult m_phase_pre_roll (void* pData, float fDeltaTime, mGameFlow* tGameFlow);
+ePhaseResult m_phase_post_roll(void* pData, float fDeltaTime, mGameFlow* tGameFlow);
+
+// ==================== GAME STATE ENUMS ==================== //
+
+typedef enum _eGameState{
     GAME_STARTUP,
-    GAME_OVER,
+    GAME_RUNNING,
+    GAME_OVER
+} eGameState;
 
-    // turn phases
-    PHASE_PRE_ROLL,
-    PHASE_POST_ROLL,
-    PHASE_END_TURN,
-
-    // special states
-    AUCTION_IN_PROGRESS,
-    TRADE_NEGOTIATION,
-
-    // emergency payment states
-    OWE_PLAYER,
-    OWE_BANK
-
-} mGameState;
-
-typedef enum _mJailAction
-{
-    // jail choices
-    USE_JAIL_CARD,
-    PAY_JAIL_FINE,
-    ROLL_FOR_DOUBLES,
-    MAX_JAIL_OPTIONS
-} mJailAction;
-
-typedef enum _mActions
-{
-    // can do at any time
-    VIEW_STATUS,
-    VIEW_PROPERTIES,
-
-    PROPOSE_TRADE,
-
-    // property managment
-    PROPERTY_MANAGMENT,
-    SELL_HOUSES,
-    BUY_HOUSES,
-    SELL_HOTELS,
-    BUY_HOTELS,
-    MORTGAGE_PROPERTY,
-    UNMORTGAGE_PROPERTY,
-    CANCEL,
-
-    // pre roll actions
-    ROLL_DICE,
-
-    // post roll
-    BUY_PROPERTY,
-    BUY_RAILROAD,
-    BUY_UTILITY,
-    BUY_SQUARE,
-    END_TURN,
-
-    // forced actions
-    FORCED_MORTGAGE_PROPERTIES,
-    FORCED_SELL_HOUSES,
-    FORCED_DECLARE_BANKRUPTCY,
-    MAX_FORCED_ACTIONS,
-
-    // trade actions
-    TRADE_PROPERTIES, 
-
-    MAX_ACTIONS
-} mActions;
-
-
-typedef enum _mBoardSquareType 
+typedef enum _eBoardSquareType
 {
     GO_SQUARE_TYPE,
     PROPERTY_SQUARE_TYPE,
@@ -95,75 +96,31 @@ typedef enum _mBoardSquareType
     FREE_PARKING_SQUARE_TYPE,
     JAIL_SQUARE_TYPE,
     GO_TO_JAIL_SQUARE_TYPE
-} mBoardSquareType;
+} eBoardSquareType;
 
-typedef struct _mTradeOffer
-{
-    uint32_t      uCash;
-    uint8_t       uPropsInOffer;
-    uint8_t       uRailsInOffer;
-    uint8_t       uUtilsInOffer;
-    mPropertyName mPropsToTrade[PROPERTY_TOTAL];
-    mUtilityName  mUtilsToTrade[UTILITY_TOTAL];
-    mRailroadName mRailsToTrade[RAILROAD_TOTAL];
+// ==================== CORE GAME LOGIC (KEEP THESE) ==================== //
 
-} mTradeOffer;
-
-// ==================== CORE GAME FLOW ==================== //
-void m_player_turn     (mGameData* mGame);
 void m_next_player_turn(mGameData* mGame);
 void m_game_over_check (mGameData* mGame);
 void m_roll_dice       (mDice* game_dice);
 
-// ==================== JAIL MECHANICS ==================== //
-void        m_jail_subphase         (mGameData* mGame);
-bool        m_attempt_jail_escape   (mGameData* mGame);
-bool        m_use_jail_free_card    (mPlayer* mPlayerInJail);
-mJailAction m_get_player_jail_choice(void);
+// Jail helpers
+bool m_attempt_jail_escape(mGameData* mGame);
+bool m_use_jail_free_card (mPlayer* mPlayerInJail);
 
-// ==================== PRE-ROLL ACTIONS ==================== //
-void     m_pre_roll_phase            (mGameData* mGame);
-void     m_show_pre_roll_menu        (mGameData* mGame);
-mActions m_get_player_pre_roll_choice(void);
-
-// ==================== POST-ROLL ACTIONS ==================== //
-void     m_phase_post_roll              (mGameData* mGame);
-void     m_show_post_roll_menu          (mGameData* mGame);
-mActions m_get_player_post_roll_choice  (void);
-void     m_show_building_managment_menu (mGameData* mGame);
-mActions m_get_building_managment_choice(void);
-
-// ==================== SPECIAL PHASES ==================== //
-void m_enter_trade_phase(mGameData* mGame);
-void m_enter_auction_prop(mGameData* mGame, mProperty* mPropForAuction);
-void m_enter_auction_rail(mGameData* mGame, mRailroad* mRailForAuction);
-void m_enter_auction_util(mGameData* mGame, mUtility* mUtilForAuction);
-bool m_exit_auction     (mGameData* mGame);
-
-// ==================== END TURN ACTIONS ==================== //
-
-// ==================== FINANCIAL MANAGEMENT ==================== //
+// Financial helpers
 bool m_can_player_afford        (mPlayer* mCurrentPlayer, uint32_t uExpense);
-bool m_attempt_emergency_payment(mGameData* mGame, mPlayer* currentPlayer, uint32_t uAmount);
+bool m_attempt_emergency_payment(mGameData* mGame, mPlayer* mCcurrentPlayer, uint32_t uAmount);
 
-// ==================== FORCED ACTIONS ==================== //
+// Helpers
+eBoardSquareType m_get_square_type          (uint32_t uPlayerPosition);
+uint8_t          m_get_empty_prop_owned_slot(mPlayer* mPlayer);
+uint8_t          m_get_empty_rail_owned_slot(mPlayer* mPlayer);
+uint8_t          m_get_empty_util_owned_slot(mPlayer* mPlayer);
+
+// Forced actions
 void m_forced_release           (mGameData* mGame);
 bool m_player_has_forced_actions(mGameData* mGame);
 void m_handle_emergency_actions (mGameData* mGame);
 
-
-// ==================== HELPERS ==================== //
-mBoardSquareType m_get_square_type(uint32_t uPlayerPosition);
-
-mActions m_show_trade_menu  (mGameData* mGame);
-void     m_propose_trade    (mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartener);
-mPlayer* m_get_trade_partner(mGameData* mGame);
-void     m_add_to_offer     (mGameData* mGame, mPlayer* mPlayer, mTradeOffer* mOffer); 
-void     m_add_to_request   (mPlayer* partner, mTradeOffer* request);
-bool     m_review_trade     (mGameData* mGame, mPlayer* mCurrentPlayer, mPlayer* mTradePartner, mTradeOffer* mOffer, mTradeOffer* mRequest);
-void     m_execute_trade    (mGameData* mGame, mPlayer* mPlayerFrom, mPlayer* mPlayerTo, mTradeOffer* mOffer, mTradeOffer* mRequest);
-uint8_t  m_get_empty_prop_owned_slot(mPlayer* mPlayer);
-uint8_t  m_get_empty_rail_owned_slot(mPlayer* mPlayer);
-uint8_t  m_get_empty_util_owned_slot(mPlayer* mPlayer);
-
-#endif
+#endif // M_GAME_H
