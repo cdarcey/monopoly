@@ -96,7 +96,7 @@ int main(void)
     }
 
     // cleanup
-    m_free_game_data(pGame);
+    m_free_game_data(pGame); // TODO: make sure all mallocs are being free in here by games end
 
     return 0;
 }
