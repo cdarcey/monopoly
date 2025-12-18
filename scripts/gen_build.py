@@ -137,10 +137,10 @@ with pl.project("game"):
     # [SECTION] app
     #-----------------------------------------------------------------------------
 
-    with pl.target("template_app", pl.TargetType.DYNAMIC_LIBRARY, True):
+    with pl.target("monopoly", pl.TargetType.DYNAMIC_LIBRARY, True):
 
         pl.add_source_files("../src/app.c")
-        pl.set_output_binary("template_app")
+        pl.set_output_binary("monopoly")
 
         # default config
         with pl.configuration("debug"):

@@ -284,7 +284,7 @@ render_board_squares(plAppData* ptAppData)
     const uint32_t uWhite = PL_COLOR_32(1.0f, 1.0f, 1.0f, 1.0f);
     const uint32_t uBlack = PL_COLOR_32(0.0f, 0.0f, 0.0f, 1.0f);
 
-    // bottom row (0-10)
+    // bottom row (0-10)`
     for(uint32_t i = 0; i <= 10; i++)
     {
         float fX = fBoardX + fBoardSize - (i * fSquareSize);

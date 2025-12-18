@@ -39,7 +39,7 @@
 @call vcvarsall.bat amd64 > nul
 
 :: default compilation result
-@set PL_RESULT=[1m[92mSuccessful.[0m
+@set PL_RESULT=[1m[92mSuccessful.[0m
 
 :: default configuration
 @set PL_CONFIG=debug
@@ -71,7 +71,7 @@
 
 :: let user know if hot reloading
 @if %PL_HOT_RELOAD_STATUS% equ 1 (
-    @echo [1m[97m[41m--------[42m HOT RELOADING [41m--------[0m
+    @echo [1m[97m[41m--------[42m HOT RELOADING [41m--------[0m
 )
 
 :: cleanup binaries if not hot reloading
@@ -79,8 +79,8 @@
 
     @if exist "../out/pl_example_ext.dll" del "..\out\pl_example_ext.dll"
     @if exist "../out/pl_example_ext_*.pdb" del "..\out\pl_example_ext_*.pdb"
-    @if exist "../out/template_app.dll" del "..\out\template_app.dll"
-    @if exist "../out/template_app_*.pdb" del "..\out\template_app_*.pdb"
+    @if exist "../out/monopoly.dll" del "..\out\monopoly.dll"
+    @if exist "../out/monopoly_*.pdb" del "..\out\monopoly_*.pdb"
 
 )
 
@@ -95,9 +95,9 @@
 
 :: run compiler (and linker)
 @echo.
-@echo [1m[93mStep: pl_example_ext[0m
-@echo [1m[93m~~~~~~~~~~~~~~~~~~~~~~[0m
-@echo [1m[36mCompiling and Linking...[0m
+@echo [1m[93mStep: pl_example_ext[0m
+@echo [1m[93m~~~~~~~~~~~~~~~~~~~~~~[0m
+@echo [1m[36mCompiling and Linking...[0m
 cl %PL_INCLUDE_DIRECTORIES% %PL_DEFINES% %PL_COMPILER_FLAGS% %PL_SOURCES% -Fe"../out/pl_example_ext.dll" -Fo"../out/" -LD -link %PL_LINKER_FLAGS% -PDB:"../out/pl_example_ext_%random%.pdb" %PL_LINK_DIRECTORIES%
 
 :: check build status
@@ -105,53 +105,52 @@ cl %PL_INCLUDE_DIRECTORIES% %PL_DEFINES% %PL_COMPILER_FLAGS% %PL_SOURCES% -Fe"..
 
 :: failed
 @if %PL_BUILD_STATUS% NEQ 0 (
-    @echo [1m[91mCompilation Failed with error code[0m: %PL_BUILD_STATUS%
-    @set PL_RESULT=[1m[91mFailed.[0m
+    @echo [1m[91mCompilation Failed with error code[0m: %PL_BUILD_STATUS%
+    @set PL_RESULT=[1m[91mFailed.[0m
     goto Cleanupdebug
 )
 
 :: print results
-@echo [36mResult: [0m %PL_RESULT%
-@echo [36m~~~~~~~~~~~~~~~~~~~~~~[0m
+@echo [36mResult: [0m %PL_RESULT%
+@echo [36m~~~~~~~~~~~~~~~~~~~~~~[0m
 
 @del "..\out\*.obj"  > nul 2> nul
 
-::~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ template_app | debug ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+::~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ monopoly | debug ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 @set PL_DEFINES=-D_DEBUG -DPL_CONFIG_DEBUG 
 @set PL_INCLUDE_DIRECTORIES=-I"../src" -I"../extensions" -I"../../pilotlight/src" -I"../../pilotlight/libs" -I"../../pilotlight/extensions" -I"../../pilotlight/dependencies/stb" 
 @set PL_LINK_DIRECTORIES=-LIBPATH:"../out" 
 @set PL_COMPILER_FLAGS=-Zc:preprocessor -nologo -std:c11 -W4 -WX -wd4201 -wd4100 -wd4996 -wd4505 -wd4189 -wd5105 -wd4115 -permissive- -Od -MDd -Zi 
 @set PL_LINKER_FLAGS=-noimplib -noexp -incremental:no 
-@rem UPDATED: Include all Monopoly source files from local src folder
-@set PL_SOURCES="../src/app.c" "../src/m_game.c" "../src/m_init_game.c" "../src/m_property.c" "../src/m_player.c" "../src/m_board_cards.c" 
+@set PL_SOURCES="../src/app.c" "../src/m_board_cards.c" "../src/m_game.c" "../src/m_init_game.c" "../src/m_player.c" "../src/m_property.c" 
 
 :: run compiler (and linker)
 @echo.
-@echo [1m[93mStep: template_app[0m
-@echo [1m[93m~~~~~~~~~~~~~~~~~~~~~~[0m
-@echo [1m[36mCompiling and Linking...[0m
-cl %PL_INCLUDE_DIRECTORIES% %PL_DEFINES% %PL_COMPILER_FLAGS% %PL_SOURCES% -Fe"../out/template_app.dll" -Fo"../out/" -LD -link %PL_LINKER_FLAGS% -PDB:"../out/template_app_%random%.pdb" %PL_LINK_DIRECTORIES%
+@echo [1m[93mStep: monopoly[0m
+@echo [1m[93m~~~~~~~~~~~~~~~~~~~~~~[0m
+@echo [1m[36mCompiling and Linking...[0m
+cl %PL_INCLUDE_DIRECTORIES% %PL_DEFINES% %PL_COMPILER_FLAGS% %PL_SOURCES% -Fe"../out/monopoly.dll" -Fo"../out/" -LD -link %PL_LINKER_FLAGS% -PDB:"../out/monopoly_%random%.pdb" %PL_LINK_DIRECTORIES%
 
 :: check build status
 @set PL_BUILD_STATUS=%ERRORLEVEL%
 
 :: failed
 @if %PL_BUILD_STATUS% NEQ 0 (
-    @echo [1m[91mCompilation Failed with error code[0m: %PL_BUILD_STATUS%
-    @set PL_RESULT=[1m[91mFailed.[0m
+    @echo [1m[91mCompilation Failed with error code[0m: %PL_BUILD_STATUS%
+    @set PL_RESULT=[1m[91mFailed.[0m
     goto Cleanupdebug
 )
 
 :: print results
-@echo [36mResult: [0m %PL_RESULT%
-@echo [36m~~~~~~~~~~~~~~~~~~~~~~[0m
+@echo [36mResult: [0m %PL_RESULT%
+@echo [36m~~~~~~~~~~~~~~~~~~~~~~[0m
 
 @del "..\out\*.obj"  > nul 2> nul
 
 :Cleanupdebug
 
-@echo [1m[36mCleaning...[0m
+@echo [1m[36mCleaning...[0m
 
 :: delete obj files(s)
 @del "..\out\*.obj"  > nul 2> nul
@@ -184,7 +183,7 @@ goto ExitLabel
 
 :: let user know if hot reloading
 @if %PL_HOT_RELOAD_STATUS% equ 1 (
-    @echo [1m[97m[41m--------[42m HOT RELOADING [41m--------[0m
+    @echo [1m[97m[41m--------[42m HOT RELOADING [41m--------[0m
 )
 
 :: cleanup binaries if not hot reloading
@@ -192,8 +191,8 @@ goto ExitLabel
 
     @if exist "../out/pl_example_ext.dll" del "..\out\pl_example_ext.dll"
     @if exist "../out/pl_example_ext_*.pdb" del "..\out\pl_example_ext_*.pdb"
-    @if exist "../out/template_app.dll" del "..\out\template_app.dll"
-    @if exist "../out/template_app_*.pdb" del "..\out\template_app_*.pdb"
+    @if exist "../out/monopoly.dll" del "..\out\monopoly.dll"
+    @if exist "../out/monopoly_*.pdb" del "..\out\monopoly_*.pdb"
 
 )
 
@@ -208,9 +207,9 @@ goto ExitLabel
 
 :: run compiler (and linker)
 @echo.
-@echo [1m[93mStep: pl_example_ext[0m
-@echo [1m[93m~~~~~~~~~~~~~~~~~~~~~~[0m
-@echo [1m[36mCompiling and Linking...[0m
+@echo [1m[93mStep: pl_example_ext[0m
+@echo [1m[93m~~~~~~~~~~~~~~~~~~~~~~[0m
+@echo [1m[36mCompiling and Linking...[0m
 cl %PL_INCLUDE_DIRECTORIES% %PL_DEFINES% %PL_COMPILER_FLAGS% %PL_SOURCES% -Fe"../out/pl_example_ext.dll" -Fo"../out/" -LD -link %PL_LINKER_FLAGS% -PDB:"../out/pl_example_ext_%random%.pdb" %PL_LINK_DIRECTORIES%
 
 :: check build status
@@ -218,53 +217,52 @@ cl %PL_INCLUDE_DIRECTORIES% %PL_DEFINES% %PL_COMPILER_FLAGS% %PL_SOURCES% -Fe"..
 
 :: failed
 @if %PL_BUILD_STATUS% NEQ 0 (
-    @echo [1m[91mCompilation Failed with error code[0m: %PL_BUILD_STATUS%
-    @set PL_RESULT=[1m[91mFailed.[0m
+    @echo [1m[91mCompilation Failed with error code[0m: %PL_BUILD_STATUS%
+    @set PL_RESULT=[1m[91mFailed.[0m
     goto Cleanuprelease
 )
 
 :: print results
-@echo [36mResult: [0m %PL_RESULT%
-@echo [36m~~~~~~~~~~~~~~~~~~~~~~[0m
+@echo [36mResult: [0m %PL_RESULT%
+@echo [36m~~~~~~~~~~~~~~~~~~~~~~[0m
 
 @del "..\out\*.obj"  > nul 2> nul
 
-::~~~~~~~~~~~~~~~~~~~~~~~~~~~~ template_app | release ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+::~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ monopoly | release ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 @set PL_DEFINES=-DNDEBUG -DPL_CONFIG_RELEASE 
 @set PL_INCLUDE_DIRECTORIES=-I"../src" -I"../extensions" -I"../../pilotlight/src" -I"../../pilotlight/libs" -I"../../pilotlight/extensions" -I"../../pilotlight/dependencies/stb" 
 @set PL_LINK_DIRECTORIES=-LIBPATH:"../out" 
 @set PL_COMPILER_FLAGS=-Zc:preprocessor -nologo -std:c11 -W4 -WX -wd4201 -wd4100 -wd4996 -wd4505 -wd4189 -wd5105 -wd4115 -permissive- -O2 -MD 
 @set PL_LINKER_FLAGS=-noimplib -noexp -incremental:no 
-@rem UPDATED: Include all Monopoly source files from local src folder
-@set PL_SOURCES="../src/app.c" "../src/m_game.c" "../src/m_init_game.c" "../src/m_property.c" "../src/m_player.c" "../src/m_board_cards.c"
+@set PL_SOURCES="../src/app.c" "../src/m_board_cards.c" "../src/m_game.c" "../src/m_init_game.c" "../src/m_player.c" "../src/m_property.c" 
 
 :: run compiler (and linker)
 @echo.
-@echo [1m[93mStep: template_app[0m
-@echo [1m[93m~~~~~~~~~~~~~~~~~~~~~~[0m
-@echo [1m[36mCompiling and Linking...[0m
-cl %PL_INCLUDE_DIRECTORIES% %PL_DEFINES% %PL_COMPILER_FLAGS% %PL_SOURCES% -Fe"../out/template_app.dll" -Fo"../out/" -LD -link %PL_LINKER_FLAGS% -PDB:"../out/template_app_%random%.pdb" %PL_LINK_DIRECTORIES%
+@echo [1m[93mStep: monopoly[0m
+@echo [1m[93m~~~~~~~~~~~~~~~~~~~~~~[0m
+@echo [1m[36mCompiling and Linking...[0m
+cl %PL_INCLUDE_DIRECTORIES% %PL_DEFINES% %PL_COMPILER_FLAGS% %PL_SOURCES% -Fe"../out/monopoly.dll" -Fo"../out/" -LD -link %PL_LINKER_FLAGS% -PDB:"../out/monopoly_%random%.pdb" %PL_LINK_DIRECTORIES%
 
 :: check build status
 @set PL_BUILD_STATUS=%ERRORLEVEL%
 
 :: failed
 @if %PL_BUILD_STATUS% NEQ 0 (
-    @echo [1m[91mCompilation Failed with error code[0m: %PL_BUILD_STATUS%
-    @set PL_RESULT=[1m[91mFailed.[0m
+    @echo [1m[91mCompilation Failed with error code[0m: %PL_BUILD_STATUS%
+    @set PL_RESULT=[1m[91mFailed.[0m
     goto Cleanuprelease
 )
 
 :: print results
-@echo [36mResult: [0m %PL_RESULT%
-@echo [36m~~~~~~~~~~~~~~~~~~~~~~[0m
+@echo [36mResult: [0m %PL_RESULT%
+@echo [36m~~~~~~~~~~~~~~~~~~~~~~[0m
 
 @del "..\out\*.obj"  > nul 2> nul
 
 :Cleanuprelease
 
-@echo [1m[36mCleaning...[0m
+@echo [1m[36mCleaning...[0m
 
 :: delete obj files(s)
 @del "..\out\*.obj"  > nul 2> nul

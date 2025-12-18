@@ -7,7 +7,7 @@
       "program": "${workspaceFolder}/../pilotlight/out/pilot_light.exe",
       "console": "integratedTerminal",
       "request": "launch",
-      "args": ["-a", "../../pl-template/out/template_app", "-hr"],
+      "args": ["-a", "../../monopoly/out/monopoly", "-hr"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}/../pilotlight/out/",
       "environment": []
