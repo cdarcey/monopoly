@@ -6,10 +6,30 @@
       "includePath": [
         "${workspaceFolder}/**",
         "${workspaceFolder}/src",
-        "${workspaceFolder}/dependencies"
+        "${workspaceFolder}/extensions",
+        "${workspaceFolder}/../pilotlight/editor",
+        "${workspaceFolder}/../pilotlight/src",
+        "${workspaceFolder}/../pilotlight/libs",
+        "${workspaceFolder}/../pilotlight/extensions",
+        "${workspaceFolder}/../pilotlight/dependencies/stb",
+        "${workspaceFolder}/../pilotlight/dependencies/cgltf"
       ],
       "defines": [
-        "_DEBUG"
+        "_DEBUG",
+        "PL_PROFILE_ON",
+        "PL_LOG_IMPLEMENTATION",
+        "PL_MEMORY_IMPLEMENTATION",
+        "PL_PROFILE_IMPLEMENTATION",
+        "PL_LOG_ON",
+        "PL_MEMORY_IMPLEMENTATION",
+        "PL_STL_IMPLEMENTATION",
+        "PL_STRING_IMPLEMENTATION",
+        "PL_MATH_INCLUDE_FUNCTIONS",
+        "PL_JSON_IMPLEMENTATION",
+        "PL_VULKAN_BACKEND",
+        "PL_METAL_BACKEND",
+        "PL_TEST_IMPLEMENTATION",
+        "PL_CONFIG_DEBUG"
       ],
       "cStandard": "c11",
       "windowsSdkVersion": "10.0.19041.0",

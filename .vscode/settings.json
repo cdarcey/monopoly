@@ -1,12 +1,8 @@
 {
-    "files.associations": {
-        "m_property.h": "c",
-        "stdbool.h": "c",
-        "m_player.h": "c",
-        "m_board_cards.h": "c",
-        "m_init_game.h": "c",
-        "m_game.h": "c",
-        "pl_json.h": "c",
-        "stdint.h": "c"
-    }
+  "files.associations": {
+    "pl_*.h": "c",
+    "pl_*.m": "objective-c",
+    "pl_*.inc": "c"
+   },
+  "python.analysis.extraPaths": ["../pilotlight/pl_build"]
 }

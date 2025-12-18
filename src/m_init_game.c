@@ -21,7 +21,7 @@ m_init_game(mGameStartSettings mSettings)
 
     // ==================== PROPERTIES ==================== //
     // Open and read JSON file
-    FILE* jsonFileProperties = fopen("../game_data/properties.json", "r");
+    FILE* jsonFileProperties = fopen("../../pl-Template/game_data/properties.json", "r");
     if (!jsonFileProperties) 
     {
         printf("Failed to open properties.json\n");
@@ -56,7 +56,7 @@ m_init_game(mGameStartSettings mSettings)
         mGame->mGameProperties[uPropertyIndex].eColor = m_string_color_to_enum(cBufferForEnumConversion);
         mGame->mGameProperties[uPropertyIndex].uPrice = pl_json_uint_member(tPropElement, "price", 0);
         uint32_t rentCount = 6;
-        pl_json_int_array_member(tPropElement, "rent", mGame->mGameProperties[uPropertyIndex].uRent, &rentCount);
+        pl_json_int_array_member(tPropElement, "rent", mGame->mGameProperties[uPropertyIndex].iRent, &rentCount);
         mGame->mGameProperties[uPropertyIndex].uHouseCost = pl_json_uint_member(tPropElement, "house_cost", 0);
         mGame->mGameProperties[uPropertyIndex].uMortgage = pl_json_uint_member(tPropElement, "mortgage", 0);
         mGame->mGameProperties[uPropertyIndex].uPropertiesInSet = pl_json_uint_member(tPropElement, "set_size", 0);
@@ -85,7 +85,7 @@ m_init_game(mGameStartSettings mSettings)
         plJsonObject* tRailElement = pl_json_member_by_index(tRailroad, uRailroadIndex);
         pl_json_string_member(tRailElement, "name", mGame->mGameRailroads[uRailroadIndex].cName, 50);
         uint32_t rentCount = 4;
-        pl_json_int_array_member(tRailElement, "rent", mGame->mGameRailroads[uRailroadIndex].uRent, &rentCount);
+        pl_json_int_array_member(tRailElement, "rent", mGame->mGameRailroads[uRailroadIndex].iRent, &rentCount);
         mGame->mGameRailroads[uRailroadIndex].uPrice = pl_json_uint_member(tRailElement, "price", 0);
         mGame->mGameRailroads[uRailroadIndex].uMortgage = pl_json_uint_member(tRailElement, "mortgage", 0);
 
@@ -119,7 +119,7 @@ m_init_game(mGameStartSettings mSettings)
     pl_unload_json(&tRootObjBoardSquares);
 
     // ==================== CHANCE CARDS ==================== //
-    FILE* jsonFileChanceCards = fopen("../game_data/chance_cards.json", "r");
+    FILE* jsonFileChanceCards = fopen("../../pl-Template/game_data/chance_cards.json", "r");
     if (!jsonFileChanceCards) {
         printf("Failed to open chance_cards.json\n");
         return NULL;
@@ -150,7 +150,7 @@ m_init_game(mGameStartSettings mSettings)
     pl_unload_json(&tRootObjChanceCards);
 
     // ==================== COMMUNITY CHEST CARDS ==================== //
-    FILE* jsonFileCommChest = fopen("../game_data/community_chest_cards.json", "r");
+    FILE* jsonFileCommChest = fopen("../../pl-Template/game_data/community_chest_cards.json", "r");
     if (!jsonFileCommChest) 
     {
         printf("Failed to open community_chest_cards.json\n");

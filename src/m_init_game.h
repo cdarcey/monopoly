@@ -9,7 +9,6 @@
 #include "m_board_cards.h"
 #include "m_player.h"
 #include "m_game.h"
-#include <GLFW/glfw3.h>
 
 
 #define MAX_HOUSES 4
@@ -98,7 +97,7 @@ typedef struct _mGameData
 typedef struct _mGameStartSettings
 {
     uint32_t uStartingMoney;
-    uint16_t uStartingPlayerCount;
+    uint8_t  uStartingPlayerCount;
     uint16_t uJailFine;
 } mGameStartSettings;
 

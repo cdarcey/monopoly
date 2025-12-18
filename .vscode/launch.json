@@ -2,16 +2,14 @@
   "version": "0.2.0",
   "configurations": [
   {
-    "name": "(Windows) Launch",
-    "type": "cppvsdbg",
-      "program": "${workspaceFolder}/out/monopoly.exe",
+      "name": "(Windows) Launch",
+      "type": "cppvsdbg",
+      "program": "${workspaceFolder}/../pilotlight/out/pilot_light.exe",
       "console": "integratedTerminal",
       "request": "launch",
-      "args": [
-
-      ],
+      "args": ["-a", "../../pl-template/out/template_app", "-hr"],
       "stopAtEntry": false,
-      "cwd": "${workspaceFolder}/out/",
+      "cwd": "${workspaceFolder}/../pilotlight/out/",
       "environment": []
     }
   ]

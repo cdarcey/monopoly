@@ -1,10 +1,18 @@
-# --- Compiled binaries and debug files ---
-*.exe              # Windows executables
-*.pdb              # Program debug database (MSVC)
 
+# directories
+.vs/
+.vscode/
+.idea/
+out/
+out-temp/
 
-# --- Build/Output directories ---
-out/               # Ignore 'out' folder in root
+# python
+scripts/__pycache__/
 
-# --- IDE/Editor cruft ---
-.vscode/           # VS Code settings
+# random files
+src/*.pdb
+src/*.bat
+src/*.sh
+
+# misc
+.DS_Store

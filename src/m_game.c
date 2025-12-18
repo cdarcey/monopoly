@@ -702,10 +702,6 @@ m_next_player_turn(mGameData* mGame)
 {
     if(mGame->mGamePlayers[mGame->uCurrentPlayer]->bBankrupt)
     {
-        if(mGame->mGamePlayers[mGame->uCurrentPlayer]->uMoney != 0)
-        {
-            DebugBreak();
-        }
         mGame->uActivePlayers--;
     }
 
@@ -741,7 +737,6 @@ m_game_over_check(mGameData* mGame)
 {
     if(!mGame)
     {
-        __debugbreak();
         return;
     }
 
@@ -940,7 +935,6 @@ m_get_square_type(uint32_t uPlayerPosition)
             return GO_TO_JAIL_SQUARE_TYPE;
 
         default:
-            DebugBreak();
             return GO_SQUARE_TYPE;
     }
 }

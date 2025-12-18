@@ -139,12 +139,6 @@ void
 m_buy_hotel(mProperty* mPropertyToAddHotel, mPlayer* mPropertyOwner, bool bHotelCanBeAdded)
 {
     assert(bHotelCanBeAdded == true);
-    if(mPropertyToAddHotel->eOwner == mPropertyOwner->ePlayerTurnPosition || 
-        mPropertyToAddHotel->eOwner != NO_PLAYER)
-    {
-        DebugBreak();
-        return;
-    }
 
     if(mPropertyToAddHotel->uHouseCost > mPropertyOwner->uMoney)
     {
@@ -157,7 +151,7 @@ m_buy_hotel(mProperty* mPropertyToAddHotel, mPlayer* mPropertyOwner, bool bHotel
         if(bHotelCanBeAdded == true)
         {
             mPropertyToAddHotel->uNumberOfHotels++;
-            mPropertyOwner->uMoney -= mPropertyToAddHotel->uRent[5]; // TOD: magic number needs a more elegant solution
+            mPropertyOwner->uMoney -= mPropertyToAddHotel->iRent[5]; // TOD: magic number needs a more elegant solution
         }
 
     }
@@ -184,26 +178,21 @@ m_pay_rent_property(mPlayer* mPayee, mPlayer* mPayer, mProperty* mPropertyForRen
     uint32_t uRent = 0;
     if(bColorSetOwned && mPropertyForRent->uNumberOfHouses == 0)
     {
-        uRent = mPropertyForRent->uRent[mPropertyForRent->uNumberOfHouses] * 2;
+        uRent = mPropertyForRent->iRent[mPropertyForRent->uNumberOfHouses] * 2;
     }
     else if(mPropertyForRent->uNumberOfHotels == 0 || mPropertyForRent->uNumberOfHouses == 0)
     {
-        uRent = mPropertyForRent->uRent[mPropertyForRent->uNumberOfHouses];
+        uRent = mPropertyForRent->iRent[mPropertyForRent->uNumberOfHouses];
     }
     else if(mPropertyForRent->uNumberOfHouses > 0)
     {
-        uRent = mPropertyForRent->uRent[mPropertyForRent->uNumberOfHouses];
+        uRent = mPropertyForRent->iRent[mPropertyForRent->uNumberOfHouses];
     }
     else if(mPropertyForRent->uNumberOfHotels > 0)
     {
-        uRent = mPropertyForRent->uRent[mPropertyForRent->uNumberOfHouses + mPropertyForRent->uNumberOfHotels];
+        uRent = mPropertyForRent->iRent[mPropertyForRent->uNumberOfHouses + mPropertyForRent->uNumberOfHotels];
     }
 
-    if(!m_can_player_afford(mPayer, uRent))
-    {
-        DebugBreak();
-        return; // logic should be handled before this point
-    }
     else 
         mPayer->uMoney -= uRent;
         mPayee->uMoney += uRent;
@@ -229,12 +218,12 @@ m_pay_rent_railroad(mPlayer* mPayee, mPlayer* mPayer, mRailroad* mRailroadForRen
         }
     }
 
-    if (mPayer->uMoney > mRailroadForRent->uRent[uRentArrayIndex])
+    if (mPayer->uMoney > (uint32_t)mRailroadForRent->iRent[uRentArrayIndex])
     {
-        mPayer->uMoney = mPayer->uMoney - mRailroadForRent->uRent[uRentArrayIndex];
-        mPayee->uMoney = mPayee->uMoney + mRailroadForRent->uRent[uRentArrayIndex];
+        mPayer->uMoney = mPayer->uMoney - mRailroadForRent->iRent[uRentArrayIndex];
+        mPayee->uMoney = mPayee->uMoney + mRailroadForRent->iRent[uRentArrayIndex];
     }
-    else if(mPayer->uMoney <= mRailroadForRent->uRent[uRentArrayIndex])
+    else if(mPayer->uMoney <= (uint32_t)mRailroadForRent->iRent[uRentArrayIndex])
     {
         mPayer->bBankrupt = true;
         mPayer->uMoney = 0;
@@ -381,12 +370,6 @@ m_player_has_buildings(mPlayer* mCurrentPlayer, mProperty* mGameProperties)
 void
 m_execute_mortgage_flow(mProperty* mPropToMortgage, mPlayer* mPlayerMortgaging)
 {
-    if(!mPropToMortgage || !mPlayerMortgaging)
-    {
-        __debugbreak();
-        return;
-    }
-
     if(mPropToMortgage->eOwner != mPlayerMortgaging->ePlayerTurnPosition)
     {
         printf("you do not own property\n");
@@ -412,12 +395,6 @@ m_execute_mortgage_flow(mProperty* mPropToMortgage, mPlayer* mPlayerMortgaging)
 void
 m_execute_unmortgage_flow(mProperty* mPropToMortgage, mPlayer* mPlayerMortgaging)
 {
-    if(!mPropToMortgage || !mPlayerMortgaging)
-    {
-        __debugbreak();
-        return;
-    }
-
     if(mPropToMortgage->eOwner != mPlayerMortgaging->ePlayerTurnPosition)
     {
         printf("you do not own property\n");
@@ -438,12 +415,6 @@ m_execute_unmortgage_flow(mProperty* mPropToMortgage, mPlayer* mPlayerMortgaging
 void
 m_execute_house_sale(mGameData* mGame, mProperty* mPropWithHouses, mPlayer* mPlayerSelling) 
 {
-    if(!mPropWithHouses || !mPlayerSelling || !mGame)
-    {
-        DebugBreak();
-        return;
-    }
-
     assert(mPropWithHouses->uNumberOfHouses > 0);
     assert(mPropWithHouses->eOwner != mPlayerSelling->ePlayerTurnPosition);
 

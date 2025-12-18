@@ -84,7 +84,7 @@ typedef struct _mProperty
 {
     char           cName[30];
     uint32_t       uPrice;
-    uint32_t       uRent[6];
+    int            iRent[6];
     uint32_t       uHouseCost;
     uint32_t       uMortgage;
     uint32_t       uNumberOfHouses;
@@ -100,7 +100,7 @@ typedef struct _mRailroad
 {
     char          cName[30];
     uint32_t      uPrice;
-    uint32_t      uRent[4];
+    int           iRent[4];
     uint32_t      uMortgage;
     mPlayerNumber eOwner;
     bool          bOwned;
