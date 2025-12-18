@@ -104,10 +104,10 @@ typedef struct _mGameFlow
 // ==================== PHASE SYSTEM FUNCTIONS ==================== //
 
 // phase management
-void         m_init_game_flow   (mGameFlow* pFlow, mGameData* pGame, void* pInputContext);
-void         m_push_phase       (mGameFlow* pFlow, fPhaseFunc pfNewPhase, void* pNewData);
-void         m_pop_phase        (mGameFlow* pFlow);
-void         m_run_current_phase(mGameFlow* pFlow, float fDeltaTime);
+void m_init_game_flow   (mGameFlow* pFlow, mGameData* pGame, void* pInputContext);
+void m_push_phase       (mGameFlow* pFlow, fPhaseFunc pfNewPhase, void* pNewData);
+void m_pop_phase        (mGameFlow* pFlow);
+void m_run_current_phase(mGameFlow* pFlow, float fDeltaTime);
 
 // input handling
 void m_set_input_int   (mGameFlow* pFlow, int iValue);
