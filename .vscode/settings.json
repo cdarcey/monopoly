@@ -3,6 +3,9 @@
     "pl_*.h": "c",
     "pl_*.m": "objective-c",
     "pl_*.inc": "c"
-   },
-  "python.analysis.extraPaths": ["../pilotlight/pl_build"]
+  },
+  "python.analysis.extraPaths": ["../pilotlight/pl_build"],
 }
+
+
+
