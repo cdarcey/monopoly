@@ -296,7 +296,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // load board texture
     plTextureLoadConfig tBoardConfig = {
-        .pcFilePath      = "D:/Dev/monopoly/assets/monopoly-board.png",
+        .pcFilePath      = "C:/Dev/monopoly/assets/monopoly-board.png",
         .tSampler        = ptAppData->tLinearSampler,
         .ptOutTexture    = &ptAppData->tBoardTexture,
         .ptOutMemory     = &ptAppData->tBoardTextureMemory,
@@ -378,16 +378,12 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     free(atAttachments);
     ptAppData->tRenderPass = tRenderPass;
 
-    // define quad vertices (fullscreen in NDC space)
+    // define quad vertices -> neg Y is up.....I think
     const float atVertices[] = {
         -0.5f, -0.5f, 0.0f, 0.0f,
         -0.5f,  0.5f, 0.0f, 1.0f, 
          0.5f,  0.5f, 1.0f, 1.0f,
          0.5f, -0.5f, 1.0f, 0.0f  
-    };
-    uint32_t uIndices[] = {
-        0, 1, 2,  // first triangle
-        0, 2, 3   // second triangle
     };
 
     // create vertex buffer
@@ -400,13 +396,15 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     plBuffer* ptVertexBuffer = gptGfx->get_buffer(ptAppData->ptDevice, ptAppData->tQuadVertexBuffer);
 
     // allocate vertex memory
-    const plDeviceMemoryAllocation tVertexBufferAllocation = gptGfx->allocate_memory(
-        ptAppData->ptDevice,
-        ptVertexBuffer->tMemoryRequirements.ulSize,
-        PL_MEMORY_FLAGS_DEVICE_LOCAL,
-        ptVertexBuffer->tMemoryRequirements.uMemoryTypeBits,
-        "vertex buffer memory");
+    const plDeviceMemoryAllocation tVertexBufferAllocation = gptGfx->allocate_memory(ptAppData->ptDevice, ptVertexBuffer->tMemoryRequirements.ulSize, 
+            PL_MEMORY_FLAGS_DEVICE_LOCAL, ptVertexBuffer->tMemoryRequirements.uMemoryTypeBits, "vertex buffer memory");
     gptGfx->bind_buffer_to_memory(ptAppData->ptDevice, ptAppData->tQuadVertexBuffer, &tVertexBufferAllocation);
+
+    // create index buffer 
+    uint32_t uIndices[] = {
+        0, 1, 2,  // first triangle
+        0, 2, 3   // second triangle
+    };
 
     // create index buffer
     plBufferDesc tIndexDesc = {
@@ -415,47 +413,38 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
         .pcDebugName = "quad indices"
     };
     ptAppData->tQuadIndexBuffer = gptGfx->create_buffer(ptAppData->ptDevice, &tIndexDesc, NULL);
-
     plBuffer* ptIndexBuffer = gptGfx->get_buffer(ptAppData->ptDevice, ptAppData->tQuadIndexBuffer);
 
     // allocate index memory
-    plDeviceMemoryAllocation tIndexBufferAllocation = gptGfx->allocate_memory(
-        ptAppData->ptDevice,
-        ptIndexBuffer->tMemoryRequirements.ulSize,
-        PL_MEMORY_FLAGS_DEVICE_LOCAL,
-        ptIndexBuffer->tMemoryRequirements.uMemoryTypeBits,
-        "index buffer memory");
+    plDeviceMemoryAllocation tIndexBufferAllocation = gptGfx->allocate_memory(ptAppData->ptDevice, ptIndexBuffer->tMemoryRequirements.ulSize, 
+            PL_MEMORY_FLAGS_DEVICE_LOCAL, ptIndexBuffer->tMemoryRequirements.uMemoryTypeBits, "index buffer memory");
     gptGfx->bind_buffer_to_memory(ptAppData->ptDevice, ptAppData->tQuadIndexBuffer, &tIndexBufferAllocation);
 
     // create staging buffer for uploads
     plBufferDesc tStagingDesc = {
         .tUsage      = PL_BUFFER_USAGE_STAGING,
-        .szByteSize  = sizeof(atVertices) + sizeof(uIndices),
-        .pcDebugName = "staging"
+        .szByteSize  = 4096,
+        .pcDebugName = "staging buffer"
     };
-    plBuffer* ptStaging = NULL;
-    plBufferHandle tStagingHandle = gptGfx->create_buffer(ptAppData->ptDevice, &tStagingDesc, &ptStaging);
+    plBufferHandle tStagingHandle = gptGfx->create_buffer(ptAppData->ptDevice, &tStagingDesc, NULL);
+    plBuffer* ptStagingBuffer = gptGfx->get_buffer(ptAppData->ptDevice, tStagingHandle); 
 
-    plDeviceMemoryAllocation tStagingMem = gptGfx->allocate_memory(
-        ptAppData->ptDevice, 
-        ptStaging->tMemoryRequirements.ulSize, 
-        PL_MEMORY_FLAGS_HOST_VISIBLE | PL_MEMORY_FLAGS_HOST_COHERENT, 
-        ptStaging->tMemoryRequirements.uMemoryTypeBits, 
-        "staging memory");
+    // allocate memory
+    plDeviceMemoryAllocation tStagingMem = gptGfx->allocate_memory(ptAppData->ptDevice, ptStagingBuffer->tMemoryRequirements.ulSize, 
+            PL_MEMORY_FLAGS_HOST_VISIBLE | PL_MEMORY_FLAGS_HOST_COHERENT, ptStagingBuffer->tMemoryRequirements.uMemoryTypeBits, "staging memory");
     gptGfx->bind_buffer_to_memory(ptAppData->ptDevice, tStagingHandle, &tStagingMem);
 
     // copy vertex/index data to staging buffer
-    memcpy(ptStaging->tMemoryAllocation.pHostMapped, atVertices, sizeof(float) * PL_ARRAYSIZE(atVertices));
-    memcpy(&ptStaging->tMemoryAllocation.pHostMapped[1024], uIndices, sizeof(uint32_t) * PL_ARRAYSIZE(uIndices));
-
+    memcpy(ptStagingBuffer->tMemoryAllocation.pHostMapped, atVertices, sizeof(float) * PL_ARRAYSIZE(atVertices));
+    memcpy(&ptStagingBuffer->tMemoryAllocation.pHostMapped[1024], uIndices, sizeof(uint32_t) * PL_ARRAYSIZE(uIndices));
 
     // upload to GPU
     plCommandBuffer* ptCmd = gptGfx->request_command_buffer(ptAppData->ptCommandPool, "upload geometry");
     gptGfx->begin_command_recording(ptCmd, NULL);
 
     plBlitEncoder* ptBlit = gptGfx->begin_blit_pass(ptCmd);
-    gptGfx->copy_buffer(ptBlit, tStagingHandle, ptAppData->tQuadVertexBuffer, 0, 0, sizeof(atVertices));
-    gptGfx->copy_buffer(ptBlit, tStagingHandle, ptAppData->tQuadIndexBuffer, sizeof(atVertices), 0, sizeof(uIndices));
+    gptGfx->copy_buffer(ptBlit, tStagingHandle, ptAppData->tQuadVertexBuffer, 0, 0, sizeof(float) * PL_ARRAYSIZE(atVertices));
+    gptGfx->copy_buffer(ptBlit, tStagingHandle, ptAppData->tQuadIndexBuffer, 1024, 0, sizeof(uint32_t) * PL_ARRAYSIZE(uIndices));
     gptGfx->end_blit_pass(ptBlit);
 
     gptGfx->end_command_recording(ptCmd);
@@ -590,16 +579,34 @@ pl_app_update(plAppData* ptAppData)
     gptGfx->bind_vertex_buffer(ptRender, ptAppData->tQuadVertexBuffer);
     
     // draw textured quad if texture is loaded
-    if(ptAppData->bBoardTextureLoaded) 
-    {
-        gptGfx->bind_graphics_bind_groups(ptRender, ptAppData->tTexturedQuadShader, 0, 1, &ptAppData->tBoardBindGroup, 0, NULL);
+    // if(ptAppData->bBoardTextureLoaded) 
+    // {
+    //     gptGfx->bind_graphics_bind_groups(ptRender, ptAppData->tTexturedQuadShader, 0, 1, &ptAppData->tBoardBindGroup, 0, NULL);
 
-        plDraw tDraw = {
-            .uVertexCount = 3,
-            .uInstanceCount = 1
-        };
-        gptGfx->draw(ptRender, 1, &tDraw);
-    }
+    //     plDraw tDraw = {
+    //         .uVertexCount = 3,
+    //         .uInstanceCount = 1
+    //     };
+    //     gptGfx->draw(ptRender, 1, &tDraw);
+    // }
+
+    plDynamicDataBlock tCurrentDynamicBufferBlock = gptGfx->allocate_dynamic_data_block(ptAppData->ptDevice);
+    plDynamicBinding tDynamicBinding = pl_allocate_dynamic_data(gptGfx, ptAppData->ptDevice, &tCurrentDynamicBufferBlock);
+    plVec4* tTintColor = (plVec4*)tDynamicBinding.pcData;
+    tTintColor->r = 1.0f;
+    tTintColor->g = 1.0f;
+    tTintColor->b = 1.0f;
+    tTintColor->a = 1.0f;
+
+    gptGfx->bind_graphics_bind_groups(ptRender, ptAppData->tTexturedQuadShader, 0, 1, &ptAppData->tBoardBindGroup, 0, NULL);
+    
+    plDrawIndex tDraw = {
+        .uIndexCount = 6,
+        .tIndexBuffer = ptAppData->tQuadIndexBuffer,
+        .uInstanceCount = 1
+    };
+    gptGfx->draw_indexed(ptRender, 1, &tDraw);
+    
 
     // end render pass
     gptGfx->end_render_pass(ptRender);
