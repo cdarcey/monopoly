@@ -48,6 +48,9 @@
 typedef struct _plAppData plAppData;
 typedef struct _plTextureLoadConfig plTextureLoadConfig;
 
+// rendering functions
+void render_game_ui(plAppData* ptAppData);
+
 
 // input handling
 void handle_keyboard_input(plAppData* ptAppData);
@@ -58,47 +61,73 @@ uint32_t get_player_color(mPlayerPiece ePiece);
 void     load_board_textures(plAppData* ptAppData);
 void     load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig);
 
+
 //-----------------------------------------------------------------------------
 // [SECTION] structs
 //-----------------------------------------------------------------------------
 
 typedef struct _plAppData
 {
-    // window & device
+    //-------------------------------------------------------------------------
+    // pilot light core
+    //-------------------------------------------------------------------------
     plWindow* ptWindow;
     plDevice* ptDevice;
 
+    // legacy 2d drawing (will eventually remove)
+    plDrawList2D*  ptDrawlist;
+    plDrawLayer2D* ptLayer;
+
+    //-------------------------------------------------------------------------
     // command infrastructure
-    plCommandPool* ptCommandPool;
+    //-------------------------------------------------------------------------
+    plCommandPool*   ptCommandPool;
+    plCommandBuffer* ptMainCommandBuffer; // TODO: do we need this here?
 
+    //-------------------------------------------------------------------------
     // bind groups
+    //-------------------------------------------------------------------------
     plBindGroupPool*        tBindGroupPoolTexAndSamp;
-    plBindGroupLayoutHandle tTextureBindGroupLayout;
-    plBindGroupLayoutDesc   tTextureBindGroupLayoutDesc;
+    plBindGroupLayoutHandle tTextureBindGroupLayout;     // handle
+    plBindGroupLayoutDesc   tTextureBindGroupLayoutDesc; // description for shaders
 
+    //-------------------------------------------------------------------------
     // samplers
-    plSamplerHandle tLinearSampler;
-    plSamplerHandle tNearestSampler;
+    //-------------------------------------------------------------------------
+    plSamplerHandle tLinearSampler;  // smooth filtering
+    plSamplerHandle tNearestSampler; // sharp/pixelated filtering
 
+    //-------------------------------------------------------------------------
     // swapchain
+    //-------------------------------------------------------------------------
     plSwapchain*     ptSwapchain;
     plTextureHandle* atSwapchainImages;
     uint32_t         uSwapchainImageCount;
 
+    //-------------------------------------------------------------------------
     // render passes
-    plRenderPassLayoutHandle tMainPassLayout;
-    plRenderPassHandle       tRenderPass;
+    //-------------------------------------------------------------------------
+    plRenderPassLayoutHandle tMainPassLayout; // layout
+    plRenderPassHandle       tRenderPass;  // instances (one per swapchain image)
 
+    //-------------------------------------------------------------------------
     // shaders
+    //-------------------------------------------------------------------------
     plShaderHandle tTexturedQuadShader;
 
-    // geometry (shared unit quad)
+    //-------------------------------------------------------------------------
+    // geometry (shared unit quad for all textured quads)
+    //-------------------------------------------------------------------------
     plBufferHandle           tQuadVertexBuffer;
     plBufferHandle           tQuadIndexBuffer;
     plDeviceMemoryAllocation tQuadVertexMemory;
     plDeviceMemoryAllocation tQuadIndexMemory;
 
+    //-------------------------------------------------------------------------
     // textures
+    //-------------------------------------------------------------------------
+
+    // board
     plTextureHandle          tBoardTexture;
     plDeviceMemoryAllocation tBoardTextureMemory;
     plBindGroupHandle        tBoardBindGroup;
@@ -109,23 +138,40 @@ typedef struct _plAppData
     plDeviceMemoryAllocation atPropertyMemory[28];
     plBindGroupHandle        atPropertyBindGroups[28];
 
+    //-------------------------------------------------------------------------
     // monopoly game state
+    //-------------------------------------------------------------------------
     mGameData* pGameData;
     mGameFlow  tGameFlow;
 
+    //-------------------------------------------------------------------------
     // board layout
+    //-------------------------------------------------------------------------
     float fBoardX;
     float fBoardY;
     float fBoardSize;
     float fSquareSize;
 
+    //-------------------------------------------------------------------------
     // ui state
+    //-------------------------------------------------------------------------
     bool          bShowPropertyPopup;
     mPropertyName ePropertyToShow;
 
+    //-------------------------------------------------------------------------
+    // viewport and scissor 
+    //-------------------------------------------------------------------------
+    plRenderViewport tViewport;
+    plScissor        tScissor;
+
+    //-------------------------------------------------------------------------
+    // sync objects
+    //-------------------------------------------------------------------------
+    plTimelineSemaphore* ptSemaphore;
+
 } plAppData;
 
-// texture loading configuration
+// config struct
 typedef struct _plTextureLoadConfig
 {
     const char*               pcFilePath;
@@ -154,7 +200,8 @@ const plShaderI*      gptShader      = NULL;
 PL_EXPORT void*
 pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 {
-    // hot reload path - re-retrieve APIs
+    // ++++++++++++++++++++++++++++++++++++++ APT loading ++++++++++++++++++++++++++++++++++++++ //
+    // hot reload path
     if(ptAppData)
     {
         gptIO          = pl_get_api_latest(ptApiRegistry, plIOI);
@@ -166,12 +213,14 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
         return ptAppData;
     }
 
-    // first load - allocate app memory
+    // first load path
     ptAppData = malloc(sizeof(plAppData));
     memset(ptAppData, 0, sizeof(plAppData));
 
-    // load extensions
+    // get extension registry
     const plExtensionRegistryI* ptExtensionRegistry = pl_get_api_latest(ptApiRegistry, plExtensionRegistryI);
+
+    // load extensions
     ptExtensionRegistry->load("pl_unity_ext", NULL, NULL, true);
     ptExtensionRegistry->load("pl_platform_ext", NULL, NULL, false);
 
@@ -183,7 +232,9 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     gptDrawBackend = pl_get_api_latest(ptApiRegistry, plDrawBackendI);
     gptShader      = pl_get_api_latest(ptApiRegistry, plShaderI);
 
-    // initialize graphics with validation enabled
+
+    // ++++++++++++++++++++++++++++++++++++++ initialize ++++++++++++++++++++++++++++++++++++++ //
+
     plGraphicsInit tGraphicsInit = {
         .uFramesInFlight = 2,
         .tFlags          = PL_GRAPHICS_INIT_FLAGS_SWAPCHAIN_ENABLED | PL_GRAPHICS_INIT_FLAGS_VALIDATION_ENABLED
@@ -201,18 +252,20 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     gptWindows->create(tWindowDesc, &ptAppData->ptWindow);
     gptWindows->show(ptAppData->ptWindow);
 
-    // create surface and device
+    // surface and device
     plSurface* ptSurface = gptGfx->create_surface(ptAppData->ptWindow);
+    //     gptGfx->cleanup_surface() TODO: does this need to be called and if so when?
 
     const plDeviceInit tDeviceInit = {
-        .uDeviceIdx               = 0,
-        .szDynamicBufferBlockSize = 65536,
-        .szDynamicDataMaxSize     = 65536,
-        .ptSurface                = ptSurface
+        .uDeviceIdx               = 0,  // First GPU
+        .szDynamicBufferBlockSize = 4194304,  // 4 MB
+        .szDynamicDataMaxSize     = 4194304,
+        .ptSurface                = ptSurface  // TODO: 
     };
     ptAppData->ptDevice = gptGfx->create_device(&tDeviceInit);
 
-    // initialize shader system
+    // TODO: having trouble with relative paths currenly putting shaders in pilotlight out folder
+    // init shaders
     static const plShaderOptions tDefaultShaderOptions = {
         .apcIncludeDirectories = {
             "C:/dev/monopoly/shaders/"
@@ -224,7 +277,13 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     };
     gptShader->initialize(&tDefaultShaderOptions);
 
-    // create swapchain
+    // initialize draw list TODO: for ui 
+    // ptAppData->ptDrawlist = gptDraw->request_2d_drawlist();
+    // ptAppData->ptLayer    = gptDraw->request_2d_layer(ptAppData->ptDrawlist);
+
+
+    // ++++++++++++++++++++++++++++++++++++++ swapchain ++++++++++++++++++++++++++++++++++++++ //
+
     plSwapchainInit tSwapchainInit = {
         .bVSync       = true,
         .tSampleCount = PL_SAMPLE_COUNT_1,
@@ -233,16 +292,18 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     };
     ptAppData->ptSwapchain = gptGfx->create_swapchain(ptAppData->ptDevice, ptSurface, &tSwapchainInit);
 
-    // get swapchain images
+    
     uint32_t uImageCount = 0;
     ptAppData->atSwapchainImages = gptGfx->get_swapchain_images(ptAppData->ptSwapchain, &uImageCount);
     ptAppData->uSwapchainImageCount = uImageCount;
 
-    // create command pool
+    // ++++++++++++++++++++++++++++++++++++++ command pool ++++++++++++++++++++++++++++++++++++++ //
+
     plCommandPoolDesc tPoolDesc = {0};
     ptAppData->ptCommandPool = gptGfx->create_command_pool(ptAppData->ptDevice, &tPoolDesc);
 
-    // create samplers
+    // ++++++++++++++++++++++++++++++++++++++ samplers ++++++++++++++++++++++++++++++++++++++ //
+
     plSamplerDesc tLinearSamplerDesc = {
         .tMagFilter    = PL_FILTER_LINEAR,
         .tMinFilter    = PL_FILTER_LINEAR,
@@ -267,7 +328,8 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     };
     ptAppData->tNearestSampler = gptGfx->create_sampler(ptAppData->ptDevice, &tNearSamplerDesc);
 
-    // create bind group layout
+    // ++++++++++++++++++++++++++++++++++++++ bind group layouts/pools ++++++++++++++++++++++++++++++++++++++ //
+
     const plBindGroupLayoutDesc tBindGroupLayoutTexAndSamp = {
         .atTextureBindings = {
             {
@@ -287,12 +349,13 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     ptAppData->tTextureBindGroupLayoutDesc = tBindGroupLayoutTexAndSamp;
     ptAppData->tTextureBindGroupLayout = gptGfx->create_bind_group_layout(ptAppData->ptDevice, &tBindGroupLayoutTexAndSamp);
 
-    // create bind group pool
     const plBindGroupPoolDesc tBindGroupPoolTexAndSampDesc = {
         .szSampledTextureBindings = 100,
         .szSamplerBindings        = 100
     };
     ptAppData->tBindGroupPoolTexAndSamp = gptGfx->create_bind_group_pool(ptAppData->ptDevice, &tBindGroupPoolTexAndSampDesc);
+
+    // ++++++++++++++++++++++++++++++++++++++ load texture ++++++++++++++++++++++++++++++++++++++ //
 
     // load board texture
     plTextureLoadConfig tBoardConfig = {
@@ -305,7 +368,8 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     };
     load_texture(ptAppData, &tBoardConfig);
 
-    // create render pass layout
+    // ++++++++++++++++++++++++++++++++++++++ renderpass layout ++++++++++++++++++++++++++++++++++++++ //
+
     const plRenderPassLayoutDesc tMainRenderPassLayoutDesc = {
         .atRenderTargets = {
             {
@@ -325,11 +389,25 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     };
     ptAppData->tMainPassLayout = gptGfx->create_render_pass_layout(ptAppData->ptDevice, &tMainRenderPassLayoutDesc);
 
-    // load shaders
-    plShaderModule tVertModule = gptShader->load_glsl("textured_quad.vert", "main", NULL, NULL);
-    plShaderModule tFragModule = gptShader->load_glsl("textured_quad.frag", "main", NULL, NULL);
+    // ++++++++++++++++++++++++++++++++++++++ shaders ++++++++++++++++++++++++++++++++++++++ //
 
-    // define vertex layout
+    // load vertex shader 
+    plShaderModule tVertModule = gptShader->load_glsl(
+        "textured_quad.vert",  // filename (looks in apcDirectories)
+        "main",                 // entry function
+        NULL,                   // file path (NULL = search directories)
+        NULL                    // options (NULL = use default from initialize)
+    );
+
+    // load fragment shader
+    plShaderModule tFragModule = gptShader->load_glsl(
+        "textured_quad.frag",
+        "main",
+        NULL,
+        NULL
+    );
+
+    // vertex layout
     plVertexBufferLayout tVertexLayout = {
         .uByteStride = 0,
         .atAttributes = {
@@ -347,9 +425,12 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
         .tRenderPassLayout        = ptAppData->tMainPassLayout,
         .pcDebugName              = "textured quad shader"
     };
+
     ptAppData->tTexturedQuadShader = gptGfx->create_shader(ptAppData->ptDevice, &tShaderDesc);
 
-    // create render pass with swapchain attachments
+    // ++++++++++++++++++++++++++++++++++++++ renderpass instances ++++++++++++++++++++++++++++++++++++++ //
+
+    // create render pass with swapchain images
     plRenderPassDesc tMainPassDesc = {
         .tLayout        = ptAppData->tMainPassLayout,
         .tDimensions    = {1280, 720},
@@ -357,7 +438,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
             {
                 .tLoadOp       = PL_LOAD_OP_CLEAR,
                 .tStoreOp      = PL_STORE_OP_STORE,
-                .tCurrentUsage = PL_TEXTURE_USAGE_UNSPECIFIED,  // TODO:
+                .tCurrentUsage = PL_TEXTURE_USAGE_COLOR_ATTACHMENT,
                 .tNextUsage    = PL_TEXTURE_USAGE_PRESENT,
                 .tClearColor   = {0.1f, 0.1f, 0.1f, 1.0f}
             }
@@ -373,19 +454,23 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
         atAttachments[i].atViewAttachments[0] = ptAppData->atSwapchainImages[i];
     }
 
-    // create render pass
+    // createrender pass with attachments
     plRenderPassHandle tRenderPass = gptGfx->create_render_pass(ptAppData->ptDevice, &tMainPassDesc, atAttachments);
+
     free(atAttachments);
+
+    // store handle 
     ptAppData->tRenderPass = tRenderPass;
 
-    // define quad vertices (fullscreen in NDC space)
-    const float atVertices[] = {
-        -0.5f, -0.5f, 0.0f, 0.0f,
-        -0.5f,  0.5f, 0.0f, 1.0f, 
-         0.5f,  0.5f, 1.0f, 1.0f,
-         0.5f, -0.5f, 1.0f, 0.0f  
+    // ++++++++++++++++++++++++++++++++++++++ quad geometry ++++++++++++++++++++++++++++++++++++++ //
+
+    plVec4 atVertices[] = {
+        {-1.0f, -1.0f, 0.0f, 0.0f},  // bottom-left
+        { 1.0f, -1.0f, 1.0f, 0.0f},  // bottom-right
+        { 1.0f,  1.0f, 1.0f, 1.0f},  // top-right
+        {-1.0f,  1.0f, 0.0f, 1.0f}   // top-left
     };
-    uint32_t uIndices[] = {
+    uint16_t uIndices[] = {
         0, 1, 2,  // first triangle
         0, 2, 3   // second triangle
     };
@@ -393,41 +478,32 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     // create vertex buffer
     const plBufferDesc tVertexDesc = {
         .tUsage      = PL_BUFFER_USAGE_VERTEX,
-        .szByteSize  = sizeof(float) * PL_ARRAYSIZE(atVertices),
+        .szByteSize  = sizeof(atVertices),
         .pcDebugName = "quad vertices"
     };
-    ptAppData->tQuadVertexBuffer = gptGfx->create_buffer(ptAppData->ptDevice, &tVertexDesc, NULL);
-    plBuffer* ptVertexBuffer = gptGfx->get_buffer(ptAppData->ptDevice, ptAppData->tQuadVertexBuffer);
+    plBuffer* ptVertexBuffer = NULL;
+    ptAppData->tQuadVertexBuffer = gptGfx->create_buffer(ptAppData->ptDevice, &tVertexDesc, &ptVertexBuffer);
 
     // allocate vertex memory
-    const plDeviceMemoryAllocation tVertexBufferAllocation = gptGfx->allocate_memory(
-        ptAppData->ptDevice,
-        ptVertexBuffer->tMemoryRequirements.ulSize,
-        PL_MEMORY_FLAGS_DEVICE_LOCAL,
-        ptVertexBuffer->tMemoryRequirements.uMemoryTypeBits,
-        "vertex buffer memory");
-    gptGfx->bind_buffer_to_memory(ptAppData->ptDevice, ptAppData->tQuadVertexBuffer, &tVertexBufferAllocation);
+    ptAppData->tQuadVertexMemory = gptGfx->allocate_memory(ptAppData->ptDevice, ptVertexBuffer->tMemoryRequirements.ulSize, 
+            PL_MEMORY_FLAGS_DEVICE_LOCAL, ptVertexBuffer->tMemoryRequirements.uMemoryTypeBits, "quad vertex memory");
+    gptGfx->bind_buffer_to_memory(ptAppData->ptDevice, ptAppData->tQuadVertexBuffer, &ptAppData->tQuadVertexMemory);
 
     // create index buffer
     plBufferDesc tIndexDesc = {
         .tUsage      = PL_BUFFER_USAGE_INDEX,
-        .szByteSize  = sizeof(uint32_t) * PL_ARRAYSIZE(uIndices),
+        .szByteSize  = sizeof(uIndices),
         .pcDebugName = "quad indices"
     };
-    ptAppData->tQuadIndexBuffer = gptGfx->create_buffer(ptAppData->ptDevice, &tIndexDesc, NULL);
+    plBuffer* ptIndexBuffer = NULL;
+    ptAppData->tQuadIndexBuffer = gptGfx->create_buffer(ptAppData->ptDevice, &tIndexDesc, &ptIndexBuffer);
 
-    plBuffer* ptIndexBuffer = gptGfx->get_buffer(ptAppData->ptDevice, ptAppData->tQuadIndexBuffer);
+    // allocate index memory 
+    ptAppData->tQuadIndexMemory = gptGfx->allocate_memory(ptAppData->ptDevice, ptIndexBuffer->tMemoryRequirements.ulSize, 
+            PL_MEMORY_FLAGS_DEVICE_LOCAL, ptIndexBuffer->tMemoryRequirements.uMemoryTypeBits, "quad index memory");
+    gptGfx->bind_buffer_to_memory(ptAppData->ptDevice, ptAppData->tQuadIndexBuffer, &ptAppData->tQuadIndexMemory);
 
-    // allocate index memory
-    plDeviceMemoryAllocation tIndexBufferAllocation = gptGfx->allocate_memory(
-        ptAppData->ptDevice,
-        ptIndexBuffer->tMemoryRequirements.ulSize,
-        PL_MEMORY_FLAGS_DEVICE_LOCAL,
-        ptIndexBuffer->tMemoryRequirements.uMemoryTypeBits,
-        "index buffer memory");
-    gptGfx->bind_buffer_to_memory(ptAppData->ptDevice, ptAppData->tQuadIndexBuffer, &tIndexBufferAllocation);
-
-    // create staging buffer for uploads
+    // upload data using staging buffer
     plBufferDesc tStagingDesc = {
         .tUsage      = PL_BUFFER_USAGE_STAGING,
         .szByteSize  = sizeof(atVertices) + sizeof(uIndices),
@@ -436,18 +512,13 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     plBuffer* ptStaging = NULL;
     plBufferHandle tStagingHandle = gptGfx->create_buffer(ptAppData->ptDevice, &tStagingDesc, &ptStaging);
 
-    plDeviceMemoryAllocation tStagingMem = gptGfx->allocate_memory(
-        ptAppData->ptDevice, 
-        ptStaging->tMemoryRequirements.ulSize, 
-        PL_MEMORY_FLAGS_HOST_VISIBLE | PL_MEMORY_FLAGS_HOST_COHERENT, 
-        ptStaging->tMemoryRequirements.uMemoryTypeBits, 
-        "staging memory");
+    plDeviceMemoryAllocation tStagingMem = gptGfx->allocate_memory(ptAppData->ptDevice, ptStaging->tMemoryRequirements.ulSize, 
+            PL_MEMORY_FLAGS_HOST_VISIBLE | PL_MEMORY_FLAGS_HOST_COHERENT, ptStaging->tMemoryRequirements.uMemoryTypeBits, "staging memory");
     gptGfx->bind_buffer_to_memory(ptAppData->ptDevice, tStagingHandle, &tStagingMem);
 
-    // copy vertex/index data to staging buffer
-    memcpy(ptStaging->tMemoryAllocation.pHostMapped, atVertices, sizeof(float) * PL_ARRAYSIZE(atVertices));
-    memcpy(&ptStaging->tMemoryAllocation.pHostMapped[1024], uIndices, sizeof(uint32_t) * PL_ARRAYSIZE(uIndices));
-
+    // copy to staging
+    memcpy(tStagingMem.pHostMapped, atVertices, sizeof(atVertices));
+    memcpy(tStagingMem.pHostMapped + sizeof(atVertices), uIndices, sizeof(uIndices));
 
     // upload to GPU
     plCommandBuffer* ptCmd = gptGfx->request_command_buffer(ptAppData->ptCommandPool, "upload geometry");
@@ -461,13 +532,39 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     gptGfx->end_command_recording(ptCmd);
     gptGfx->submit_command_buffer(ptCmd, NULL);
     gptGfx->wait_on_command_buffer(ptCmd);
-    gptGfx->return_command_buffer(ptCmd);
 
-    // cleanup staging buffer
+    // Cleanup staging
     gptGfx->destroy_buffer(ptAppData->ptDevice, tStagingHandle);
     gptGfx->free_memory(ptAppData->ptDevice, &tStagingMem);
 
-    // initialize board layout values
+
+    // ++++++++++++++++++++++++++++++++++++++ semaphores ++++++++++++++++++++++++++++++++++++++ //
+
+    // create timeline semaphore  
+    // ptAppData->ptSemaphore = gptGfx->create_semaphore(ptAppData->ptDevice, false); 
+
+
+
+    // ++++++++++++++++++++++++++++++++++++++ Game init ++++++++++++++++++++++++++++++++++++++ //
+
+    // TODO: get this working once we are rendering a board
+    // // initialize monopoly game
+    // mGameStartSettings tGameSettings = {
+    //     .uStartingMoney       = 1500,
+    //     .uStartingPlayerCount = 3,
+    //     .uJailFine            = 50
+    // };
+    // ptAppData->pGameData = m_init_game(tGameSettings);
+
+    // m_set_player_piece(ptAppData->pGameData, RACE_CAR, PLAYER_ONE);
+    // m_set_player_piece(ptAppData->pGameData, TOP_HAT, PLAYER_TWO);
+    // m_set_player_piece(ptAppData->pGameData, THIMBLE, PLAYER_THREE);
+
+    // m_init_game_flow(&ptAppData->tGameFlow, ptAppData->pGameData, NULL);
+
+
+    // ++++++++++++++++++++++++++++++++++++++ TODO: address this ++++++++++++++++++++++++++++++++++++++ //
+    // setup board layout
     ptAppData->fBoardSize   = 700.0f;
     ptAppData->fSquareSize  = 60.0f;
     ptAppData->fBoardX      = 50.0f;
@@ -484,10 +581,10 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 PL_EXPORT void
 pl_app_shutdown(plAppData* ptAppData)
 {
-    // wait for GPU to finish
+    // flush any pending GPU operations
     gptGfx->flush_device(ptAppData->ptDevice);
 
-    // cleanup textures (NOT swapchain textures)
+    // cleanup textures
     if(ptAppData->bBoardTextureLoaded)
     {
         gptGfx->destroy_texture(ptAppData->ptDevice, ptAppData->tBoardTexture);
@@ -501,10 +598,10 @@ pl_app_shutdown(plAppData* ptAppData)
     gptGfx->free_memory(ptAppData->ptDevice, &ptAppData->tQuadVertexMemory);
     gptGfx->free_memory(ptAppData->ptDevice, &ptAppData->tQuadIndexMemory);
 
-    // cleanup render pass
+    // cleanup render passes
     gptGfx->destroy_render_pass(ptAppData->ptDevice, ptAppData->tRenderPass);
 
-    // cleanup shader
+    // cleanup shaders
     gptGfx->destroy_shader(ptAppData->ptDevice, ptAppData->tTexturedQuadShader);
 
     // cleanup render pass layout
@@ -521,7 +618,7 @@ pl_app_shutdown(plAppData* ptAppData)
     // cleanup command pool
     gptGfx->cleanup_command_pool(ptAppData->ptCommandPool);
 
-    // cleanup swapchain (this handles swapchain texture cleanup internally)
+    // cleanup swapchain
     gptGfx->cleanup_swapchain(ptAppData->ptSwapchain);
 
     // cleanup device
@@ -531,8 +628,7 @@ pl_app_shutdown(plAppData* ptAppData)
     gptGfx->cleanup();
 
     // cleanup game data
-    if(ptAppData->pGameData)  // Add null check
-        m_free_game_data(ptAppData->pGameData);
+    m_free_game_data(ptAppData->pGameData);
 
     // cleanup window
     gptWindows->destroy(ptAppData->ptWindow);
@@ -548,7 +644,7 @@ pl_app_shutdown(plAppData* ptAppData)
 PL_EXPORT void
 pl_app_resize(plWindow* ptWindow, plAppData* ptAppData)
 {
-    // TODO: handle window resizing
+    // TODO: handle resizing 
 }
 
 //-----------------------------------------------------------------------------
@@ -558,57 +654,148 @@ pl_app_resize(plWindow* ptWindow, plAppData* ptAppData)
 PL_EXPORT void
 pl_app_update(plAppData* ptAppData)
 {
-    // begin frame (waits on fence internally)
+    // ++++++++++++++++++++++++++++++++++++++ begin frame ++++++++++++++++++++++++++++++++++++++ //
     gptGfx->begin_frame(ptAppData->ptDevice);
 
-    // acquire next swapchain image
+    // get swapcahin image
     bool bSuccess = gptGfx->acquire_swapchain_image(ptAppData->ptSwapchain);
     if(!bSuccess)
+    {
+        // Swapchain needs recreation (minimized, resized, etc)
         return;
+    }
 
-    // get command buffer from pool
-    plCommandBuffer* ptCmd = gptGfx->request_command_buffer(ptAppData->ptCommandPool, "main");
-    const plBeginCommandInfo tBeginInfo = {
-        .uWaitSemaphoreCount = 0  // explicitly set to 0, not UINT32_MAX
-    };
+    // get command buffer
+    plCommandBuffer* ptCmd = gptGfx->request_command_buffer(ptAppData->ptCommandPool, "main"); 
+    
+    // track value
+    // uint64_t uCurrentTimelineValue = 1;  
+    
+    // begin command recording with wait  
+    // const plBeginCommandInfo tBeginInfo = {  
+    //     .uWaitSemaphoreCount   = 0,  
+    //     .atWaitSempahores      = {ptAppData->ptSemaphore},  
+    //     .auWaitSemaphoreValues = {uCurrentTimelineValue}  
+    // };  
+    const plBeginCommandInfo tBeginInfo = {0};
     gptGfx->begin_command_recording(ptCmd, &tBeginInfo);
 
-    // begin render pass
+    // begin render pass (use same handle every frame)
     plRenderEncoder* ptRender = gptGfx->begin_render_pass(ptCmd, ptAppData->tRenderPass, NULL);
 
-    // set viewport and scissor
-    plRenderViewport tViewport = {.fWidth = 1280, .fHeight = 720, .fMaxDepth = 1.0f};
+    // set viewport & scissor
+    plRenderViewport tViewport = {
+        .fWidth    = 1280, 
+        .fHeight   = 720, 
+        .fMaxDepth = 1.0f};
     gptGfx->set_viewport(ptRender, &tViewport);
 
-    plScissor tScissor = {.uWidth = 1280, .uHeight = 720};
+    plScissor tScissor = {
+        .uWidth  = 1280, 
+        .uHeight = 720};
     gptGfx->set_scissor_region(ptRender, &tScissor);
 
-    // bind shader
+    // Bind shader
     gptGfx->bind_shader(ptRender, ptAppData->tTexturedQuadShader);
 
-    // bind vertex buffer
+    // bind vertex/index buffers
     gptGfx->bind_vertex_buffer(ptRender, ptAppData->tQuadVertexBuffer);
     
-    // draw textured quad if texture is loaded
+    // draw board (once texture is loaded)
     if(ptAppData->bBoardTextureLoaded) 
     {
         gptGfx->bind_graphics_bind_groups(ptRender, ptAppData->tTexturedQuadShader, 0, 1, &ptAppData->tBoardBindGroup, 0, NULL);
 
-        plDraw tDraw = {
-            .uVertexCount = 3,
-            .uInstanceCount = 1
+        plDrawIndex tDraw = {
+            .uIndexCount    = 6,
+            .tIndexBuffer   = ptAppData->tQuadIndexBuffer,
+            .uInstanceCount = 1,
+            .uIndexStart    = 0,
+            .uInstance      = 0,
+            .uVertexStart   = 0
         };
-        gptGfx->draw(ptRender, 1, &tDraw);
+        gptGfx->draw_indexed(ptRender, 1, &tDraw);
     }
 
-    // end render pass
+    // end renderpass and stop recording 
     gptGfx->end_render_pass(ptRender);
     gptGfx->end_command_recording(ptCmd);
 
-    // present and return command buffer
-    gptGfx->present(ptCmd, NULL, &ptAppData->ptSwapchain, 1);
+    // present
+    // const plSubmitInfo tSubmitInfo = {  
+    //     .uSignalSemaphoreCount   = 1,  
+    //     .atSignalSempahores      = {ptAppData->ptSemaphore},  
+    //     .auSignalSemaphoreValues = {++uCurrentTimelineValue}  
+    // };  
+    const plSubmitInfo tSubmitInfo = {0};
+    gptGfx->present(ptCmd, &tSubmitInfo, &ptAppData->ptSwapchain, 1);
+
     gptGfx->return_command_buffer(ptCmd);
+
 }
+
+//-----------------------------------------------------------------------------
+// [SECTION] rendering functions
+//-----------------------------------------------------------------------------
+
+void
+render_game_ui(plAppData* ptAppData)
+{
+    plIO* ptIO = gptIO->get_io();
+    mGameData* pGame = ptAppData->pGameData;
+
+    const float fPanelX      = 800.0f;
+    const float fPanelY      = 20.0f;
+    const float fPanelWidth  = 450.0f;
+    const float fPanelHeight = 680.0f;
+
+    const uint32_t uWhite        = PL_COLOR_32(1.0f, 1.0f, 1.0f, 1.0f);
+    const uint32_t uDarkGray     = PL_COLOR_32(0.15f, 0.15f, 0.15f, 0.95f);
+    const uint32_t uMediumGray   = PL_COLOR_32(0.2f, 0.2f, 0.2f, 1.0f);
+    const uint32_t uLightGray    = PL_COLOR_32(0.3f, 0.3f, 0.5f, 1.0f);
+    const uint32_t uVeryDarkGray = PL_COLOR_32(0.1f, 0.1f, 0.1f, 1.0f);
+
+    // UI panel background
+    gptDraw->add_rect_filled(ptAppData->ptLayer, (plVec2){fPanelX, fPanelY}, (plVec2){fPanelX + fPanelWidth, fPanelY + fPanelHeight}, 
+            (plDrawSolidOptions){.uColor = uDarkGray});
+
+    gptDraw->add_rect(ptAppData->ptLayer, (plVec2){fPanelX, fPanelY}, (plVec2){fPanelX + fPanelWidth, fPanelY + fPanelHeight}, 
+            (plDrawLineOptions){.uColor = uWhite, .fThickness = 2.0f});
+
+    // current player indicator
+    mPlayer* pCurrentPlayer = pGame->mGamePlayers[pGame->uCurrentPlayer];
+    float fInfoY = fPanelY + 20.0f;
+
+    uint32_t uPlayerColor = get_player_color(pCurrentPlayer->ePiece);
+    gptDraw->add_rect_filled(ptAppData->ptLayer, (plVec2){fPanelX + 20, fInfoY}, (plVec2){fPanelX + 50, fInfoY + 30}, (plDrawSolidOptions){.uColor = uPlayerColor});
+
+    // menu area
+    float fMenuY = fPanelY + 100.0f;
+
+    if(m_is_waiting_input(&ptAppData->tGameFlow))
+    {
+        gptDraw->add_rect_filled(ptAppData->ptLayer, (plVec2){fPanelX + 10, fMenuY}, (plVec2){fPanelX + fPanelWidth - 10, fMenuY + 400}, 
+                (plDrawSolidOptions){.uColor = uMediumGray});
+
+        if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_pre_roll)
+        {
+            for(uint32_t i = 0; i < 5; i++)
+            {
+                float fItemY = fMenuY + 20 + (i * 50.0f);
+
+                gptDraw->add_rect_filled(ptAppData->ptLayer, (plVec2){fPanelX + 30, fItemY}, (plVec2){fPanelX + fPanelWidth - 30, fItemY + 40}, 
+                        (plDrawSolidOptions){.uColor = uLightGray});
+            }
+        }
+    }
+
+    // log area
+    float fLogY = fPanelY + fPanelHeight - 150;
+
+    gptDraw->add_rect_filled(ptAppData->ptLayer, (plVec2){fPanelX + 10, fLogY}, (plVec2){fPanelX + fPanelWidth - 10, fPanelY + fPanelHeight - 10}, 
+            (plDrawSolidOptions){.uColor = uVeryDarkGray});
+}
+
 
 //-----------------------------------------------------------------------------
 // [SECTION] input handling
@@ -660,7 +847,7 @@ get_player_color(mPlayerPiece ePiece)
         case IRON:          return PL_COLOR_32(1.0f, 0.0f,  1.0f, 1.0f);  // magenta
         case CANNON:        return PL_COLOR_32(1.0f, 0.5f,  0.0f, 1.0f);  // orange
         case LANTERN:       return PL_COLOR_32(0.5f, 0.0f,  0.5f, 1.0f);  // purple
-        case PURSE:         return PL_COLOR_32(1.0f, 0.75f, 0.8f, 1.0f);  // pink
+        case PURSE:         return PL_COLOR_32(1.0f, 0.75f, 0.8f, 1.0f); // pink
         case ROCKING_HORSE: return PL_COLOR_32(0.6f, 0.3f,  0.0f, 1.0f);  // brown
         default:            return PL_COLOR_32(1.0f, 1.0f,  1.0f, 1.0f);  // white
     }
@@ -671,7 +858,7 @@ load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig)
 {
     plDevice* ptDevice = ptAppData->ptDevice;
 
-    // load image from disk using stb_image
+    // load image from disk
     int iWidth, iHeight, iChannels;
     unsigned char* pImageData = stbi_load(ptConfig->pcFilePath, &iWidth, &iHeight, &iChannels, 4);
 
@@ -682,9 +869,9 @@ load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig)
             *ptConfig->pbOutLoaded = false;
         return;
     }
-    printf("Loaded texture: %s (%dx%d)\n", ptConfig->pcFilePath, iWidth, iHeight);
+    printf("Loaded texture: %s (%dx%d)\n", ptConfig->pcFilePath, iWidth, iHeight); // success
 
-    // create GPU texture
+    // create gpu texture
     plTextureDesc tTexDesc = {
         .tDimensions = {(float)iWidth, (float)iHeight, 1.0f},
         .tFormat     = PL_FORMAT_R8G8B8A8_UNORM,
@@ -698,12 +885,12 @@ load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig)
     plTexture* ptTexture = NULL;
     *ptConfig->ptOutTexture = gptGfx->create_texture(ptDevice, &tTexDesc, &ptTexture);
 
-    // allocate GPU memory for texture
+    // allocate gpu memory
     *ptConfig->ptOutMemory = gptGfx->allocate_memory(ptDevice, ptTexture->tMemoryRequirements.ulSize, PL_MEMORY_FLAGS_DEVICE_LOCAL, 
             ptTexture->tMemoryRequirements.uMemoryTypeBits, "texture memory");
     gptGfx->bind_texture_to_memory(ptDevice, *ptConfig->ptOutTexture, ptConfig->ptOutMemory);
 
-    // create staging buffer for upload
+    // create staging buffer
     size_t szImageSize = iWidth * iHeight * 4;
 
     plBufferDesc tStagingDesc = {
@@ -719,25 +906,20 @@ load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig)
             PL_MEMORY_FLAGS_HOST_VISIBLE | PL_MEMORY_FLAGS_HOST_COHERENT, ptStaging->tMemoryRequirements.uMemoryTypeBits, "staging memory");
     gptGfx->bind_buffer_to_memory(ptDevice, tStagingHandle, &tStagingMem);
 
-    // copy image data to staging buffer
+    // copy image data to staging
     memcpy(tStagingMem.pHostMapped, pImageData, szImageSize);
     stbi_image_free(pImageData);
 
-    // upload staging buffer to GPU texture
+    // upload staging -> gpu texture
     plCommandBuffer* ptCmdbuff = gptGfx->request_command_buffer(ptAppData->ptCommandPool, "upload texture");
     gptGfx->begin_command_recording(ptCmdbuff, NULL);
     plBlitEncoder* ptBlit = gptGfx->begin_blit_pass(ptCmdbuff);
 
-    // transition image to transfer destination layout
-    gptGfx->pipeline_barrier_blit(ptBlit, 
-        PL_PIPELINE_STAGE_VERTEX_SHADER | PL_PIPELINE_STAGE_TRANSFER, 
-        PL_ACCESS_SHADER_READ | PL_ACCESS_TRANSFER_READ, 
-        PL_PIPELINE_STAGE_TRANSFER, 
-        PL_ACCESS_TRANSFER_WRITE);
-    
-    gptGfx->set_texture_usage(ptBlit, *ptConfig->ptOutTexture, PL_TEXTURE_USAGE_SAMPLED, 0);
+    // Transition to transfer destination  
+    gptGfx->pipeline_barrier_blit(ptBlit, PL_PIPELINE_STAGE_VERTEX_SHADER | PL_PIPELINE_STAGE_TRANSFER, 
+            PL_ACCESS_SHADER_READ | PL_ACCESS_TRANSFER_READ, PL_PIPELINE_STAGE_TRANSFER, PL_ACCESS_TRANSFER_WRITE);  
+    gptGfx->set_texture_usage(ptBlit, *ptConfig->ptOutTexture, PL_TEXTURE_USAGE_SAMPLED, 0);  
 
-    // copy buffer to texture
     plBufferImageCopy tCopy = {
         .szBufferOffset     = 0,
         .uImageWidth        = iWidth,
@@ -750,24 +932,19 @@ load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig)
     };
     gptGfx->copy_buffer_to_texture(ptBlit, tStagingHandle, *ptConfig->ptOutTexture, 1, &tCopy);
 
-    // transition image to shader read layout
-    gptGfx->pipeline_barrier_blit(ptBlit, 
-        PL_PIPELINE_STAGE_TRANSFER, 
-        PL_ACCESS_TRANSFER_WRITE, 
-        PL_PIPELINE_STAGE_VERTEX_SHADER | PL_PIPELINE_STAGE_TRANSFER, 
-        PL_ACCESS_SHADER_READ | PL_ACCESS_TRANSFER_READ);
+    gptGfx->pipeline_barrier_blit(ptBlit, PL_PIPELINE_STAGE_TRANSFER, PL_ACCESS_TRANSFER_WRITE, PL_PIPELINE_STAGE_VERTEX_SHADER | 
+        PL_PIPELINE_STAGE_TRANSFER, PL_ACCESS_SHADER_READ | PL_ACCESS_TRANSFER_READ);
 
     gptGfx->end_blit_pass(ptBlit);
     gptGfx->end_command_recording(ptCmdbuff);
     gptGfx->submit_command_buffer(ptCmdbuff, NULL);
     gptGfx->wait_on_command_buffer(ptCmdbuff);
-    gptGfx->return_command_buffer(ptCmdbuff);
 
-    // cleanup staging buffer
+    // cleanup staging
     gptGfx->destroy_buffer(ptDevice, tStagingHandle);
     gptGfx->free_memory(ptDevice, &tStagingMem);
 
-    // create bind group for this texture
+    // create bind group
     plBindGroupDesc tBGDesc = {
         .tLayout     = ptAppData->tTextureBindGroupLayout,
         .ptPool      = ptAppData->tBindGroupPoolTexAndSamp,
@@ -775,7 +952,7 @@ load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig)
     };
     *ptConfig->ptOutBindGroup = gptGfx->create_bind_group(ptDevice, &tBGDesc);
 
-    // update bind group with texture and sampler
+    // update with actual texture + sampler
     plBindGroupUpdateTextureData tTexUpdate = {
         .tTexture      = *ptConfig->ptOutTexture,
         .uSlot         = 0,
