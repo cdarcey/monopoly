@@ -92,7 +92,7 @@ typedef struct _plAppData
     // shaders
     plShaderHandle tTexturedQuadShader;
 
-    // geometry (shared unit quad)
+    // geometry
     plBufferHandle           tQuadVertexBuffer;
     plBufferHandle           tQuadIndexBuffer;
     plDeviceMemoryAllocation tQuadVertexMemory;
@@ -215,10 +215,10 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     // initialize shader system
     static const plShaderOptions tDefaultShaderOptions = {
         .apcIncludeDirectories = {
-            "C:/dev/monopoly/shaders/"
+            "../../monopoly/shaders/"
         },
         .apcDirectories = {
-            "C:/dev/monopoly/shaders/"
+            "../../monopoly/shaders/"
         },
         .tFlags = PL_SHADER_FLAGS_AUTO_OUTPUT | PL_SHADER_FLAGS_NEVER_CACHE
     };
@@ -251,7 +251,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
         .tVAddressMode = PL_ADDRESS_MODE_CLAMP_TO_EDGE,
         .fMinMip       = 0.0f,
         .fMaxMip       = 1.0f,
-        .pcDebugName   = "sampler_linear_clamp" 
+        .pcDebugName   = "sampler_linear" 
     };
     ptAppData->tLinearSampler = gptGfx->create_sampler(ptAppData->ptDevice, &tLinearSamplerDesc);
 
@@ -263,7 +263,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
         .tVAddressMode = PL_ADDRESS_MODE_CLAMP_TO_EDGE,
         .fMinMip       = 0.0f,
         .fMaxMip       = 1.0f,
-        .pcDebugName   = "sampler_nearest_clamp"
+        .pcDebugName   = "sampler_nearest"
     };
     ptAppData->tNearestSampler = gptGfx->create_sampler(ptAppData->ptDevice, &tNearSamplerDesc);
 
@@ -296,7 +296,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // load board texture
     plTextureLoadConfig tBoardConfig = {
-        .pcFilePath      = "C:/Dev/monopoly/assets/monopoly-board.png",
+        .pcFilePath      = "D:/Dev/monopoly/assets/monopoly-board.png",
         .tSampler        = ptAppData->tLinearSampler,
         .ptOutTexture    = &ptAppData->tBoardTexture,
         .ptOutMemory     = &ptAppData->tBoardTextureMemory,
@@ -577,18 +577,6 @@ pl_app_update(plAppData* ptAppData)
 
     // bind vertex buffer
     gptGfx->bind_vertex_buffer(ptRender, ptAppData->tQuadVertexBuffer);
-    
-    // draw textured quad if texture is loaded
-    // if(ptAppData->bBoardTextureLoaded) 
-    // {
-    //     gptGfx->bind_graphics_bind_groups(ptRender, ptAppData->tTexturedQuadShader, 0, 1, &ptAppData->tBoardBindGroup, 0, NULL);
-
-    //     plDraw tDraw = {
-    //         .uVertexCount = 3,
-    //         .uInstanceCount = 1
-    //     };
-    //     gptGfx->draw(ptRender, 1, &tDraw);
-    // }
 
     plDynamicDataBlock tCurrentDynamicBufferBlock = gptGfx->allocate_dynamic_data_block(ptAppData->ptDevice);
     plDynamicBinding tDynamicBinding = pl_allocate_dynamic_data(gptGfx, ptAppData->ptDevice, &tCurrentDynamicBufferBlock);
@@ -606,6 +594,16 @@ pl_app_update(plAppData* ptAppData)
         .uInstanceCount = 1
     };
     gptGfx->draw_indexed(ptRender, 1, &tDraw);
+
+    // // draw
+    // gptGfx->bind_graphics_bind_groups(ptRender, ptAppData->tTexturedQuadShader, 0, 1, &ptAppData->tBoardBindGroup, 0, NULL);
+
+    // plDraw tDraw = {
+    //     .uVertexCount = 6,
+    //     .uInstanceCount = 1
+    // };
+    // gptGfx->draw(ptRender, 1, &tDraw);
+    
     
 
     // end render pass
