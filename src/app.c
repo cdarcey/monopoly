@@ -2,6 +2,10 @@
    app.c - Monopoly Game
 */
 
+// TODO: 
+//  -> move coordinates from ndc space to pixel coordscwith transforms 
+//  -> 
+
 //-----------------------------------------------------------------------------
 // [SECTION] includes
 //-----------------------------------------------------------------------------
@@ -220,7 +224,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
         .apcDirectories = {
             "../../monopoly/shaders/"
         },
-        .tFlags = PL_SHADER_FLAGS_AUTO_OUTPUT | PL_SHADER_FLAGS_NEVER_CACHE
+        .tFlags = PL_SHADER_FLAGS_NEVER_CACHE
     };
     gptShader->initialize(&tDefaultShaderOptions);
 
@@ -296,7 +300,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // load board texture
     plTextureLoadConfig tBoardConfig = {
-        .pcFilePath      = "D:/Dev/monopoly/assets/monopoly-board.png",
+        .pcFilePath      = "../../monopoly/assets/monopoly-board.png",
         .tSampler        = ptAppData->tLinearSampler,
         .ptOutTexture    = &ptAppData->tBoardTexture,
         .ptOutMemory     = &ptAppData->tBoardTextureMemory,
@@ -580,31 +584,17 @@ pl_app_update(plAppData* ptAppData)
 
     plDynamicDataBlock tCurrentDynamicBufferBlock = gptGfx->allocate_dynamic_data_block(ptAppData->ptDevice);
     plDynamicBinding tDynamicBinding = pl_allocate_dynamic_data(gptGfx, ptAppData->ptDevice, &tCurrentDynamicBufferBlock);
-    plVec4* tTintColor = (plVec4*)tDynamicBinding.pcData;
-    tTintColor->r = 1.0f;
-    tTintColor->g = 1.0f;
-    tTintColor->b = 1.0f;
-    tTintColor->a = 1.0f;
+    float* tScaler = (float*)tDynamicBinding.pcData;
+    *tScaler = 0.1f;
 
-    gptGfx->bind_graphics_bind_groups(ptRender, ptAppData->tTexturedQuadShader, 0, 1, &ptAppData->tBoardBindGroup, 0, NULL);
-    
+    gptGfx->bind_graphics_bind_groups(ptRender, ptAppData->tTexturedQuadShader, 0, 1, &ptAppData->tBoardBindGroup, 1, &tDynamicBinding);
+
     plDrawIndex tDraw = {
         .uIndexCount = 6,
         .tIndexBuffer = ptAppData->tQuadIndexBuffer,
         .uInstanceCount = 1
     };
     gptGfx->draw_indexed(ptRender, 1, &tDraw);
-
-    // // draw
-    // gptGfx->bind_graphics_bind_groups(ptRender, ptAppData->tTexturedQuadShader, 0, 1, &ptAppData->tBoardBindGroup, 0, NULL);
-
-    // plDraw tDraw = {
-    //     .uVertexCount = 6,
-    //     .uInstanceCount = 1
-    // };
-    // gptGfx->draw(ptRender, 1, &tDraw);
-    
-    
 
     // end render pass
     gptGfx->end_render_pass(ptRender);
