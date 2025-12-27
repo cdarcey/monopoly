@@ -3,7 +3,7 @@
 */
 
 // TODO: 
-//  -> move coordinates from ndc space to pixel coordscwith transforms 
+//  -> move coordinates from ndc space to pixel coords with transforms 
 //  -> 
 
 //-----------------------------------------------------------------------------
@@ -37,6 +37,9 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+#define SCREEN_WIDTH 1280
+#define SCREEN_HEIGHT 720
+
 //-----------------------------------------------------------------------------
 // [SECTION] helper macros
 //-----------------------------------------------------------------------------
@@ -61,6 +64,7 @@ plVec2   board_position_to_screen(uint32_t uBoardPosition);
 uint32_t get_player_color(mPlayerPiece ePiece);
 void     load_board_textures(plAppData* ptAppData);
 void     load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig);
+plMat4   create_orthographic_projection(float fScreenWidth, float fScreenHeight);
 
 //-----------------------------------------------------------------------------
 // [SECTION] structs
@@ -117,12 +121,6 @@ typedef struct _plAppData
     mGameData* pGameData;
     mGameFlow  tGameFlow;
 
-    // board layout
-    float fBoardX;
-    float fBoardY;
-    float fBoardSize;
-    float fSquareSize;
-
     // ui state
     bool          bShowPropertyPopup;
     mPropertyName ePropertyToShow;
@@ -158,7 +156,7 @@ const plShaderI*      gptShader      = NULL;
 PL_EXPORT void*
 pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 {
-    // hot reload path - re-retrieve APIs
+    // hot reload path - reload APIs
     if(ptAppData)
     {
         gptIO          = pl_get_api_latest(ptApiRegistry, plIOI);
@@ -199,8 +197,8 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
         .pcTitle = "Monopoly",
         .iXPos   = 100,
         .iYPos   = 100,
-        .uWidth  = 1280,
-        .uHeight = 720,
+        .uWidth  = SCREEN_WIDTH,
+        .uHeight = SCREEN_HEIGHT,
     };
     gptWindows->create(tWindowDesc, &ptAppData->ptWindow);
     gptWindows->show(ptAppData->ptWindow);
@@ -232,8 +230,8 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     plSwapchainInit tSwapchainInit = {
         .bVSync       = true,
         .tSampleCount = PL_SAMPLE_COUNT_1,
-        .uWidth       = 1280,
-        .uHeight      = 720
+        .uWidth       = SCREEN_WIDTH,
+        .uHeight      = SCREEN_HEIGHT
     };
     ptAppData->ptSwapchain = gptGfx->create_swapchain(ptAppData->ptDevice, ptSurface, &tSwapchainInit);
 
@@ -356,7 +354,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     // create render pass with swapchain attachments
     plRenderPassDesc tMainPassDesc = {
         .tLayout        = ptAppData->tMainPassLayout,
-        .tDimensions    = {1280, 720},
+        .tDimensions    = {SCREEN_WIDTH, SCREEN_HEIGHT},
         .atColorTargets = {
             {
                 .tLoadOp       = PL_LOAD_OP_CLEAR,
@@ -382,12 +380,12 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     free(atAttachments);
     ptAppData->tRenderPass = tRenderPass;
 
-    // define quad vertices -> neg Y is up.....I think
+    // define quad vertices
     const float atVertices[] = {
-        -0.5f, -0.5f, 0.0f, 0.0f,
-        -0.5f,  0.5f, 0.0f, 1.0f, 
-         0.5f,  0.5f, 1.0f, 1.0f,
-         0.5f, -0.5f, 1.0f, 0.0f  
+        0.0f,   0.0f,   0.0f, 0.0f,
+        700.0f, 0.0f,   1.0f, 0.0f,
+        700.0f, 700.0f, 1.0f, 1.0f,
+        0.0f,   700.0f, 0.0f, 1.0f
     };
 
     // create vertex buffer
@@ -461,10 +459,6 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     gptGfx->free_memory(ptAppData->ptDevice, &tStagingMem);
 
     // initialize board layout values
-    ptAppData->fBoardSize   = 700.0f;
-    ptAppData->fSquareSize  = 60.0f;
-    ptAppData->fBoardX      = 50.0f;
-    ptAppData->fBoardY      = 10.0f;
     ptAppData->bShowPropertyPopup = false;
 
     return ptAppData;
@@ -582,12 +576,24 @@ pl_app_update(plAppData* ptAppData)
     // bind vertex buffer
     gptGfx->bind_vertex_buffer(ptRender, ptAppData->tQuadVertexBuffer);
 
-    plDynamicDataBlock tCurrentDynamicBufferBlock = gptGfx->allocate_dynamic_data_block(ptAppData->ptDevice);
-    plDynamicBinding tDynamicBinding = pl_allocate_dynamic_data(gptGfx, ptAppData->ptDevice, &tCurrentDynamicBufferBlock);
-    float* tScaler = (float*)tDynamicBinding.pcData;
-    *tScaler = 0.1f;
+    // allocate dynamic data (used like a push constant)
+    plDynamicDataBlock tBlock = gptGfx->allocate_dynamic_data_block(ptAppData->ptDevice);
+    plDynamicBinding tBinding = pl_allocate_dynamic_data(gptGfx, ptAppData->ptDevice, &tBlock);
 
-    gptGfx->bind_graphics_bind_groups(ptRender, ptAppData->tTexturedQuadShader, 0, 1, &ptAppData->tBoardBindGroup, 1, &tDynamicBinding);
+    // create matrix and set to dynamic block
+    plMat4* pMVP = (plMat4*)tBinding.pcData;
+
+    // projection matrix, converts pixel coords to NDC space
+    plMat4 m4Projection = create_orthographic_projection((float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
+
+    // position board (from top left corner)
+    plMat4 m4Translate = pl_mat4_translate_xyz(50.0f, 10.0f, 0.0f);
+
+    // projection * model
+    *pMVP = pl_mul_mat4(&m4Projection, &m4Translate);
+
+    // bind texture and dynamic uniform
+    gptGfx->bind_graphics_bind_groups(ptRender, ptAppData->tTexturedQuadShader, 0, 1, &ptAppData->tBoardBindGroup, 1, &tBinding);
 
     plDrawIndex tDraw = {
         .uIndexCount = 6,
@@ -729,7 +735,7 @@ load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig)
         PL_ACCESS_SHADER_READ | PL_ACCESS_TRANSFER_READ, 
         PL_PIPELINE_STAGE_TRANSFER, 
         PL_ACCESS_TRANSFER_WRITE);
-    
+
     gptGfx->set_texture_usage(ptBlit, *ptConfig->ptOutTexture, PL_TEXTURE_USAGE_SAMPLED, 0);
 
     // copy buffer to texture
@@ -793,4 +799,25 @@ load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig)
     if(ptConfig->pbOutLoaded)
         *ptConfig->pbOutLoaded = true;
     printf("Texture uploaded to GPU\n");
+}
+
+
+plMat4 
+create_orthographic_projection(float fScreenWidth, float fScreenHeight)
+{
+    plMat4 result = {0};
+
+    // maps (0, fScreenWidth) to (-1, 1) for X
+    result.col[0].x = 2.0f / fScreenWidth;
+    result.col[3].x = -1.0f;
+
+    // maps (0, fScreenHeight) to (1, -1) for y flipped
+    result.col[1].y = -2.0f / fScreenHeight;
+    result.col[3].y = 1.0f;
+
+    // z and w
+    result.col[2].z = -1.0f;
+    result.col[3].w = 1.0f;
+
+    return result;
 }
