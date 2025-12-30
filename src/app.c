@@ -3,7 +3,6 @@
 */
 
 // TODO: 
-//  -> move coordinates from ndc space to pixel coords with transforms 
 //  -> 
 
 //-----------------------------------------------------------------------------
@@ -26,6 +25,8 @@
 #include "pl_draw_ext.h"
 #include "pl_draw_backend_ext.h"
 #include "pl_shader_ext.h"
+#include "pl_ui_ext.h"
+#include "pl_starter_ext.h"
 
 // monopoly game logic
 #include "m_init_game.h"
@@ -65,6 +66,9 @@ uint32_t get_player_color(mPlayerPiece ePiece);
 void     load_board_textures(plAppData* ptAppData);
 void     load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig);
 plMat4   create_orthographic_projection(float fScreenWidth, float fScreenHeight);
+
+// menus 
+void draw_preroll_menu(plAppData* ptAppData);
 
 //-----------------------------------------------------------------------------
 // [SECTION] structs
@@ -142,12 +146,14 @@ typedef struct _plTextureLoadConfig
 // [SECTION] global api pointers
 //-----------------------------------------------------------------------------
 
+const plStarterI*     gptStarter     = NULL;
 const plIOI*          gptIO          = NULL;
 const plWindowI*      gptWindows     = NULL;
 const plGraphicsI*    gptGfx         = NULL;
 const plDrawI*        gptDraw        = NULL;
 const plDrawBackendI* gptDrawBackend = NULL;
 const plShaderI*      gptShader      = NULL;
+const plUiI*          gptUi          = NULL;
 
 //-----------------------------------------------------------------------------
 // [SECTION] pl_app_load
@@ -159,12 +165,14 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     // hot reload path - reload APIs
     if(ptAppData)
     {
+        gptStarter     = pl_get_api_latest(ptApiRegistry, plStarterI);
         gptIO          = pl_get_api_latest(ptApiRegistry, plIOI);
         gptWindows     = pl_get_api_latest(ptApiRegistry, plWindowI);
         gptGfx         = pl_get_api_latest(ptApiRegistry, plGraphicsI);
         gptDraw        = pl_get_api_latest(ptApiRegistry, plDrawI);
         gptDrawBackend = pl_get_api_latest(ptApiRegistry, plDrawBackendI);
         gptShader      = pl_get_api_latest(ptApiRegistry, plShaderI);
+        gptUi          = pl_get_api_latest(ptApiRegistry, plUiI);
         return ptAppData;
     }
 
@@ -174,16 +182,43 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // load extensions
     const plExtensionRegistryI* ptExtensionRegistry = pl_get_api_latest(ptApiRegistry, plExtensionRegistryI);
+    ptExtensionRegistry->load("pl_starter_ext", NULL, NULL, false);
     ptExtensionRegistry->load("pl_unity_ext", NULL, NULL, true);
     ptExtensionRegistry->load("pl_platform_ext", NULL, NULL, false);
+    ptExtensionRegistry->load("pl_graphics_ext", NULL, NULL, false);
+    ptExtensionRegistry->load("pl_shader_ext", NULL, NULL, false);
+    ptExtensionRegistry->load("pl_draw_ext", NULL, NULL, false);
+    ptExtensionRegistry->load("pl_draw_backend_ext", NULL, NULL, false);
+    ptExtensionRegistry->load("pl_ui_ext", NULL, NULL, false); 
 
     // get APIs
+    gptStarter     = pl_get_api_latest(ptApiRegistry, plStarterI);
     gptIO          = pl_get_api_latest(ptApiRegistry, plIOI);
     gptWindows     = pl_get_api_latest(ptApiRegistry, plWindowI);
     gptGfx         = pl_get_api_latest(ptApiRegistry, plGraphicsI);
     gptDraw        = pl_get_api_latest(ptApiRegistry, plDrawI);
     gptDrawBackend = pl_get_api_latest(ptApiRegistry, plDrawBackendI);
     gptShader      = pl_get_api_latest(ptApiRegistry, plShaderI);
+    gptUi          = pl_get_api_latest(ptApiRegistry, plUiI);
+
+    // init game logic TODO: move to main loop and create menu 
+    // initialize game settings
+    mGameStartSettings settings = {
+        .uStartingMoney = 1500,
+        .uStartingPlayerCount = 3,
+        .uJailFine = 50
+    };
+
+    // create game data
+    ptAppData->pGameData = m_init_game(settings); // TODO: make into a phase so that it can be done in the main render loop *see above TODO
+
+    // set up player pieces
+    m_set_player_piece(ptAppData->pGameData, RACE_CAR, PLAYER_ONE);
+    m_set_player_piece(ptAppData->pGameData, TOP_HAT, PLAYER_TWO);
+    m_set_player_piece(ptAppData->pGameData, THIMBLE, PLAYER_THREE);
+
+    // initialize game flow system // TODO: remove 3 arg since using Pilot light and not GLFW 
+    m_init_game_flow(&ptAppData->tGameFlow, ptAppData->pGameData, NULL); // null for console, window pointer for graphics
 
     // initialize graphics with validation enabled
     plGraphicsInit tGraphicsInit = {
@@ -213,6 +248,19 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
         .ptSurface                = ptSurface
     };
     ptAppData->ptDevice = gptGfx->create_device(&tDeviceInit);
+
+    // initialize UI ext & starter(only used for UI)
+    // initialize starter
+    plStarterInit tStarterInit = {
+        .tFlags = PL_STARTER_FLAGS_UI_EXT | PL_STARTER_FLAGS_DRAW_EXT,
+        .ptWindow = ptAppData->ptWindow
+    };
+    gptStarter->initialize(tStarterInit);
+
+    // UI
+    gptUi->initialize();
+    gptUi->set_default_font(gptStarter->get_default_font());
+    gptUi->set_dark_theme();
 
     // initialize shader system
     static const plShaderOptions tDefaultShaderOptions = {
@@ -461,6 +509,8 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     // initialize board layout values
     ptAppData->bShowPropertyPopup = false;
 
+    gptStarter->finalize();
+
     return ptAppData;
 }
 
@@ -545,13 +595,25 @@ pl_app_resize(plWindow* ptWindow, plAppData* ptAppData)
 PL_EXPORT void
 pl_app_update(plAppData* ptAppData)
 {
+    plIO* ptIO = gptIO->get_io();
+    float fDeltaTime = ptIO->fDeltaTime;
+    // run current phase
+    m_run_current_phase(&ptAppData->tGameFlow, fDeltaTime);
+
+    // check for game over
+    m_game_over_check(ptAppData->pGameData);
+
     // begin frame (waits on fence internally)
     gptGfx->begin_frame(ptAppData->ptDevice);
+    gptUi->new_frame();
 
     // acquire next swapchain image
     bool bSuccess = gptGfx->acquire_swapchain_image(ptAppData->ptSwapchain);
     if(!bSuccess)
         return;
+
+    // testing
+    draw_preroll_menu(ptAppData);
 
     // get command buffer from pool
     plCommandBuffer* ptCmd = gptGfx->request_command_buffer(ptAppData->ptCommandPool, "main");
@@ -601,6 +663,10 @@ pl_app_update(plAppData* ptAppData)
         .uInstanceCount = 1
     };
     gptGfx->draw_indexed(ptRender, 1, &tDraw);
+
+    // submit UI drawlist 
+    gptUi->end_frame();
+    gptDrawBackend->submit_2d_drawlist(gptUi->get_draw_list(), ptRender, tViewport.fHeight, tViewport.fWidth, 1);
 
     // end render pass
     gptGfx->end_render_pass(ptRender);
@@ -820,4 +886,46 @@ create_orthographic_projection(float fScreenWidth, float fScreenHeight)
     result.col[3].w = 1.0f;
 
     return result;
+}
+
+void 
+draw_preroll_menu(plAppData* ptAppData)
+{
+    if(!gptUi->begin_window("Pre-Roll Menu", &ptAppData->pGameData->bShowPrerollMenu, 
+        PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE))
+        return;
+
+    // main menu options
+    gptUi->text("What would you like to do?");
+    gptUi->vertical_spacing();
+
+    // set layout for buttons (one column, 40px height, 200px width)
+    gptUi->layout_static(40, 200, 1);
+    
+    if(gptUi->button("Roll Dice"))
+    {
+        // set game flow to roll phase
+        // ptAppData->tGameFlow.eCurrentPhase = PHASE_ROLL_DICE;
+        ptAppData->pGameData->bShowPrerollMenu = false;
+    }
+
+    if(gptUi->button("Propose Trade"))
+    {
+        // open trade menu
+        // ptAppData->tGameFlow.bShowTradeMenu = true;
+        ptAppData->pGameData->bShowPrerollMenu = false;
+    }
+
+    if(gptUi->button("Property Management"))
+    {
+        // open property management menu
+        // ptAppData->tGameFlow.bShowPropertyManagementMenu = true;
+        ptAppData->pGameData->bShowPrerollMenu = false;
+    }
+
+    gptUi->vertical_spacing();
+    gptUi->separator();
+
+
+    gptUi->end_window();
 }

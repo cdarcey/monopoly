@@ -85,13 +85,14 @@ typedef struct _mGameData
     mDeckIndexBuffer    mGameDeckIndexBuffers[TOTAL_INDEX_BUFFERS];
 
     // internal
-    uint64_t             uGameRoundCount;
-    uint32_t             uJailFine;
-    uint8_t              uStartingPlayerCount;
-    uint8_t              uCurrentPlayer;
-    uint8_t              uActivePlayers; 
-    eGameState           mCurrentState;
-    bool                 bRunning;
+    uint64_t   uGameRoundCount;
+    uint32_t   uJailFine;
+    uint8_t    uStartingPlayerCount;
+    uint8_t    uCurrentPlayer;
+    uint8_t    uActivePlayers; 
+    eGameState mCurrentState;
+    bool       bRunning;
+    bool       bShowPrerollMenu;
 } mGameData;
 
 typedef struct _mGameStartSettings

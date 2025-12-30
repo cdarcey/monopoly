@@ -143,14 +143,6 @@ m_phase_pre_roll(void* pData, float fDeltaTime, mGameFlow* pFlow)
     // show menu first time
     if(!pPreRoll->bShowedMenu)
     {
-        printf("\n=== Player %d's Turn ===\n", pPlayer->ePlayerTurnPosition + 1);
-        printf("1. View status\n");
-        printf("2. View properties\n");
-        printf("3. Property management\n");
-        printf("4. Propose trade\n");
-        printf("5. Roll dice\n");
-        printf("> ");
-        fflush(stdout);
         pPreRoll->bShowedMenu = true;
         return PHASE_RUNNING;
     }

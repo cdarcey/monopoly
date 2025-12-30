@@ -81,24 +81,24 @@ typedef struct _mGameFlow
 {
     fPhaseFunc pfCurrentPhase;
     void*      pCurrentPhaseData;
-    
+
     // stack for nested phases like auctions and trades
     fPhaseFunc apReturnStack[16];
     void*      apReturnDataStack[16];
     int        iStackDepth;
-    
+
     // reference to main game data
     mGameData* pGameData;
-    
-    // platform-specific input context (e.g. sdl window)
+
+    // platform-specific input context
     void* pInputContext;
     bool  bInputReceived;
     int   iInputValue;
     char  szInputString[256];
-    
-    // accumulated time for animations
+
+    // accumulated time 
     float fAccumulatedTime;
-    
+
 } mGameFlow;
 
 // ==================== PHASE SYSTEM FUNCTIONS ==================== //
