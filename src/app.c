@@ -26,7 +26,6 @@
 #include "pl_draw_backend_ext.h"
 #include "pl_shader_ext.h"
 #include "pl_ui_ext.h"
-#include "pl_starter_ext.h"
 
 // monopoly game logic
 #include "m_init_game.h"
@@ -146,7 +145,6 @@ typedef struct _plTextureLoadConfig
 // [SECTION] global api pointers
 //-----------------------------------------------------------------------------
 
-const plStarterI*     gptStarter     = NULL;
 const plIOI*          gptIO          = NULL;
 const plWindowI*      gptWindows     = NULL;
 const plGraphicsI*    gptGfx         = NULL;
@@ -165,7 +163,6 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     // hot reload path - reload APIs
     if(ptAppData)
     {
-        gptStarter     = pl_get_api_latest(ptApiRegistry, plStarterI);
         gptIO          = pl_get_api_latest(ptApiRegistry, plIOI);
         gptWindows     = pl_get_api_latest(ptApiRegistry, plWindowI);
         gptGfx         = pl_get_api_latest(ptApiRegistry, plGraphicsI);
@@ -192,7 +189,6 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     ptExtensionRegistry->load("pl_ui_ext", NULL, NULL, false); 
 
     // get APIs
-    gptStarter     = pl_get_api_latest(ptApiRegistry, plStarterI);
     gptIO          = pl_get_api_latest(ptApiRegistry, plIOI);
     gptWindows     = pl_get_api_latest(ptApiRegistry, plWindowI);
     gptGfx         = pl_get_api_latest(ptApiRegistry, plGraphicsI);
@@ -248,19 +244,6 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
         .ptSurface                = ptSurface
     };
     ptAppData->ptDevice = gptGfx->create_device(&tDeviceInit);
-
-    // initialize UI ext & starter(only used for UI)
-    // initialize starter
-    plStarterInit tStarterInit = {
-        .tFlags = PL_STARTER_FLAGS_UI_EXT | PL_STARTER_FLAGS_DRAW_EXT,
-        .ptWindow = ptAppData->ptWindow
-    };
-    gptStarter->initialize(tStarterInit);
-
-    // UI
-    gptUi->initialize();
-    gptUi->set_default_font(gptStarter->get_default_font());
-    gptUi->set_dark_theme();
 
     // initialize shader system
     static const plShaderOptions tDefaultShaderOptions = {
@@ -509,8 +492,6 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     // initialize board layout values
     ptAppData->bShowPropertyPopup = false;
 
-    gptStarter->finalize();
-
     return ptAppData;
 }
 
@@ -598,14 +579,13 @@ pl_app_update(plAppData* ptAppData)
     plIO* ptIO = gptIO->get_io();
     float fDeltaTime = ptIO->fDeltaTime;
     // run current phase
-    m_run_current_phase(&ptAppData->tGameFlow, fDeltaTime);
+    // m_run_current_phase(&ptAppData->tGameFlow, fDeltaTime);
 
     // check for game over
-    m_game_over_check(ptAppData->pGameData);
+    // m_game_over_check(ptAppData->pGameData);
 
     // begin frame (waits on fence internally)
     gptGfx->begin_frame(ptAppData->ptDevice);
-    gptUi->new_frame();
 
     // acquire next swapchain image
     bool bSuccess = gptGfx->acquire_swapchain_image(ptAppData->ptSwapchain);
@@ -613,7 +593,7 @@ pl_app_update(plAppData* ptAppData)
         return;
 
     // testing
-    draw_preroll_menu(ptAppData);
+    // draw_preroll_menu(ptAppData);
 
     // get command buffer from pool
     plCommandBuffer* ptCmd = gptGfx->request_command_buffer(ptAppData->ptCommandPool, "main");
@@ -663,10 +643,6 @@ pl_app_update(plAppData* ptAppData)
         .uInstanceCount = 1
     };
     gptGfx->draw_indexed(ptRender, 1, &tDraw);
-
-    // submit UI drawlist 
-    gptUi->end_frame();
-    gptDrawBackend->submit_2d_drawlist(gptUi->get_draw_list(), ptRender, tViewport.fHeight, tViewport.fWidth, 1);
 
     // end render pass
     gptGfx->end_render_pass(ptRender);
