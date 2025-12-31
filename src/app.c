@@ -68,6 +68,7 @@ plMat4   create_orthographic_projection(float fScreenWidth, float fScreenHeight)
 
 // menus 
 void draw_preroll_menu(plAppData* ptAppData);
+void draw_player_status(plAppData* ptAppData);
 
 //-----------------------------------------------------------------------------
 // [SECTION] structs
@@ -524,8 +525,10 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     };
     ptAppData->ptCousineBitmapFont = gptDraw->add_font_from_file_ttf(gptDraw->get_current_font_atlas(), tFontConfig0, "../data/pilotlight-assets-master/fonts/Cousine-Regular.ttf");
 
-    // register our app drawlist
-    
+    // get layer for text drawing
+    ptAppData->ptDrawlist = gptDraw->request_2d_drawlist();
+    ptAppData->ptMenuLayer = gptDraw->request_2d_layer(ptAppData->ptDrawlist);
+
 
     plCommandBuffer* ptCmdFont = gptGfx->request_command_buffer(ptAppData->ptCommandPool, "font atlas");
     const plBeginCommandInfo tBeginInfo = {
@@ -635,9 +638,14 @@ pl_app_update(plAppData* ptAppData)
     // check for game over
     // m_game_over_check(ptAppData->pGameData);
 
+    if(ptAppData->pGameData->bRunning)
+    {
+        draw_player_status(ptAppData);    
+    }
+
 
     ptAppData->pGameData->bShowPrerollMenu = true;
-    draw_preroll_menu(ptAppData);
+    // draw_preroll_menu(ptAppData);
     gptUi->end_frame(); // need to call before starting "scene" rendering 
 
 
@@ -689,12 +697,13 @@ pl_app_update(plAppData* ptAppData)
     // bind texture and dynamic uniform
     gptGfx->bind_graphics_bind_groups(ptRender, ptAppData->tTexturedQuadShader, 0, 1, &ptAppData->tBoardBindGroup, 1, &tBinding);
 
-    plDrawIndex tDraw = {
-        .uIndexCount = 6,
-        .tIndexBuffer = ptAppData->tQuadIndexBuffer,
-        .uInstanceCount = 1
-    };
-    gptGfx->draw_indexed(ptRender, 1, &tDraw);
+    // plDrawIndex tDraw = {
+    //     .uIndexCount = 6,
+    //     .tIndexBuffer = ptAppData->tQuadIndexBuffer,
+    //     .uInstanceCount = 1
+    // };
+    // gptGfx->draw_indexed(ptRender, 1, &tDraw);
+
 
     // submit draw list
     gptDrawBackend->submit_2d_drawlist(gptUi->get_draw_list(), ptRender, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 1);
@@ -963,5 +972,122 @@ draw_preroll_menu(plAppData* ptAppData)
         ptAppData->pGameData->bShowPrerollMenu = false;
     }
 
+    gptUi->end_window();
+}
+
+void 
+draw_player_status(plAppData* ptAppData)
+{
+    // Position window at bottom right of screen
+    gptUi->set_next_window_pos((plVec2){880.0f, 400.0f}, PL_UI_COND_ONCE);
+    gptUi->set_next_window_size((plVec2){350.0f, 300.0f}, PL_UI_COND_ONCE);
+
+    if(!gptUi->begin_window("Player Status", NULL, 
+        PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE))
+        return;
+
+    mPlayer* pCurrentPlayer = ptAppData->pGameData->mGamePlayers[ptAppData->pGameData->uCurrentPlayer];
+
+    // Show money
+    gptUi->layout_static(0.0f, 320, 1);
+    gptUi->text("Cash: $%d", pCurrentPlayer->uMoney);
+    
+    gptUi->vertical_spacing();
+
+    // Show position
+    gptUi->layout_static(0.0f, 320, 1);
+    gptUi->text("Position: %s", m_player_position_to_string(pCurrentPlayer->uPosition));
+    
+    gptUi->vertical_spacing();
+
+    // Get out of jail free card
+    if(pCurrentPlayer->bGetOutOfJailFreeCard)
+    {
+        gptUi->layout_static(0.0f, 320, 1);
+        gptUi->text("✓ Get Out of Jail Free Card");
+        gptUi->vertical_spacing();
+    }
+
+    // Jail status
+    if(pCurrentPlayer->bInJail)
+    {
+        gptUi->layout_static(0.0f, 320, 1);
+        gptUi->color_text((plVec4){1.0f, 0.3f, 0.3f, 1.0f}, "IN JAIL");
+        gptUi->vertical_spacing();
+    }
+
+    gptUi->separator();
+    gptUi->vertical_spacing();
+
+    if(gptUi->begin_collapsing_header("Properties Owned", 0))
+    {
+        gptUi->layout_static(0.0f, 310, 1);
+        
+        bool bHasProperties = false;
+        for(uint32_t i = 0; i < PROPERTY_TOTAL; i++)
+        {
+            mProperty* pProperty = &ptAppData->pGameData->mGameProperties[i];
+            if(pProperty->eOwner == pCurrentPlayer->ePlayerTurnPosition)  // Check if current player owns it
+            {
+                gptUi->text("  %s", pProperty->cName);
+                bHasProperties = true;
+            }
+        }
+        
+        if(!bHasProperties)
+        {
+            gptUi->text("  None");
+        }
+        
+        gptUi->end_collapsing_header();
+    }
+
+    // Railroads owned (collapsible)
+    if(gptUi->begin_collapsing_header("Railroads Owned", 0))
+    {
+        gptUi->layout_static(0.0f, 310, 1);
+        
+        bool bHasRailroads = false;
+        for(uint32_t i = 0; i < RAILROAD_TOTAL; i++)
+        {
+            mRailroad* pRailroad = &ptAppData->pGameData->mGameRailroads[i];
+            if(pRailroad->eOwner == pCurrentPlayer->ePlayerTurnPosition)
+            {
+                gptUi->text("  %s", pRailroad->cName);
+                bHasRailroads = true;
+            }
+        }
+        
+        if(!bHasRailroads)
+        {
+            gptUi->text("  None");
+        }
+        
+        gptUi->end_collapsing_header();
+    }
+
+    // Utilities owned (collapsible)
+    if(gptUi->begin_collapsing_header("Utilities Owned", 0))
+    {
+        gptUi->layout_static(0.0f, 310, 1);
+        
+        bool bHasUtilities = false;
+        for(uint32_t i = 0; i < UTILITY_TOTAL; i++)
+        {
+            mUtility* pUtility = &ptAppData->pGameData->mGameUtilities[i];
+            if(pUtility->eOwner == pCurrentPlayer->ePlayerTurnPosition)
+            {
+                gptUi->text("  %s", pUtility->cName);
+                bHasUtilities = true;
+            }
+        }
+        
+        if(!bHasUtilities)
+        {
+            gptUi->text("  None");
+        }
+        
+        gptUi->end_collapsing_header();
+    }
     gptUi->end_window();
 }

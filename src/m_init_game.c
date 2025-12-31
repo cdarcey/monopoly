@@ -21,7 +21,7 @@ m_init_game(mGameStartSettings mSettings)
 
     // ==================== PROPERTIES ==================== //
     // Open and read JSON file
-    FILE* jsonFileProperties = fopen("../../pl-Template/game_data/properties.json", "r");
+    FILE* jsonFileProperties = fopen("../../monopoly/game_data/properties.json", "r");
     if (!jsonFileProperties) 
     {
         printf("Failed to open properties.json\n");
@@ -119,7 +119,7 @@ m_init_game(mGameStartSettings mSettings)
     pl_unload_json(&tRootObjBoardSquares);
 
     // ==================== CHANCE CARDS ==================== //
-    FILE* jsonFileChanceCards = fopen("../../pl-Template/game_data/chance_cards.json", "r");
+    FILE* jsonFileChanceCards = fopen("../../monopoly/game_data/chance_cards.json", "r");
     if (!jsonFileChanceCards) {
         printf("Failed to open chance_cards.json\n");
         return NULL;
@@ -150,7 +150,7 @@ m_init_game(mGameStartSettings mSettings)
     pl_unload_json(&tRootObjChanceCards);
 
     // ==================== COMMUNITY CHEST CARDS ==================== //
-    FILE* jsonFileCommChest = fopen("../../pl-Template/game_data/community_chest_cards.json", "r");
+    FILE* jsonFileCommChest = fopen("../../monopoly/game_data/community_chest_cards.json", "r");
     if (!jsonFileCommChest) 
     {
         printf("Failed to open community_chest_cards.json\n");
