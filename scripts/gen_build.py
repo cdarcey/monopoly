@@ -25,7 +25,7 @@ import build.backend_macos as apple
 # where to output build scripts
 working_directory = os.path.dirname(os.path.abspath(__file__)) + "/../src"
 
-with pl.project("game"):
+with pl.project("monopoly"):
     
     # used to decide hot reloading
     pl.set_hot_reload_target("../../pilotlight/out/pilot_light")
@@ -35,7 +35,6 @@ with pl.project("game"):
     pl.add_link_directories("../out")
     pl.add_include_directories(
         "../src",
-        "../extensions",
         "../../pilotlight/src",
         "../../pilotlight/libs",
         "../../pilotlight/extensions",
@@ -60,7 +59,6 @@ with pl.project("game"):
     pl.add_profile(compiler_filter=["msvc"],
                     configuration_filter=["release"],
                     compiler_flags=["-O2", "-MD"])
-
 
     # linux or gcc only
     pl.add_profile(platform_filter=["Linux"],
@@ -87,62 +85,24 @@ with pl.project("game"):
     pl.add_profile(configuration_filter=["release"], definitions=["NDEBUG", "PL_CONFIG_RELEASE"])
 
     #-----------------------------------------------------------------------------
-    # [SECTION] extensions
-    #-----------------------------------------------------------------------------
-
-    with pl.target("pl_example_ext", pl.TargetType.DYNAMIC_LIBRARY, True):
-
-        pl.add_source_files("../extensions/pl_example_ext.c")
-        pl.set_output_binary("pl_example_ext")
-
-        # default config
-        with pl.configuration("debug"):
-
-            # win32
-            with pl.platform("Windows"):
-
-                with pl.compiler("msvc"):
-                    pass
-
-            # linux
-            with pl.platform("Linux"):
-                with pl.compiler("gcc"):
-                    pass
-
-            # macos
-            with pl.platform("Darwin"):
-                with pl.compiler("clang"):
-                    pass
-
-        # release
-        with pl.configuration("release"):
-
-            # win32
-            with pl.platform("Windows"):
-
-                with pl.compiler("msvc"):
-                    pass
-
-            # linux
-            with pl.platform("Linux"):
-                with pl.compiler("gcc"):
-                    pass
-
-            # macos
-            with pl.platform("Darwin"):
-                with pl.compiler("clang"):
-                    pass
-
-    #-----------------------------------------------------------------------------
-    # [SECTION] app
+    # [SECTION] monopoly app
     #-----------------------------------------------------------------------------
 
     with pl.target("monopoly", pl.TargetType.DYNAMIC_LIBRARY, True):
 
-        pl.add_source_files("../src/app.c")
+        # Add all your source files
+        pl.add_source_files(
+            "../src/app.c",
+            "../src/m_board_cards.c",
+            "../src/m_game.c",
+            "../src/m_init_game.c",
+            "../src/m_player.c",
+            "../src/m_property.c"
+        )
+        
         pl.set_output_binary("monopoly")
 
-        # default config
+        # debug config
         with pl.configuration("debug"):
 
             # win32
@@ -160,7 +120,7 @@ with pl.project("game"):
                 with pl.compiler("clang"):
                     pass
 
-        # release
+        # release config
         with pl.configuration("release"):
 
             # win32

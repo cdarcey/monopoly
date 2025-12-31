@@ -128,6 +128,11 @@ typedef struct _plAppData
     bool          bShowPropertyPopup;
     mPropertyName ePropertyToShow;
 
+    // drawing
+    plDrawList2D*  ptDrawlist;
+    plDrawLayer2D* ptMenuLayer;
+    plFont*        ptCousineBitmapFont;
+
 } plAppData;
 
 // texture loading configuration
@@ -244,6 +249,12 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
         .ptSurface                = ptSurface
     };
     ptAppData->ptDevice = gptGfx->create_device(&tDeviceInit);
+
+    // init for menu/ui drawing
+    gptDraw->initialize(NULL);
+    gptDrawBackend->initialize(ptAppData->ptDevice);
+
+
 
     // initialize shader system
     static const plShaderOptions tDefaultShaderOptions = {
@@ -492,6 +503,42 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     // initialize board layout values
     ptAppData->bShowPropertyPopup = false;
 
+    // create font atlas
+    plFontAtlas* ptAtlas = gptDraw->create_font_atlas();
+    gptDraw->set_font_atlas(ptAtlas);
+
+    // typical font range
+    const plFontRange tRange = {
+        .iFirstCodePoint = 0x0020,
+        .uCharCount = 0x00FF - 0x0020
+    };
+
+    // adding another font
+    plFontConfig tFontConfig0 = {
+        .bSdf           = false,
+        .fSize          = 18.0f,
+        .uHOverSampling = 1,
+        .uVOverSampling = 1,
+        .uRangeCount    = 1,
+        .ptRanges       = &tRange
+    };
+    ptAppData->ptCousineBitmapFont = gptDraw->add_font_from_file_ttf(gptDraw->get_current_font_atlas(), tFontConfig0, "../data/pilotlight-assets-master/fonts/Cousine-Regular.ttf");
+
+    // register our app drawlist
+    
+
+    plCommandBuffer* ptCmdFont = gptGfx->request_command_buffer(ptAppData->ptCommandPool, "font atlas");
+    const plBeginCommandInfo tBeginInfo = {
+        .uWaitSemaphoreCount = 0  // explicitly set to 0, not UINT32_MAX
+    };
+    gptGfx->begin_command_recording(ptCmdFont, &tBeginInfo);
+
+    gptDrawBackend->build_font_atlas(ptCmdFont, gptDraw->get_current_font_atlas());
+
+    gptUi->initialize();
+    gptUi->set_default_font(ptAppData->ptCousineBitmapFont);
+
+
     return ptAppData;
 }
 
@@ -576,6 +623,10 @@ pl_app_resize(plWindow* ptWindow, plAppData* ptAppData)
 PL_EXPORT void
 pl_app_update(plAppData* ptAppData)
 {
+    gptDrawBackend->new_frame();
+    gptUi->new_frame();
+    gptGfx->begin_frame(ptAppData->ptDevice);
+
     plIO* ptIO = gptIO->get_io();
     float fDeltaTime = ptIO->fDeltaTime;
     // run current phase
@@ -584,16 +635,17 @@ pl_app_update(plAppData* ptAppData)
     // check for game over
     // m_game_over_check(ptAppData->pGameData);
 
-    // begin frame (waits on fence internally)
-    gptGfx->begin_frame(ptAppData->ptDevice);
+
+    ptAppData->pGameData->bShowPrerollMenu = true;
+    draw_preroll_menu(ptAppData);
+    gptUi->end_frame(); // need to call before starting "scene" rendering 
+
 
     // acquire next swapchain image
     bool bSuccess = gptGfx->acquire_swapchain_image(ptAppData->ptSwapchain);
     if(!bSuccess)
         return;
 
-    // testing
-    // draw_preroll_menu(ptAppData);
 
     // get command buffer from pool
     plCommandBuffer* ptCmd = gptGfx->request_command_buffer(ptAppData->ptCommandPool, "main");
@@ -643,6 +695,12 @@ pl_app_update(plAppData* ptAppData)
         .uInstanceCount = 1
     };
     gptGfx->draw_indexed(ptRender, 1, &tDraw);
+
+    // submit draw list
+    gptDrawBackend->submit_2d_drawlist(gptUi->get_draw_list(), ptRender, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 1);
+    gptDrawBackend->submit_2d_drawlist(gptUi->get_debug_draw_list(), ptRender, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 1);
+
+
 
     // end render pass
     gptGfx->end_render_pass(ptRender);
@@ -867,17 +925,23 @@ create_orthographic_projection(float fScreenWidth, float fScreenHeight)
 void 
 draw_preroll_menu(plAppData* ptAppData)
 {
+    // position window on right side of screen TODO: figure out actual layout for everything
+    gptUi->set_next_window_pos((plVec2){880.0f, 50.0f}, PL_UI_COND_ONCE);
+    gptUi->set_next_window_size((plVec2){350.0f, 250.0f}, PL_UI_COND_ONCE);  // set explicit height
+
     if(!gptUi->begin_window("Pre-Roll Menu", &ptAppData->pGameData->bShowPrerollMenu, 
         PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE))
         return;
 
-    // main menu options
+    // add a default layout for the text
+    gptUi->layout_static(0.0f, 320, 1);
     gptUi->text("What would you like to do?");
+
     gptUi->vertical_spacing();
 
-    // set layout for buttons (one column, 40px height, 200px width)
-    gptUi->layout_static(40, 200, 1);
-    
+    // set layout for buttons (full width, 50px height)
+    gptUi->layout_static(50, 320, 1);
+
     if(gptUi->button("Roll Dice"))
     {
         // set game flow to roll phase
@@ -898,10 +962,6 @@ draw_preroll_menu(plAppData* ptAppData)
         // ptAppData->tGameFlow.bShowPropertyManagementMenu = true;
         ptAppData->pGameData->bShowPrerollMenu = false;
     }
-
-    gptUi->vertical_spacing();
-    gptUi->separator();
-
 
     gptUi->end_window();
 }
