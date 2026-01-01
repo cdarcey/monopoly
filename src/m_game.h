@@ -21,6 +21,12 @@ typedef enum _ePhaseResult
     PHASE_COMPLETE
 } ePhaseResult;
 
+typedef enum _eCurrentPhase
+{
+    PHASE_PRE_ROLL,
+    PHASE_POST_ROLL,
+} eCurrentPhase;
+
 // function pointer type for phase functions
 typedef ePhaseResult (*fPhaseFunc)(void* pData, float fDeltaTime, struct _mGameFlow* pFlow);
 
@@ -81,6 +87,8 @@ typedef struct _mGameFlow
 {
     fPhaseFunc pfCurrentPhase;
     void*      pCurrentPhaseData;
+
+    eCurrentPhase ePhase;
 
     // stack for nested phases like auctions and trades
     fPhaseFunc apReturnStack[16];

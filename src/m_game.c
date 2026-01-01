@@ -158,8 +158,10 @@ m_phase_pre_roll(void* pData, float fDeltaTime, mGameFlow* pFlow)
 
     switch(iChoice)
     {
-        case 0: return PHASE_RUNNING; // TODO: should iChoice be 0 by default to make sure to pass this switch statment when idling waiting 
-                                    // on player choice
+        case 0: return 
+            pPreRoll->bShowedMenu = false;
+            return PHASE_RUNNING; 
+
         case 1: // view status
         {
             m_show_player_status(pPlayer);

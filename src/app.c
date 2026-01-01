@@ -77,8 +77,9 @@ void draw_player_status(plAppData* ptAppData);
 typedef struct _plAppData
 {
     // window & device
-    plWindow* ptWindow;
-    plDevice* ptDevice;
+    plWindow*  ptWindow;
+    plDevice*  ptDevice;
+    plSurface* ptSurface; 
 
     // command infrastructure
     plCommandPool* ptCommandPool;
@@ -185,14 +186,8 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // load extensions
     const plExtensionRegistryI* ptExtensionRegistry = pl_get_api_latest(ptApiRegistry, plExtensionRegistryI);
-    ptExtensionRegistry->load("pl_starter_ext", NULL, NULL, false);
     ptExtensionRegistry->load("pl_unity_ext", NULL, NULL, true);
     ptExtensionRegistry->load("pl_platform_ext", NULL, NULL, false);
-    ptExtensionRegistry->load("pl_graphics_ext", NULL, NULL, false);
-    ptExtensionRegistry->load("pl_shader_ext", NULL, NULL, false);
-    ptExtensionRegistry->load("pl_draw_ext", NULL, NULL, false);
-    ptExtensionRegistry->load("pl_draw_backend_ext", NULL, NULL, false);
-    ptExtensionRegistry->load("pl_ui_ext", NULL, NULL, false); 
 
     // get APIs
     gptIO          = pl_get_api_latest(ptApiRegistry, plIOI);
@@ -242,6 +237,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // create surface and device
     plSurface* ptSurface = gptGfx->create_surface(ptAppData->ptWindow);
+    ptAppData->ptSurface = ptSurface;
 
     const plDeviceInit tDeviceInit = {
         .uDeviceIdx               = 0,
@@ -433,7 +429,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // create vertex buffer
     const plBufferDesc tVertexDesc = {
-        .tUsage      = PL_BUFFER_USAGE_VERTEX,
+        .tUsage      = PL_BUFFER_USAGE_VERTEX | PL_BUFFER_USAGE_TRANSFER_DESTINATION,
         .szByteSize  = sizeof(float) * PL_ARRAYSIZE(atVertices),
         .pcDebugName = "quad vertices"
     };
@@ -453,7 +449,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // create index buffer
     plBufferDesc tIndexDesc = {
-        .tUsage      = PL_BUFFER_USAGE_INDEX,
+        .tUsage      = PL_BUFFER_USAGE_INDEX | PL_BUFFER_USAGE_TRANSFER_DESTINATION,
         .szByteSize  = sizeof(uint32_t) * PL_ARRAYSIZE(uIndices),
         .pcDebugName = "quad indices"
     };
@@ -499,7 +495,6 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // cleanup staging buffer
     gptGfx->destroy_buffer(ptAppData->ptDevice, tStagingHandle);
-    gptGfx->free_memory(ptAppData->ptDevice, &tStagingMem);
 
     // initialize board layout values
     ptAppData->bShowPropertyPopup = false;
@@ -531,12 +526,12 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
 
     plCommandBuffer* ptCmdFont = gptGfx->request_command_buffer(ptAppData->ptCommandPool, "font atlas");
-    const plBeginCommandInfo tBeginInfo = {
-        .uWaitSemaphoreCount = 0  // explicitly set to 0, not UINT32_MAX
-    };
-    gptGfx->begin_command_recording(ptCmdFont, &tBeginInfo);
 
+    // build font atlas
     gptDrawBackend->build_font_atlas(ptCmdFont, gptDraw->get_current_font_atlas());
+
+    // clean up font command buffer
+    gptGfx->return_command_buffer(ptCmdFont); 
 
     gptUi->initialize();
     gptUi->set_default_font(ptAppData->ptCousineBitmapFont);
@@ -555,28 +550,31 @@ pl_app_shutdown(plAppData* ptAppData)
     // wait for GPU to finish
     gptGfx->flush_device(ptAppData->ptDevice);
 
+    // Cleanup font atlas BEFORE draw cleanup
+    gptDrawBackend->cleanup_font_atlas(gptDraw->get_current_font_atlas());
+
+    // cleanup draw system 
+    gptDraw->cleanup();
+
+    // cleanup draw backend
+    gptDrawBackend->cleanup();
+
+    // cleanup UI 
+    gptUi->cleanup();
+
     // cleanup textures (NOT swapchain textures)
     if(ptAppData->bBoardTextureLoaded)
     {
         gptGfx->destroy_texture(ptAppData->ptDevice, ptAppData->tBoardTexture);
-        gptGfx->free_memory(ptAppData->ptDevice, &ptAppData->tBoardTextureMemory);
         gptGfx->destroy_bind_group(ptAppData->ptDevice, ptAppData->tBoardBindGroup);
     }
 
     // cleanup geometry buffers
     gptGfx->destroy_buffer(ptAppData->ptDevice, ptAppData->tQuadVertexBuffer);
     gptGfx->destroy_buffer(ptAppData->ptDevice, ptAppData->tQuadIndexBuffer);
-    gptGfx->free_memory(ptAppData->ptDevice, &ptAppData->tQuadVertexMemory);
-    gptGfx->free_memory(ptAppData->ptDevice, &ptAppData->tQuadIndexMemory);
-
-    // cleanup render pass
-    gptGfx->destroy_render_pass(ptAppData->ptDevice, ptAppData->tRenderPass);
 
     // cleanup shader
     gptGfx->destroy_shader(ptAppData->ptDevice, ptAppData->tTexturedQuadShader);
-
-    // cleanup render pass layout
-    gptGfx->destroy_render_pass_layout(ptAppData->ptDevice, ptAppData->tMainPassLayout);
 
     // cleanup bind group pool and layout
     gptGfx->cleanup_bind_group_pool(ptAppData->tBindGroupPoolTexAndSamp);
@@ -592,6 +590,12 @@ pl_app_shutdown(plAppData* ptAppData)
     // cleanup swapchain (this handles swapchain texture cleanup internally)
     gptGfx->cleanup_swapchain(ptAppData->ptSwapchain);
 
+    // cleanup surface
+    if(ptAppData->ptSurface)
+    {
+        gptGfx->cleanup_surface(ptAppData->ptSurface);
+    }
+
     // cleanup device
     gptGfx->cleanup_device(ptAppData->ptDevice);
 
@@ -599,7 +603,7 @@ pl_app_shutdown(plAppData* ptAppData)
     gptGfx->cleanup();
 
     // cleanup game data
-    if(ptAppData->pGameData)  // Add null check
+    if(ptAppData->pGameData)
         m_free_game_data(ptAppData->pGameData);
 
     // cleanup window
@@ -626,100 +630,142 @@ pl_app_resize(plWindow* ptWindow, plAppData* ptAppData)
 PL_EXPORT void
 pl_app_update(plAppData* ptAppData)
 {
+    // frame start calls 
     gptDrawBackend->new_frame();
     gptUi->new_frame();
     gptGfx->begin_frame(ptAppData->ptDevice);
 
     plIO* ptIO = gptIO->get_io();
     float fDeltaTime = ptIO->fDeltaTime;
-    // run current phase
-    // m_run_current_phase(&ptAppData->tGameFlow, fDeltaTime);
 
-    // check for game over
-    // m_game_over_check(ptAppData->pGameData);
+    // =============================================================================
+    // GAME LOGIC UPDATE
+    // =============================================================================
+
+    // update game state
+    if(ptAppData->pGameData->bRunning)
+    {
+        // run current phase
+        m_run_current_phase(&ptAppData->tGameFlow, fDeltaTime);
+
+        // check win conditions
+        m_game_over_check(ptAppData->pGameData);
+    }
+
+    // =============================================================================
+    // UI RENDERING
+    // =============================================================================
 
     if(ptAppData->pGameData->bRunning)
     {
-        draw_player_status(ptAppData);    
+        // always show player status
+        draw_player_status(ptAppData);
+
+        // Show appropriate menu based on game phase
+        switch(ptAppData->tGameFlow.ePhase)
+        {
+            case PHASE_PRE_ROLL:
+                draw_preroll_menu(ptAppData);
+                break;
+
+            // case PHASE_POST_ROLL:
+            //     // TODO: Show post-roll options (buy property, auction, etc.)
+            //     break;
+
+            // case PHASE_PROPERTY_LANDED:
+            //     // TODO: Show property purchase menu
+            //     break;
+
+            // case PHASE_TRADE:
+            //     // TODO: Show trade interface
+            //     break;
+
+            // case PHASE_MANAGE_PROPERTIES:
+            //     // TODO: Show property management (mortgage, build houses)
+            //     break;
+
+            default:
+                break;
+        }
+    }
+    else
+    {
+        // TODO: Show main menu or game over screen
     }
 
+    gptUi->end_frame();
 
-    ptAppData->pGameData->bShowPrerollMenu = true;
-    // draw_preroll_menu(ptAppData);
-    gptUi->end_frame(); // need to call before starting "scene" rendering 
+    // =============================================================================
+    // GRAPHICS RENDERING
+    // =============================================================================
 
-
-    // acquire next swapchain image
-    bool bSuccess = gptGfx->acquire_swapchain_image(ptAppData->ptSwapchain);
-    if(!bSuccess)
+    // acquire swapchain image
+    if(!gptGfx->acquire_swapchain_image(ptAppData->ptSwapchain))
         return;
 
-
-    // get command buffer from pool
+    // get command buffer
     plCommandBuffer* ptCmd = gptGfx->request_command_buffer(ptAppData->ptCommandPool, "main");
-    const plBeginCommandInfo tBeginInfo = {
-        .uWaitSemaphoreCount = 0  // explicitly set to 0, not UINT32_MAX
-    };
+    const plBeginCommandInfo tBeginInfo = {.uWaitSemaphoreCount = 0};
     gptGfx->begin_command_recording(ptCmd, &tBeginInfo);
 
     // begin render pass
     plRenderEncoder* ptRender = gptGfx->begin_render_pass(ptCmd, ptAppData->tRenderPass, NULL);
 
     // set viewport and scissor
-    plRenderViewport tViewport = {.fWidth = 1280, .fHeight = 720, .fMaxDepth = 1.0f};
+    plRenderViewport tViewport = {.fWidth = SCREEN_WIDTH, .fHeight = SCREEN_HEIGHT, .fMaxDepth = 1.0f};
     gptGfx->set_viewport(ptRender, &tViewport);
 
-    plScissor tScissor = {.uWidth = 1280, .uHeight = 720};
+    plScissor tScissor = {.uWidth = SCREEN_WIDTH, .uHeight = SCREEN_HEIGHT};
     gptGfx->set_scissor_region(ptRender, &tScissor);
 
-    // bind shader
-    gptGfx->bind_shader(ptRender, ptAppData->tTexturedQuadShader);
+    // =============================================================================
+    // DRAW GAME BOARD
+    // =============================================================================
 
-    // bind vertex buffer
+    gptGfx->bind_shader(ptRender, ptAppData->tTexturedQuadShader);
     gptGfx->bind_vertex_buffer(ptRender, ptAppData->tQuadVertexBuffer);
 
-    // allocate dynamic data (used like a push constant)
+    // setup MVP matrix for board
     plDynamicDataBlock tBlock = gptGfx->allocate_dynamic_data_block(ptAppData->ptDevice);
     plDynamicBinding tBinding = pl_allocate_dynamic_data(gptGfx, ptAppData->ptDevice, &tBlock);
-
-    // create matrix and set to dynamic block
     plMat4* pMVP = (plMat4*)tBinding.pcData;
 
-    // projection matrix, converts pixel coords to NDC space
     plMat4 m4Projection = create_orthographic_projection((float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
-
-    // position board (from top left corner)
     plMat4 m4Translate = pl_mat4_translate_xyz(50.0f, 10.0f, 0.0f);
-
-    // projection * model
     *pMVP = pl_mul_mat4(&m4Projection, &m4Translate);
 
-    // bind texture and dynamic uniform
     gptGfx->bind_graphics_bind_groups(ptRender, ptAppData->tTexturedQuadShader, 0, 1, &ptAppData->tBoardBindGroup, 1, &tBinding);
 
-    // plDrawIndex tDraw = {
-    //     .uIndexCount = 6,
-    //     .tIndexBuffer = ptAppData->tQuadIndexBuffer,
-    //     .uInstanceCount = 1
-    // };
-    // gptGfx->draw_indexed(ptRender, 1, &tDraw);
+    plDrawIndex tDraw = {
+        .uIndexCount = 6,
+        .tIndexBuffer = ptAppData->tQuadIndexBuffer,
+        .uInstanceCount = 1
+    };
+    gptGfx->draw_indexed(ptRender, 1, &tDraw);
 
+    // =============================================================================
+    // DRAW GAME PIECES (TODO)
+    // =============================================================================
 
-    // submit draw list
+    // TODO: Draw player tokens on their current positions
+    // for(int i = 0; i < ptAppData->pGameData->uActivePlayers; i++)
+    // {
+    //     draw_player_piece(ptRender, ptAppData, i);
+    // }
+
+    // =============================================================================
+    // DRAW UI ON TOP
+    // =============================================================================
+
     gptDrawBackend->submit_2d_drawlist(gptUi->get_draw_list(), ptRender, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 1);
     gptDrawBackend->submit_2d_drawlist(gptUi->get_debug_draw_list(), ptRender, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 1);
 
-
-
-    // end render pass
+    // End frame
     gptGfx->end_render_pass(ptRender);
     gptGfx->end_command_recording(ptCmd);
-
-    // present and return command buffer
     gptGfx->present(ptCmd, NULL, &ptAppData->ptSwapchain, 1);
     gptGfx->return_command_buffer(ptCmd);
 }
-
 //-----------------------------------------------------------------------------
 // [SECTION] input handling
 //-----------------------------------------------------------------------------
@@ -875,7 +921,6 @@ load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig)
 
     // cleanup staging buffer
     gptGfx->destroy_buffer(ptDevice, tStagingHandle);
-    gptGfx->free_memory(ptDevice, &tStagingMem);
 
     // create bind group for this texture
     plBindGroupDesc tBGDesc = {
@@ -931,47 +976,48 @@ create_orthographic_projection(float fScreenWidth, float fScreenHeight)
     return result;
 }
 
-void 
-draw_preroll_menu(plAppData* ptAppData)
+void draw_preroll_menu(plAppData* ptAppData)
 {
-    // position window on right side of screen TODO: figure out actual layout for everything
-    gptUi->set_next_window_pos((plVec2){880.0f, 50.0f}, PL_UI_COND_ONCE);
-    gptUi->set_next_window_size((plVec2){350.0f, 250.0f}, PL_UI_COND_ONCE);  // set explicit height
-
-    if(!gptUi->begin_window("Pre-Roll Menu", &ptAppData->pGameData->bShowPrerollMenu, 
-        PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE))
+    if(!ptAppData->pGameData->bShowPrerollMenu)
         return;
 
-    // add a default layout for the text
-    gptUi->layout_static(0.0f, 320, 1);
-    gptUi->text("What would you like to do?");
-
-    gptUi->vertical_spacing();
-
-    // set layout for buttons (full width, 50px height)
-    gptUi->layout_static(50, 320, 1);
-
-    if(gptUi->button("Roll Dice"))
+    mPlayer* pCurrentPlayer = ptAppData->pGameData->mGamePlayers[ptAppData->pGameData->uCurrentPlayer];
+    
+    gptUi->begin_window("Pre-Roll Actions", NULL, false);
+    
+    gptUi->layout_dynamic(0.0f, 1);
+    gptUi->text("Player %d's Turn", ptAppData->pGameData->uCurrentPlayer + 1);
+    gptUi->text("Cash: $%u", pCurrentPlayer->uMoney);
+    
+    gptUi->layout_dynamic(30.0f, 1);
+    
+    // each button sends input to the phase system
+    if(gptUi->button("View Status"))
     {
-        // set game flow to roll phase
-        // ptAppData->tGameFlow.eCurrentPhase = PHASE_ROLL_DICE;
-        ptAppData->pGameData->bShowPrerollMenu = false;
+        m_set_input_int(&ptAppData->tGameFlow, 1);
     }
-
+    
+    if(gptUi->button("View Properties"))
+    {
+        m_set_input_int(&ptAppData->tGameFlow, 2);
+    }
+    
+    if(gptUi->button("Manage Properties"))
+    {
+        m_set_input_int(&ptAppData->tGameFlow, 3);
+    }
+    
     if(gptUi->button("Propose Trade"))
     {
-        // open trade menu
-        // ptAppData->tGameFlow.bShowTradeMenu = true;
-        ptAppData->pGameData->bShowPrerollMenu = false;
+        m_set_input_int(&ptAppData->tGameFlow, 4);
     }
-
-    if(gptUi->button("Property Management"))
+    
+    gptUi->layout_dynamic(50.0f, 1);
+    if(gptUi->button("ROLL DICE"))
     {
-        // open property management menu
-        // ptAppData->tGameFlow.bShowPropertyManagementMenu = true;
-        ptAppData->pGameData->bShowPrerollMenu = false;
+        m_set_input_int(&ptAppData->tGameFlow, 5);
     }
-
+    
     gptUi->end_window();
 }
 
