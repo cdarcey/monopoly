@@ -93,11 +93,9 @@ with pl.project("monopoly"):
         # Add all your source files
         pl.add_source_files(
             "../src/app.c",
-            "../src/m_board_cards.c",
-            "../src/m_game.c",
-            "../src/m_init_game.c",
-            "../src/m_player.c",
-            "../src/m_property.c"
+            "../src/monopoly.c",
+            "../src/monopoly_init.c",
+
         )
         
         pl.set_output_binary("monopoly")
