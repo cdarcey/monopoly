@@ -1,5 +1,53 @@
 /*
-   app.c - Monopoly Game (Minimal Test Version)
+   app.c - Monopoly Game (Test Version)
+        TODO:
+        
+        1. Chance & Community Chest Cards
+   
+            [x] Implement the card draw system 
+            [ ] Create the 16 Chance cards with their effects
+            [ ] Create the 16 Community Chest cards with their effects
+            [x] Add card execution logic to POST_ROLL phase
+            [ ] Handle "Get Out of Jail Free" cards being held/returned
+
+        2. Property Management Phase
+
+            [ ] Allow mortgaging/unmortgaging properties (functions already exist, just wire up UI)
+            [ ] Show all owned properties with mortgage status
+            [ ] Calculate total asset value
+            [ ] This hooks into the "Manage Properties" button you already have
+
+        3. Building Houses/Hotels
+
+            [ ] Add house/hotel counts to mProperty struct
+            [ ] Implement building rules (need monopoly, even building)
+            [ ] Calculate rent with houses/hotels
+            [ ] Add UI to property management for building
+
+        4. Trading Phase
+
+            [ ] Design trade offer structure (properties, money, jail cards)
+            [ ] Create UI for selecting trade items
+            [ ] Implement trade acceptance/rejection
+            [ ] Handle trade validation (can't trade mortgaged properties)
+
+            Secondary Features
+        5. Auction Phase
+
+            [ ] Implement when player passes on property purchase
+            [ ] Bidding system with all players
+            [ ] Award to highest bidder
+
+        6. Bankruptcy Phase
+
+            [ ] Proper asset liquidation (mortgage everything possible)
+            [ ] Transfer assets to creditor
+            [ ] Handle elimination properly
+
+        7. Game End Conditions
+
+            [ ] Show winner screen
+            [ ] Track game statistics
 */
 
 //-----------------------------------------------------------------------------
@@ -1126,7 +1174,8 @@ show_player_status(mGameData* pGameData)
     gptUi->separator();
     gptUi->vertical_spacing();
 
-    // properties owned (collapsible) TODO: reset collapsed status so that menu auto collapses at the start of player turn 
+    // properties owned (collapsible) 
+    // TODO: reset collapsed status so that menu auto collapses at the start of player turn 
     if(gptUi->begin_collapsing_header("Properties Owned", 0))
     {
         gptUi->layout_static(0.0f, 310, 1);

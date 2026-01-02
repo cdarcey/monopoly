@@ -491,7 +491,7 @@ m_init_community_chest_cards(mCommunityChestCard* pCards)
 
 // ==================== DECK INITIALIZATION ==================== //
 
-static void
+void
 m_shuffle_deck(mDeckState* pDeck)
 {
     // initialize indices 0-15

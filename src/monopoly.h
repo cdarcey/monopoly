@@ -320,6 +320,13 @@ bool m_unmortgage_property(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPl
 void m_set_notification(mGameData* pGame, const char* pcFormat, ...);
 void m_clear_notification(mGameData* pGame);
 
+// card execution
+void    m_execute_chance_card(mGameData* pGame, uint8_t uCardIdx);
+void    m_execute_community_chest_card(mGameData* pGame, uint8_t uCardIdx);
+void    m_shuffle_deck(mDeckState* pDeck);
+uint8_t m_draw_chance_card(mGameData* pGame);
+uint8_t m_draw_community_chest_card(mGameData* pGame);
+
 // ==================== PHASE FUNCTIONS ==================== //
 
 // main turn phases

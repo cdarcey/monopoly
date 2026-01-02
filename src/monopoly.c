@@ -430,8 +430,9 @@ m_unmortgage_property(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerI
 
 // ==================== NOTIFICATIONS ==================== //
 
+// TODO: is this worth using or should it be more explict passing a string that is formatted before func call
 void
-m_set_notification(mGameData* pGame, const char* pcFormat, ...)
+m_set_notification(mGameData* pGame, const char* pcFormat, ...) 
 {
     va_list args;
     va_start(args, pcFormat);
@@ -447,6 +448,374 @@ m_clear_notification(mGameData* pGame)
     pGame->bShowNotification = false;
     pGame->fNotificationTimer = 0.0f;
     pGame->acNotification[0] = '\0';
+}
+
+// ==================== CARD EXECUTION ==================== //
+
+void
+m_execute_chance_card(mGameData* pGame, uint8_t uCardIdx)
+{
+    mPlayer* pPlayer = &pGame->amPlayers[pGame->uCurrentPlayerIndex];
+    
+    switch(uCardIdx)
+    {
+        case 0: // advance to go
+        {
+            pPlayer->uPosition = 0;
+            pPlayer->uMoney += GO_MONEY;
+            break;
+        }
+        
+        case 1: // advance to illinois avenue (position 24)
+        {
+            if(pPlayer->uPosition > 24)
+                pPlayer->uMoney += GO_MONEY;
+            pPlayer->uPosition = 24;
+            break;
+        }
+        
+        case 2: // advance to st. charles place (position 11)
+        {
+            if(pPlayer->uPosition > 11)
+                pPlayer->uMoney += GO_MONEY;
+            pPlayer->uPosition = 11;
+            break;
+        }
+        
+        case 3: // advance to nearest utility
+        {
+            if(pPlayer->uPosition > 12 && pPlayer->uPosition < 28)
+            {
+                pPlayer->uPosition = 28;
+            }
+            else
+            {
+                if(pPlayer->uPosition > 28)
+                    pPlayer->uMoney += GO_MONEY;
+                pPlayer->uPosition = 12;
+            }
+            break;
+        }
+        
+        case 4: // advance to nearest railroad
+        {
+            uint8_t uCurrent = pPlayer->uPosition;
+            if(uCurrent < 5 || uCurrent >= 35)
+            {
+                if(uCurrent >= 35)
+                    pPlayer->uMoney += GO_MONEY;
+                pPlayer->uPosition = 5;
+            }
+            else if(uCurrent < 15)
+                pPlayer->uPosition = 15;
+            else if(uCurrent < 25)
+                pPlayer->uPosition = 25;
+            else
+                pPlayer->uPosition = 35;
+            break;
+        }
+        
+        case 5: // bank pays dividend $50
+        {
+            pPlayer->uMoney += 50;
+            break;
+        }
+        
+        case 6: // get out of jail free
+        {
+            pPlayer->bHasJailFreeCard = true;
+            break;
+        }
+        
+        case 7: // go back 3 spaces
+        {
+            if(pPlayer->uPosition < 3)
+                pPlayer->uPosition = 40 + pPlayer->uPosition - 3;
+            else
+                pPlayer->uPosition -= 3;
+            break;
+        }
+        
+        case 8: // go to jail
+        {
+            pPlayer->uPosition = 10;
+            pPlayer->uJailTurns = 1;
+            break;
+        }
+        
+        case 9: // general repairs (skip for now - needs houses/hotels)
+        {
+            // TODO: implement when houses/hotels are added
+            break;
+        }
+        
+        case 10: // pay poor tax $15
+        {
+            if(pPlayer->uMoney >= 15)
+            {
+                pPlayer->uMoney -= 15;
+            }
+            else
+            {
+                pPlayer->bIsBankrupt = true;
+                pGame->uActivePlayers--;
+            }
+            break;
+        }
+        
+        case 11: // reading railroad (position 5)
+        {
+            if(pPlayer->uPosition > 5)
+                pPlayer->uMoney += GO_MONEY;
+            pPlayer->uPosition = 5;
+            break;
+        }
+        
+        case 12: // boardwalk (position 39)
+        {
+            pPlayer->uPosition = 39;
+            break;
+        }
+        
+        case 13: // elected chairman - pay each player $50
+        {
+            for(uint8_t i = 0; i < pGame->uPlayerCount; i++)
+            {
+                if(i == pGame->uCurrentPlayerIndex)
+                    continue;
+                if(pGame->amPlayers[i].bIsBankrupt)
+                    continue;
+                
+                if(pPlayer->uMoney >= 50)
+                {
+                    pPlayer->uMoney -= 50;
+                    pGame->amPlayers[i].uMoney += 50;
+                }
+                else
+                {
+                    pPlayer->bIsBankrupt = true;
+                    pGame->uActivePlayers--;
+                    break;
+                }
+            }
+            break;
+        }
+        
+        case 14: // building loan matures $150
+        {
+            pPlayer->uMoney += 150;
+            break;
+        }
+        
+        case 15: // crossword competition $100
+        {
+            pPlayer->uMoney += 100;
+            break;
+        }
+    }
+}
+
+void
+m_execute_community_chest_card(mGameData* pGame, uint8_t uCardIdx)
+{
+    mPlayer* pPlayer = &pGame->amPlayers[pGame->uCurrentPlayerIndex];
+    
+    switch(uCardIdx)
+    {
+        case 0: // advance to go
+        {
+            pPlayer->uPosition = 0;
+            pPlayer->uMoney += GO_MONEY;
+            break;
+        }
+        
+        case 1: // bank error $200
+        {
+            pPlayer->uMoney += 200;
+            break;
+        }
+        
+        case 2: // doctor's fees $50
+        {
+            if(pPlayer->uMoney >= 50)
+            {
+                pPlayer->uMoney -= 50;
+            }
+            else
+            {
+                pPlayer->bIsBankrupt = true;
+                pGame->uActivePlayers--;
+            }
+            break;
+        }
+        
+        case 3: // stock sale $50
+        {
+            pPlayer->uMoney += 50;
+            break;
+        }
+        
+        case 4: // get out of jail free
+        {
+            pPlayer->bHasJailFreeCard = true;
+            break;
+        }
+        
+        case 5: // go to jail
+        {
+            pPlayer->uPosition = 10;
+            pPlayer->uJailTurns = 1;
+            break;
+        }
+        
+        case 6: // grand opera night - collect $50 from each player
+        {
+            for(uint8_t i = 0; i < pGame->uPlayerCount; i++)
+            {
+                if(i == pGame->uCurrentPlayerIndex)
+                    continue;
+                if(pGame->amPlayers[i].bIsBankrupt)
+                    continue;
+                
+                if(pGame->amPlayers[i].uMoney >= 50)
+                {
+                    pGame->amPlayers[i].uMoney -= 50;
+                    pPlayer->uMoney += 50;
+                }
+                else
+                {
+                    pPlayer->uMoney += pGame->amPlayers[i].uMoney;
+                    pGame->amPlayers[i].uMoney = 0;
+                    pGame->amPlayers[i].bIsBankrupt = true;
+                    pGame->uActivePlayers--;
+                }
+            }
+            break;
+        }
+        
+        case 7: // holiday fund $100
+        {
+            pPlayer->uMoney += 100;
+            break;
+        }
+        
+        case 8: // income tax refund $20
+        {
+            pPlayer->uMoney += 20;
+            break;
+        }
+        
+        case 9: // birthday - collect $10 from each player
+        {
+            for(uint8_t i = 0; i < pGame->uPlayerCount; i++)
+            {
+                if(i == pGame->uCurrentPlayerIndex)
+                    continue;
+                if(pGame->amPlayers[i].bIsBankrupt)
+                    continue;
+                
+                if(pGame->amPlayers[i].uMoney >= 10)
+                {
+                    pGame->amPlayers[i].uMoney -= 10;
+                    pPlayer->uMoney += 10;
+                }
+                else
+                {
+                    pPlayer->uMoney += pGame->amPlayers[i].uMoney;
+                    pGame->amPlayers[i].uMoney = 0;
+                    pGame->amPlayers[i].bIsBankrupt = true;
+                    pGame->uActivePlayers--;
+                }
+            }
+            break;
+        }
+        
+        case 10: // life insurance $100
+        {
+            pPlayer->uMoney += 100;
+            break;
+        }
+        
+        case 11: // hospital fees $100
+        {
+            if(pPlayer->uMoney >= 100)
+            {
+                pPlayer->uMoney -= 100;
+            }
+            else
+            {
+                pPlayer->bIsBankrupt = true;
+                pGame->uActivePlayers--;
+            }
+            break;
+        }
+        
+        case 12: // school fees $150
+        {
+            if(pPlayer->uMoney >= 150)
+            {
+                pPlayer->uMoney -= 150;
+            }
+            else
+            {
+                pPlayer->bIsBankrupt = true;
+                pGame->uActivePlayers--;
+            }
+            break;
+        }
+        
+        case 13: // consultancy fee $25
+        {
+            pPlayer->uMoney += 25;
+            break;
+        }
+        
+        case 14: // street repairs (skip for now - needs houses/hotels)
+        {
+            // TODO: implement when houses/hotels are added
+            break;
+        }
+        
+        case 15: // beauty contest $10
+        {
+            pPlayer->uMoney += 10;
+            break;
+        }
+    }
+}
+
+uint8_t
+m_draw_chance_card(mGameData* pGame)
+{
+    mDeckState* pDeck = &pGame->tChanceDeck;
+    
+    // if deck exhausted, reshuffle
+    if(pDeck->uCurrentIndex >= 16)
+    {
+        m_shuffle_deck(pDeck);
+    }
+    
+    uint8_t uCardIdx = pDeck->auIndices[pDeck->uCurrentIndex];
+    pDeck->uCurrentIndex++;
+    
+    return uCardIdx;
+}
+
+uint8_t
+m_draw_community_chest_card(mGameData* pGame)
+{
+    mDeckState* pDeck = &pGame->tCommunityChestDeck;
+    
+    // if deck exhausted, reshuffle
+    if(pDeck->uCurrentIndex >= 16)
+    {
+        m_shuffle_deck(pDeck);
+    }
+    
+    uint8_t uCardIdx = pDeck->auIndices[pDeck->uCurrentIndex];
+    pDeck->uCurrentIndex++;
+    
+    return uCardIdx;
 }
 
 // ==================== MAIN TURN PHASES ==================== //
@@ -671,14 +1040,32 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
             
             case SQUARE_CHANCE:
             {
-                // TODO: draw chance card
+                // draw card
+                uint8_t uCardIdx = m_draw_chance_card(pGame);
+                mChanceCard* pCard = &pGame->amChanceCards[uCardIdx];
+
+                // show card to player
+                m_set_notification(pGame, "Chance: %s", pCard->cDescription);
+
+                // execute card effect immediately
+                m_execute_chance_card(pGame, uCardIdx);
+
                 pPostRoll->bHandledLanding = true;
                 break;
             }
             
             case SQUARE_COMMUNITY_CHEST:
             {
-                // TODO: draw community chest card
+                // draw card
+                uint8_t uCardIdx = m_draw_community_chest_card(pGame);  // was m_draw_chance_card
+                mCommunityChestCard* pCard = &pGame->amCommunityChestCards[uCardIdx];  // was mChanceCard
+
+                // show card to player
+                m_set_notification(pGame, "Community Chest: %s", pCard->cDescription);  // was "Community Chance"
+
+                // execute card effect immediately
+                m_execute_community_chest_card(pGame, uCardIdx);
+
                 pPostRoll->bHandledLanding = true;
                 break;
             }
