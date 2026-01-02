@@ -546,29 +546,28 @@ pl_app_update(plAppData* ptAppData)
     gptUi->new_frame();
     handle_keyboard_input(ptAppData);
 
-    // TODO: (this is not fixing errors) skip ui rendering for first 5 frames to let buffers grow without errors
-    if(ptAppData->uFrameCount > 5)
+
+
+    // show ui windows
+    show_player_status(ptAppData->pGameData);
+        
+    // show phase-specific menus
+    if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_pre_roll)
     {
-        // show ui windows
-        show_player_status(ptAppData->pGameData);
-        
-        // show phase-specific menus
-        if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_pre_roll)
-        {
-            draw_preroll_menu(ptAppData);
-        }
-        else if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_post_roll)
-        {
-            draw_postroll_menu(ptAppData);
-        }
-        else if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_jail)
-        {
-            draw_jail_menu(ptAppData);
-        }
-        
-        // show notification popup (on top of everything)
-        draw_notification(ptAppData);
+        draw_preroll_menu(ptAppData);
     }
+    else if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_post_roll)
+    {
+        draw_postroll_menu(ptAppData);
+    }
+    else if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_jail)
+    {
+        draw_jail_menu(ptAppData);
+    }
+        
+    // show notification popup (on top of everything)
+    draw_notification(ptAppData);
+
 
     // run game phase
     m_run_current_phase(&ptAppData->tGameFlow, 0.016f);
@@ -621,8 +620,8 @@ pl_app_update(plAppData* ptAppData)
     plDrawList2D* ptDrawlist = gptUi->get_draw_list();
     if(ptDrawlist)
     {
-        gptDraw->prepare_2d_drawlist(ptDrawlist);
         gptDrawBackend->submit_2d_drawlist(ptDrawlist, ptRender, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 1);
+        gptDrawBackend->submit_2d_drawlist(gptUi->get_debug_draw_list(), ptRender, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 1);
     }
 
     gptGfx->end_render_pass(ptRender);
@@ -905,8 +904,8 @@ draw_preroll_menu(plAppData* ptAppData)
         return;
     
     // position menu in top right
-    gptUi->set_next_window_pos((plVec2){880.0f, 20.0f}, PL_UI_COND_ALWAYS);
-    gptUi->set_next_window_size((plVec2){380.0f, 200.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_pos((plVec2){800.0f, 20.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){380.0f, 220.0f}, PL_UI_COND_ALWAYS);
     
     char acWindowTitle[64];
     snprintf(acWindowTitle, sizeof(acWindowTitle), "Player %d's Turn", pGame->uCurrentPlayerIndex + 1);
@@ -962,7 +961,7 @@ draw_postroll_menu(plAppData* ptAppData)
         return;
     
     // position menu in top right
-    gptUi->set_next_window_pos((plVec2){880.0f, 20.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_pos((plVec2){800.0f, 20.0f}, PL_UI_COND_ALWAYS);
     gptUi->set_next_window_size((plVec2){380.0f, 220.0f}, PL_UI_COND_ALWAYS);
     
     char acWindowTitle[64];
@@ -1019,8 +1018,8 @@ draw_jail_menu(plAppData* ptAppData)
         return;
     
     // position menu in top right
-    gptUi->set_next_window_pos((plVec2){880.0f, 20.0f}, PL_UI_COND_ALWAYS);
-    gptUi->set_next_window_size((plVec2){380.0f, 260.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_pos((plVec2){800.0f, 20.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){380.0f, 220.0f}, PL_UI_COND_ALWAYS);
     
     char acWindowTitle[64];
     snprintf(acWindowTitle, sizeof(acWindowTitle), "In Jail (Attempt %d/3)", pPlayer->uJailTurns);
@@ -1037,7 +1036,7 @@ draw_jail_menu(plAppData* ptAppData)
     gptUi->layout_static(45.0f, 360, 1);
     
     // pay fine button
-    bool bCanAffordFine = pPlayer->uMoney >= pGame->uJailFine;
+    bool bCanAffordFine = m_can_afford(pPlayer, pGame->uJailFine);
     if(bCanAffordFine && gptUi->button("Pay $50 Fine"))
     {
         m_set_input_int(&ptAppData->tGameFlow, 1);
@@ -1090,7 +1089,7 @@ draw_notification(plAppData* ptAppData)
     if(!gptUi->begin_window("##notification", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR | PL_UI_WINDOW_FLAGS_NO_TITLE_BAR))
         return;
     
-    gptUi->layout_static(0.0f, 660, 1);
+    gptUi->layout_static(20.0f, 500.0f, 1);
     gptUi->text("%s", pGame->acNotification);
     
     gptUi->end_window();
@@ -1104,11 +1103,10 @@ show_player_status(mGameData* pGameData)
     gptUi->set_next_window_size((plVec2){350.0f, 300.0f}, PL_UI_COND_ALWAYS);
 
     // use the actual current player from game state
-    uint8_t uCurrentPlayer = pGameData->uCurrentPlayerIndex;
-    mPlayer* pPlayer = &pGameData->amPlayers[uCurrentPlayer];
+    mPlayer* pPlayer = &pGameData->amPlayers[pGameData->uCurrentPlayerIndex];
 
     char acWindowTitle[64];
-    snprintf(acWindowTitle, sizeof(acWindowTitle), "Player %d Status", uCurrentPlayer + 1);
+    snprintf(acWindowTitle, sizeof(acWindowTitle), "Player %d Status", pGameData->uCurrentPlayerIndex + 1);
 
     if(!gptUi->begin_window(acWindowTitle, NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE))
         return;
@@ -1128,7 +1126,7 @@ show_player_status(mGameData* pGameData)
     gptUi->separator();
     gptUi->vertical_spacing();
 
-    // properties owned (collapsible)
+    // properties owned (collapsible) TODO: reset collapsed status so that menu auto collapses at the start of player turn 
     if(gptUi->begin_collapsing_header("Properties Owned", 0))
     {
         gptUi->layout_static(0.0f, 310, 1);

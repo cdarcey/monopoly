@@ -597,7 +597,7 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                     else
                     {
                         m_set_notification(pGame, "Passed on %s - auction not yet implemented", pProp->cName);
-                        // todo: push auction phase
+                        // TODO: push auction phase
                     }
                     
                     pPostRoll->bHandledLanding = true;
@@ -625,7 +625,7 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                     else
                     {
                         m_set_notification(pGame, "BANKRUPT! Cannot afford $%d rent", uRent);
-                        // todo: bankruptcy phase
+                        // TODO: bankruptcy phase
                     }
                     
                     pPostRoll->bHandledLanding = true;
@@ -645,7 +645,7 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                     pPlayer->bIsBankrupt = true;
                     pGame->uActivePlayers--;
                     m_set_notification(pGame, "BANKRUPT! Cannot afford $%d tax", INCOME_TAX);
-                    // todo: bankruptcy phase
+                    // TODO: bankruptcy phase
                 }
                 pPostRoll->bHandledLanding = true;
                 break;
@@ -663,7 +663,7 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                     pPlayer->bIsBankrupt = true;
                     pGame->uActivePlayers--;
                     m_set_notification(pGame, "BANKRUPT! Cannot afford $%d tax", LUXURY_TAX);
-                    // todo: bankruptcy phase
+                    // TODO:: bankruptcy phase
                 }
                 pPostRoll->bHandledLanding = true;
                 break;
@@ -671,14 +671,14 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
             
             case SQUARE_CHANCE:
             {
-                // todo: draw chance card
+                // TODO: draw chance card
                 pPostRoll->bHandledLanding = true;
                 break;
             }
             
             case SQUARE_COMMUNITY_CHEST:
             {
-                // todo: draw community chest card
+                // TODO: draw community chest card
                 pPostRoll->bHandledLanding = true;
                 break;
             }
@@ -715,10 +715,11 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
             return PHASE_RUNNING;
     }
     
-    // landing handled - end turn and advance to next player
+    m_next_player_turn(pGame);
+    
+    mPreRollData* pNextPreRoll = malloc(sizeof(mPreRollData));
     memset(pNextPreRoll, 0, sizeof(mPreRollData));
     
-    // replace current phase with new pre-roll
     free(pPostRoll);
     pFlow->pCurrentPhaseData = pNextPreRoll;
     pFlow->pfCurrentPhase = m_phase_pre_roll;
@@ -917,78 +918,3 @@ m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
     }
 }
 
-// ==================== SIMPLE PHASE FOR TESTING (DEPRECATED) ==================== //
-
-ePhaseResult
-m_phase_simple_turn(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
-{
-    mSimpleTurnData* pTurnData = (mSimpleTurnData*)pPhaseData;
-    mGameData* pGame = pFlow->pGame;
-    mPlayer* pPlayer = &pGame->amPlayers[pGame->uCurrentPlayerIndex];
-    
-    // show prompt first time
-    if(!pTurnData->bShowedPrompt)
-    {
-        printf("\n=== Player %d's Turn ===\n", pGame->uCurrentPlayerIndex + 1);
-        printf("Money: $%d\n", pPlayer->uMoney);
-        printf("Position: %d\n", pPlayer->uPosition);
-        printf("Press 1 to roll dice\n> ");
-        fflush(stdout);
-        pTurnData->bShowedPrompt = true;
-        return PHASE_RUNNING;
-    }
-    
-    // wait for input
-    if(!pFlow->bInputReceived)
-    {
-        return PHASE_RUNNING;
-    }
-    
-    // only accept '1' to roll
-    if(pFlow->iInputValue != 1)
-    {
-        m_clear_input(pFlow);
-        printf("Invalid input. Press 1 to roll.\n> ");
-        fflush(stdout);
-        return PHASE_RUNNING;
-    }
-    
-    // roll and move
-    if(!pTurnData->bRolled)
-    {
-        m_roll_dice(&pGame->tDice);
-        printf("\nRolled: %d + %d = %d\n", 
-               pGame->tDice.uDie1, pGame->tDice.uDie2, 
-               pGame->tDice.uDie1 + pGame->tDice.uDie2);
-        
-        m_move_player(pPlayer, &pGame->tDice, pGame);
-        printf("Moved to position %d\n", pPlayer->uPosition);
-        printf("Money: $%d\n\n", pPlayer->uMoney);
-        
-        pTurnData->bRolled = true;
-        m_clear_input(pFlow);
-        
-        // move to next player
-        m_next_player_turn(pGame);
-        
-        // check if game is over
-        if(!pGame->bIsRunning)
-        {
-            printf("Game Over!\n");
-            return PHASE_COMPLETE;
-        }
-        
-        // create new phase data for next turn
-        mSimpleTurnData* pNextTurn = malloc(sizeof(mSimpleTurnData));
-        pNextTurn->bShowedPrompt = false;
-        pNextTurn->bRolled = false;
-        
-        // free current and set new
-        free(pTurnData);
-        pFlow->pCurrentPhaseData = pNextTurn;
-        
-        return PHASE_RUNNING;
-    }
-    
-    return PHASE_RUNNING;
-}

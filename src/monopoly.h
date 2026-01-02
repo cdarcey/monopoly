@@ -177,6 +177,7 @@ typedef struct _mGameFlow
     float fAccumulatedTime;
 } mGameFlow;
 
+// TODO: remove when done using 
 // simple phase data for testing
 typedef struct _mSimpleTurnData
 {
@@ -193,17 +194,17 @@ typedef struct _mPreRollData
 // post-roll phase data
 typedef struct _mPostRollData
 {
-    bool bMovedPlayer;
-    bool bHandledLanding;
+    bool        bMovedPlayer;
+    bool        bHandledLanding;
     eSquareType eSquareType;
-    uint8_t uPropertyIndex;  // if landed on property
+    uint8_t     uPropertyIndex;  // if landed on property
 } mPostRollData;
 
 // jail phase data
 typedef struct _mJailData
 {
-    bool bShowedMenu;
-    bool bRolledDice;
+    bool    bShowedMenu;
+    bool    bRolledDice;
     uint8_t uAttemptNumber;  // 1, 2, or 3
 } mJailData;
 
@@ -212,23 +213,23 @@ typedef struct _mTradeData
 {
     uint8_t uInitiatingPlayer;
     uint8_t uTargetPlayer;
-    // todo: add trade offer details
+    // TODO: add trade offer details
 } mTradeData;
 
 typedef struct _mAuctionData
 {
-    uint8_t uPropertyIndex;
-    uint8_t uHighestBidder;
+    uint8_t  uPropertyIndex;
+    uint8_t  uHighestBidder;
     uint32_t uHighestBid;
-    // todo: add bidding state
+    // TODO: add bidding state
 } mAuctionData;
 
 typedef struct _mBankruptcyData
 {
-    uint8_t uBankruptPlayer;
-    uint8_t uCreditor;
+    uint8_t  uBankruptPlayer;
+    uint8_t  uCreditor;
     uint32_t uAmountOwed;
-    // todo: add asset liquidation state
+    // TODO: add asset liquidation state
 } mBankruptcyData;
 
 // main game state
@@ -333,7 +334,5 @@ ePhaseResult m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 // ePhaseResult m_phase_auction(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 // ePhaseResult m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 
-// simple test phase - just roll and move (deprecated - will be removed)
-ePhaseResult m_phase_simple_turn(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 
 #endif // MONOPOLY_H
