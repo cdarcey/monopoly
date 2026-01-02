@@ -1,7 +1,7 @@
 /*
    app.c - Monopoly Game (Test Version)
         TODO:
-        
+
         1. Chance & Community Chest Cards
    
             [x] Implement the card draw system 
@@ -12,10 +12,10 @@
 
         2. Property Management Phase
 
-            [ ] Allow mortgaging/unmortgaging properties (functions already exist, just wire up UI)
-            [ ] Show all owned properties with mortgage status
+            [x] Allow mortgaging/unmortgaging properties (functions already exist, just wire up UI)
+            [x] Show all owned properties with mortgage status
             [ ] Calculate total asset value
-            [ ] This hooks into the "Manage Properties" button you already have
+            [x] This hooks into the "Manage Properties" button you already have
 
         3. Building Houses/Hotels
 
@@ -105,6 +105,7 @@ void   draw_preroll_menu(plAppData* ptAppData);
 void   draw_postroll_menu(plAppData* ptAppData);
 void   draw_jail_menu(plAppData* ptAppData);
 void   draw_notification(plAppData* ptAppData);
+void   draw_property_management_menu(plAppData* ptAppData);
 
 //-----------------------------------------------------------------------------
 // [SECTION] structs
@@ -612,6 +613,14 @@ pl_app_update(plAppData* ptAppData)
     {
         draw_jail_menu(ptAppData);
     }
+    else if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_jail)
+    {
+        draw_jail_menu(ptAppData);
+    }
+    else if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_property_management)
+    {
+        draw_property_management_menu(ptAppData);
+    }
         
     // show notification popup (on top of everything)
     draw_notification(ptAppData);
@@ -947,8 +956,8 @@ draw_preroll_menu(plAppData* ptAppData)
 {
     mGameData* pGame = ptAppData->pGameData;
     
-    // only show if menu flag is set
-    if(!pGame->bShowPrerollMenu)
+    // only show if menu flag is set and we're in pre-roll phase
+    if(!pGame->bShowPrerollMenu || ptAppData->tGameFlow.pfCurrentPhase != m_phase_pre_roll)
         return;
     
     // position menu in top right
@@ -1012,10 +1021,7 @@ draw_postroll_menu(plAppData* ptAppData)
     gptUi->set_next_window_pos((plVec2){800.0f, 20.0f}, PL_UI_COND_ALWAYS);
     gptUi->set_next_window_size((plVec2){380.0f, 220.0f}, PL_UI_COND_ALWAYS);
     
-    char acWindowTitle[64];
-    snprintf(acWindowTitle, sizeof(acWindowTitle), "Property Available");
-    
-    if(!gptUi->begin_window(acWindowTitle, NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR))
+    if(!gptUi->begin_window("Property Available", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR))
         return;
     
     gptUi->layout_static(0.0f, 360, 1);
@@ -1150,7 +1156,7 @@ show_player_status(mGameData* pGameData)
     gptUi->set_next_window_pos((plVec2){880.0f, 400.0f}, PL_UI_COND_ALWAYS);
     gptUi->set_next_window_size((plVec2){350.0f, 300.0f}, PL_UI_COND_ALWAYS);
 
-    // use the actual current player from game state
+    // for code readability  
     mPlayer* pPlayer = &pGameData->amPlayers[pGameData->uCurrentPlayerIndex];
 
     char acWindowTitle[64];
@@ -1162,6 +1168,9 @@ show_player_status(mGameData* pGameData)
     // show money
     gptUi->layout_static(0.0f, 320, 1);
     gptUi->text("Cash: $%d", pPlayer->uMoney);
+
+    gptUi->layout_static(0.0f, 320, 1);
+    gptUi->text("Net Worth: $%d", m_calculate_net_worth(pGameData, pGameData->uCurrentPlayerIndex));
 
     gptUi->vertical_spacing();
 
@@ -1188,7 +1197,15 @@ show_player_status(mGameData* pGameData)
 
             bHasProperties = true;
             mProperty* pProp = &pGameData->amProperties[uPropIdx];
-            gptUi->text("  %s", pProp->cName);
+            
+            if(pProp->bIsMortgaged)
+            {
+                gptUi->color_text((plVec4){1.0f, 0.5f, 0.0f, 1.0f}, "  %s [M]", pProp->cName);
+            }
+            else
+            {
+                gptUi->text("  %s", pProp->cName);
+            }
         }
         if(!bHasProperties)
         {
@@ -1196,5 +1213,105 @@ show_player_status(mGameData* pGameData)
         }
         gptUi->end_collapsing_header();
     }
+    gptUi->end_window();
+}
+
+void
+draw_property_management_menu(plAppData* ptAppData)
+{
+    mGameData* pGame = ptAppData->pGameData;
+    mPlayer* pPlayer = &pGame->amPlayers[pGame->uCurrentPlayerIndex];
+    
+    // only show if menu flag is set
+    if(!pGame->bShowPropertyMenu)
+        return;
+    
+    // position menu in top right
+    gptUi->set_next_window_pos((plVec2){800.0f, 20.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){380.0f, 500.0f}, PL_UI_COND_ALWAYS);
+    
+    if(!gptUi->begin_window("Property Management", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR))
+        return;
+    
+    gptUi->layout_static(0.0f, 360, 1);
+    gptUi->text("Cash: $%d", pPlayer->uMoney);
+    
+    gptUi->vertical_spacing();
+    gptUi->separator();
+    gptUi->vertical_spacing();
+    
+    // show properties
+    if(pPlayer->uPropertyCount == 0)
+    {
+        gptUi->layout_static(0.0f, 360, 1);
+        gptUi->text("No properties owned");
+    }
+    else
+    {
+        for(uint8_t i = 0; i < pPlayer->uPropertyCount; i++)
+        {
+            uint8_t uPropIdx = pPlayer->auPropertiesOwned[i];
+            if(uPropIdx == BANK_PLAYER_INDEX)
+                break;
+            
+            mProperty* pProp = &pGame->amProperties[uPropIdx];
+            
+            // property name with status
+            gptUi->layout_static(0.0f, 360, 1);
+            if(pProp->bIsMortgaged)
+            {
+                gptUi->color_text((plVec4){1.0f, 0.5f, 0.0f, 1.0f}, "%s [MORTGAGED]", pProp->cName);
+            }
+            else
+            {
+                gptUi->text("%s", pProp->cName);
+            }
+            
+            // action button
+            gptUi->layout_static(35.0f, 360, 1);
+            if(pProp->bIsMortgaged)
+            {
+                uint32_t uCost = pProp->uMortgageValue + (pProp->uMortgageValue / 10);
+                bool bCanAfford = pPlayer->uMoney >= uCost;
+
+                char acButtonText[64];
+                snprintf(acButtonText, sizeof(acButtonText), "Unmortgage ($%d)", uCost);
+
+                if(bCanAfford && gptUi->button(acButtonText))
+                {
+                    m_set_input_int(&ptAppData->tGameFlow, i + 1);
+                }
+                else if(!bCanAfford)
+                {
+                    char acGrayText[64];
+                    snprintf(acGrayText, sizeof(acGrayText), "Unmortgage ($%d) - Can't afford", uCost);
+                    gptUi->color_text((plVec4){0.5f, 0.5f, 0.5f, 1.0f}, acGrayText);
+                }
+            }
+            else
+            {
+                char acButtonText[64];
+                snprintf(acButtonText, sizeof(acButtonText), "Mortgage (Get $%d)", pProp->uMortgageValue);
+
+                if(gptUi->button(acButtonText))
+                {
+                    m_set_input_int(&ptAppData->tGameFlow, i + 1);
+                }
+            }
+            
+            gptUi->vertical_spacing();
+        }
+    }
+    
+    gptUi->separator();
+    gptUi->vertical_spacing();
+    
+    // exit button
+    gptUi->layout_static(45.0f, 360, 1);
+    if(gptUi->button("Back to Turn Menu"))
+    {
+        m_set_input_int(&ptAppData->tGameFlow, 0);
+    }
+    
     gptUi->end_window();
 }

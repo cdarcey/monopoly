@@ -224,6 +224,12 @@ typedef struct _mAuctionData
     // TODO: add bidding state
 } mAuctionData;
 
+// property management phase data
+typedef struct _mPropertyManagementData
+{
+    bool bShowedMenu;
+} mPropertyManagementData;
+
 typedef struct _mBankruptcyData
 {
     uint8_t  uBankruptPlayer;
@@ -253,6 +259,7 @@ typedef struct _mGameData
     
     // ui state flags
     bool                bShowPrerollMenu;
+    bool                bShowPropertyMenu;
     
     // notification system
     char                acNotification[256];
@@ -327,6 +334,9 @@ void    m_shuffle_deck(mDeckState* pDeck);
 uint8_t m_draw_chance_card(mGameData* pGame);
 uint8_t m_draw_community_chest_card(mGameData* pGame);
 
+//property management
+int32_t m_calculate_net_worth(mGameData* pGame, uint8_t uPlayerIndex); // int because can be nagative
+
 // ==================== PHASE FUNCTIONS ==================== //
 
 // main turn phases
@@ -335,6 +345,9 @@ ePhaseResult m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pF
 
 // jail phase
 ePhaseResult m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
+
+// property managment phase
+ePhaseResult m_phase_property_management(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 
 // future nested phases (scaffolding)
 // ePhaseResult m_phase_trade(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);

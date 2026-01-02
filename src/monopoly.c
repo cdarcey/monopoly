@@ -818,6 +818,40 @@ m_draw_community_chest_card(mGameData* pGame)
     return uCardIdx;
 }
 
+// property managment 
+
+int32_t
+m_calculate_net_worth(mGameData* pGame, uint8_t uPlayerIndex)
+{
+    if(uPlayerIndex >= pGame->uPlayerCount) return 0;
+    
+    mPlayer* pPlayer = &pGame->amPlayers[uPlayerIndex];
+    int32_t iNetWorth = (int32_t)pPlayer->uMoney;
+    
+    for(uint8_t i = 0; i < pPlayer->uPropertyCount; i++)
+    {
+        uint8_t uPropIdx = pPlayer->auPropertiesOwned[i];
+        if(uPropIdx == BANK_PLAYER_INDEX)
+            break;
+        
+        mProperty* pProp = &pGame->amProperties[uPropIdx];
+        
+        if(pProp->bIsMortgaged)
+        {
+            // subtract mortgage debt (mortgage value + 10%)
+            uint32_t uDebt = pProp->uMortgageValue + (pProp->uMortgageValue / 10);
+            iNetWorth -= (int32_t)uDebt;
+        }
+        else
+        {
+            // add full property value
+            iNetWorth += (int32_t)pProp->uPrice;
+        }
+    }
+    
+    return iNetWorth;
+}
+
 // ==================== MAIN TURN PHASES ==================== //
 
 ePhaseResult
@@ -859,8 +893,13 @@ m_phase_pre_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
     {
         case 1:
         {
-            m_set_notification(pGame, "Property management not yet implemented");
-            pPreRoll->bShowedMenu = false;
+            mPropertyManagementData* pPropMgmt = malloc(sizeof(mPropertyManagementData));
+            memset(pPropMgmt, 0, sizeof(mPropertyManagementData));
+
+            m_push_phase(pFlow, m_phase_property_management, pPropMgmt);
+            pGame->bShowPrerollMenu = false;
+            pGame->bShowPropertyMenu = false;
+
             return PHASE_RUNNING;
         }
         
@@ -880,7 +919,6 @@ m_phase_pre_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
             mPostRollData* pPostRoll = malloc(sizeof(mPostRollData));
             memset(pPostRoll, 0, sizeof(mPostRollData));
             
-            // free current phase data and set new phase
             free(pPreRoll);
             pFlow->pCurrentPhaseData = pPostRoll;
             pFlow->pfCurrentPhase = m_phase_post_roll;
@@ -1303,5 +1341,80 @@ m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
             return PHASE_RUNNING;
         }
     }
+}
+
+// ==================== PROPERTY MANAGEMENT PHASE ==================== //
+
+ePhaseResult
+m_phase_property_management(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
+{
+    mPropertyManagementData* pPropMgmt = (mPropertyManagementData*)pPhaseData;
+    mGameData* pGame = pFlow->pGame;
+    mPlayer* pPlayer = &pGame->amPlayers[pGame->uCurrentPlayerIndex];
+    
+    if(!pPropMgmt->bShowedMenu)
+    {
+        pGame->bShowPropertyMenu = true;
+        pPropMgmt->bShowedMenu = true;
+        return PHASE_RUNNING;
+    }
+    
+    if(!pFlow->bInputReceived)
+        return PHASE_RUNNING;
+    
+    int iChoice = pFlow->iInputValue;
+    m_clear_input(pFlow);
+    
+    // choice 0 = exit
+    if(iChoice == 0)
+    {
+        mPreRollData* pPreRoll = (mPreRollData*)pFlow->apPhaseDataStack[pFlow->iStackDepth - 1];
+        pPreRoll->bShowedMenu = false;
+
+        pGame->bShowPropertyMenu = false;
+        m_pop_phase(pFlow);
+        return PHASE_RUNNING;
+    }
+    
+    // choice is property index (1-based from UI, convert to 0-based)
+    uint8_t uPropArrayIdx = (uint8_t)(iChoice - 1);
+    
+    if(uPropArrayIdx >= pPlayer->uPropertyCount)
+    {
+        m_set_notification(pGame, "Invalid property selection");
+        pPropMgmt->bShowedMenu = false;
+        return PHASE_RUNNING;
+    }
+    
+    uint8_t uPropIdx = pPlayer->auPropertiesOwned[uPropArrayIdx];
+    mProperty* pProp = &pGame->amProperties[uPropIdx];
+    
+    // toggle mortgage status
+    if(pProp->bIsMortgaged)
+    {
+        if(m_unmortgage_property(pGame, uPropIdx, pGame->uCurrentPlayerIndex))
+        {
+            uint32_t uCost = pProp->uMortgageValue + (pProp->uMortgageValue / 10);
+            m_set_notification(pGame, "Unmortgaged %s for $%d", pProp->cName, uCost);
+        }
+        else
+        {
+            m_set_notification(pGame, "Cannot afford to unmortgage %s", pProp->cName);
+        }
+    }
+    else
+    {
+        if(m_mortgage_property(pGame, uPropIdx, pGame->uCurrentPlayerIndex))
+        {
+            m_set_notification(pGame, "Mortgaged %s for $%d", pProp->cName, pProp->uMortgageValue);
+        }
+        else
+        {
+            m_set_notification(pGame, "Cannot mortgage %s", pProp->cName);
+        }
+    }
+    
+    pPropMgmt->bShowedMenu = false;
+    return PHASE_RUNNING;
 }
 
