@@ -14,7 +14,7 @@
 
             [x] Allow mortgaging/unmortgaging properties (functions already exist, just wire up UI)
             [x] Show all owned properties with mortgage status
-            [ ] Calculate total asset value
+            [x] Calculate total asset value
             [x] This hooks into the "Manage Properties" button you already have
 
         3. Building Houses/Hotels
