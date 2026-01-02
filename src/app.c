@@ -1,5 +1,5 @@
 /*
-   app.c - Monopoly Game (Test Version)
+   app.c - Monopoly Game (Minimal Test Version)
 */
 
 //-----------------------------------------------------------------------------
@@ -53,6 +53,10 @@ void   load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig);
 plMat4 create_orthographic_projection(float fScreenWidth, float fScreenHeight);
 void   show_player_status(mGameData* pGameData);
 void   draw_player_tokens(plAppData* ptAppData, plRenderEncoder* ptRender);
+void   draw_preroll_menu(plAppData* ptAppData);
+void   draw_postroll_menu(plAppData* ptAppData);
+void   draw_jail_menu(plAppData* ptAppData);
+void   draw_notification(plAppData* ptAppData);
 
 //-----------------------------------------------------------------------------
 // [SECTION] structs
@@ -107,6 +111,9 @@ typedef struct _plAppData
     // monopoly game state
     mGameData* pGameData;
     mGameFlow  tGameFlow;
+
+    // frame counter for buffer warmup
+    uint32_t uFrameCount;
 
 } plAppData;
 
@@ -209,13 +216,15 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // initialize draw system (required before draw backend and ui)
     gptDraw->initialize(NULL);
-
+    
     // initialize draw backend (required for ui)
     gptDrawBackend->initialize(ptAppData->ptDevice);
 
-    // create font atlas (needs command buffer/ will be built after command pool creation)
+    // create font atlas (will be built after command pool is created)
     plFontAtlas* ptAtlas = gptDraw->create_font_atlas();
     gptDraw->set_font_atlas(ptAtlas);
+
+    // add default font to atlas
     plFont* ptDefaultFont = gptDraw->add_default_font(ptAtlas);
 
     // create swapchain
@@ -235,11 +244,11 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     plCommandPoolDesc tPoolDesc = {0};
     ptAppData->ptCommandPool = gptGfx->create_command_pool(ptAppData->ptDevice, &tPoolDesc);
 
-    // build font atlas on gpu
+    // build font atlas on gpu (now that command pool exists)
     plCommandBuffer* ptCmdFont = gptGfx->request_command_buffer(ptAppData->ptCommandPool, "font atlas");
     gptDrawBackend->build_font_atlas(ptCmdFont, gptDraw->get_current_font_atlas());
     gptGfx->return_command_buffer(ptCmdFont);
-
+    
     // initialize ui (requires font atlas to be built first)
     gptUi->initialize();
     gptUi->set_default_font(ptDefaultFont);
@@ -280,12 +289,12 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // load board texture
     plTextureLoadConfig tBoardConfig = {
-        .pcFilePath     = "../../monopoly/assets/monopoly-board.png",
-        .tSampler       = ptAppData->tLinearSampler,
-        .ptOutTexture   = &ptAppData->tBoardTexture,
-        .ptOutMemory    = &ptAppData->tBoardTextureMemory,
+        .pcFilePath = "../../monopoly/assets/monopoly-board.png",
+        .tSampler = ptAppData->tLinearSampler,
+        .ptOutTexture = &ptAppData->tBoardTexture,
+        .ptOutMemory = &ptAppData->tBoardTextureMemory,
         .ptOutBindGroup = &ptAppData->tBoardBindGroup,
-        .pbOutLoaded    = &ptAppData->bBoardTextureLoaded
+        .pbOutLoaded = &ptAppData->bBoardTextureLoaded
     };
     load_texture(ptAppData, &tBoardConfig);
 
@@ -358,7 +367,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     };
 
     const plBufferDesc tVertexDesc = {
-        .tUsage = PL_BUFFER_USAGE_VERTEX,
+        .tUsage = PL_BUFFER_USAGE_VERTEX | PL_BUFFER_USAGE_TRANSFER_DESTINATION,
         .szByteSize = sizeof(atVertices),
         .pcDebugName = "quad vertices"
     };
@@ -372,7 +381,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     uint32_t auIndices[] = { 0, 1, 2, 0, 2, 3 };
 
     plBufferDesc tIndexDesc = {
-        .tUsage = PL_BUFFER_USAGE_INDEX,
+        .tUsage = PL_BUFFER_USAGE_INDEX | PL_BUFFER_USAGE_TRANSFER_DESTINATION,
         .szByteSize = sizeof(auIndices),
         .pcDebugName = "quad indices"
     };
@@ -413,7 +422,6 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     gptGfx->return_command_buffer(ptCmd);
 
     gptGfx->destroy_buffer(ptAppData->ptDevice, tStagingHandle);
-    gptGfx->free_memory(ptAppData->ptDevice, &tStagingMem);
 
     // initialize monopoly game
     mGameSettings tSettings = {
@@ -424,37 +432,15 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     ptAppData->pGameData = m_init_game(tSettings);
     m_init_game_flow(&ptAppData->tGameFlow, ptAppData->pGameData, ptAppData->ptWindow);
 
-    // TODO: hardcode data for testing goes here as systems are tested
-
-    ptAppData->pGameData->amProperties[0].uOwnerIndex = 0;  // mediterranean avenue
-    ptAppData->pGameData->amPlayers[0].auPropertiesOwned[0] = 0;
-
-    ptAppData->pGameData->amProperties[1].uOwnerIndex = 0;  // baltic avenue
-    ptAppData->pGameData->amPlayers[0].auPropertiesOwned[1] = 1;
-
-    ptAppData->pGameData->amProperties[6].uOwnerIndex = 0;  // oriental avenue
-    ptAppData->pGameData->amPlayers[0].auPropertiesOwned[2] = 6;
-
-    ptAppData->pGameData->amPlayers[0].uPropertyCount = 3;
-
-    // player 1 owns park place (index 26), boardwalk (index 27)
-    ptAppData->pGameData->amProperties[26].uOwnerIndex = 1;  // park place
-    ptAppData->pGameData->amPlayers[1].auPropertiesOwned[0] = 26;
-
-    ptAppData->pGameData->amProperties[27].uOwnerIndex = 1;  // boardwalk
-    ptAppData->pGameData->amPlayers[1].auPropertiesOwned[1] = 27;
-
-    ptAppData->pGameData->amPlayers[1].uPropertyCount = 2;
-
     // create persistent drawlist and layer for player tokens
     ptAppData->ptTokenDrawlist = gptDraw->request_2d_drawlist();
     ptAppData->ptTokenLayer = gptDraw->request_2d_layer(ptAppData->ptTokenDrawlist);
 
+    // initialize frame counter for buffer warmup
+    ptAppData->uFrameCount = 0;
 
-    // debug prints 
     printf("=== Monopoly Game Started ===\n");
-    printf("2 players, $1500 starting money\n");
-    printf("Press 1 to roll dice\n\n");
+    printf("2 players, $1500 starting money\n\n");
 
     return ptAppData;
 }
@@ -469,33 +455,39 @@ pl_app_shutdown(plAppData* ptAppData)
     // wait for GPU to finish
     gptGfx->flush_device(ptAppData->ptDevice);
 
-    // cleanup font atlas before draw cleanup
-    gptDrawBackend->cleanup_font_atlas(gptDraw->get_current_font_atlas());
-
-    // return persistent drawing resources
+    // return persistent drawing resources 
     if(ptAppData->ptTokenLayer)
         gptDraw->return_2d_layer(ptAppData->ptTokenLayer);
     if(ptAppData->ptTokenDrawlist)
         gptDraw->return_2d_drawlist(ptAppData->ptTokenDrawlist);
 
-    // cleanup draw system, backend, and UI 
+    // cleanup font atlas 
+    gptDrawBackend->cleanup_font_atlas(gptDraw->get_current_font_atlas());
+
+    // cleanup draw system, backend, and UI
     gptDraw->cleanup();
     gptDrawBackend->cleanup();
     gptUi->cleanup();
 
-    // cleanup textures (leave swapchain textures)
+    // cleanup textures (NOT swapchain textures)
     if(ptAppData->bBoardTextureLoaded)
     {
         gptGfx->destroy_texture(ptAppData->ptDevice, ptAppData->tBoardTexture);
         gptGfx->destroy_bind_group(ptAppData->ptDevice, ptAppData->tBoardBindGroup);
     }
 
-    // cleanup geometry buffers, shader, bind group pool and layout, and sampler
+    // cleanup geometry buffers
     gptGfx->destroy_buffer(ptAppData->ptDevice, ptAppData->tQuadVertexBuffer);
     gptGfx->destroy_buffer(ptAppData->ptDevice, ptAppData->tQuadIndexBuffer);
+
+    // cleanup render shader
     gptGfx->destroy_shader(ptAppData->ptDevice, ptAppData->tTexturedQuadShader);
+
+    // cleanup bind group pool and layout
     gptGfx->cleanup_bind_group_pool(ptAppData->tBindGroupPoolTexAndSamp);
     gptGfx->destroy_bind_group_layout(ptAppData->ptDevice, ptAppData->tTextureBindGroupLayout);
+
+    // cleanup samplers
     gptGfx->destroy_sampler(ptAppData->ptDevice, ptAppData->tLinearSampler);
 
     // cleanup command pool
@@ -534,8 +526,7 @@ pl_app_shutdown(plAppData* ptAppData)
 PL_EXPORT void
 pl_app_resize(plWindow* ptWindow, plAppData* ptAppData)
 {
-    // TODO: handle window resizing if needed
-    // liekly to lock to specific resolution 
+    // handle window resizing if needed
 }
 
 //-----------------------------------------------------------------------------
@@ -545,6 +536,9 @@ pl_app_resize(plWindow* ptWindow, plAppData* ptAppData)
 PL_EXPORT void
 pl_app_update(plAppData* ptAppData)
 {
+    // increment frame counter
+    ptAppData->uFrameCount++;
+
     // process input events and start frame calls
     gptIO->new_frame();
     gptDraw->new_frame();
@@ -552,8 +546,29 @@ pl_app_update(plAppData* ptAppData)
     gptUi->new_frame();
     handle_keyboard_input(ptAppData);
 
-    // staticlly show current players status
-    show_player_status(ptAppData->pGameData); // call between ui start and end frame 
+    // TODO: (this is not fixing errors) skip ui rendering for first 5 frames to let buffers grow without errors
+    if(ptAppData->uFrameCount > 5)
+    {
+        // show ui windows
+        show_player_status(ptAppData->pGameData);
+        
+        // show phase-specific menus
+        if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_pre_roll)
+        {
+            draw_preroll_menu(ptAppData);
+        }
+        else if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_post_roll)
+        {
+            draw_postroll_menu(ptAppData);
+        }
+        else if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_jail)
+        {
+            draw_jail_menu(ptAppData);
+        }
+        
+        // show notification popup (on top of everything)
+        draw_notification(ptAppData);
+    }
 
     // run game phase
     m_run_current_phase(&ptAppData->tGameFlow, 0.016f);
@@ -625,9 +640,12 @@ handle_keyboard_input(plAppData* ptAppData)
 {
     if(!m_is_waiting_input(&ptAppData->tGameFlow))
         return;
-
+    
+    // handle property buy menu (1 = buy, 2 = pass)
     if(gptIO->is_key_pressed(PL_KEY_1, false))
         m_set_input_int(&ptAppData->tGameFlow, 1);
+    else if(gptIO->is_key_pressed(PL_KEY_2, false))
+        m_set_input_int(&ptAppData->tGameFlow, 2);
 }
 
 //-----------------------------------------------------------------------------
@@ -719,7 +737,6 @@ load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig)
     gptGfx->return_command_buffer(ptCmdbuff);
 
     gptGfx->destroy_buffer(ptDevice, tStagingHandle);
-    gptGfx->free_memory(ptDevice, &tStagingMem);
 
     plBindGroupDesc tBGDesc = {
         .tLayout = ptAppData->tTextureBindGroupLayout,
@@ -778,14 +795,8 @@ draw_player_tokens(plAppData* ptAppData, plRenderEncoder* ptRender)
     const float fBoardX = 50.0f;
     const float fBoardY = 10.0f;
     const float fBoardSize = 700.0f;
-
-    //  TODO: calculate these more dynamicaly 
-    // hardcoded positions for each board space (0-39)
-    // these are relative to the board texture, normalized 0-1
-    // bottom row (0-10): right to left
-    // left column (11-20): bottom to top  
-    // top row (21-30): left to right
-    // right column (31-39): top to bottom
+    
+    // TODO: calculate instead of hard code???
     static const plVec2 atBoardPositions[40] = {
         // bottom row (GO to Jail visiting)
         {0.90f, 0.90f},  // 0 - GO
@@ -799,7 +810,7 @@ draw_player_tokens(plAppData* ptAppData, plRenderEncoder* ptRender)
         {0.26f, 0.90f},  // 8
         {0.18f, 0.90f},  // 9
         {0.10f, 0.90f},  // 10 - Jail (just visiting)
-
+        
         // left column (jail to free parking)
         {0.10f, 0.82f},  // 11
         {0.10f, 0.74f},  // 12
@@ -811,7 +822,7 @@ draw_player_tokens(plAppData* ptAppData, plRenderEncoder* ptRender)
         {0.10f, 0.26f},  // 18
         {0.10f, 0.18f},  // 19
         {0.10f, 0.10f},  // 20 - Free Parking
-
+        
         // top row (free parking to go to jail)
         {0.18f, 0.10f},  // 21
         {0.26f, 0.10f},  // 22
@@ -823,7 +834,7 @@ draw_player_tokens(plAppData* ptAppData, plRenderEncoder* ptRender)
         {0.74f, 0.10f},  // 28
         {0.82f, 0.10f},  // 29
         {0.90f, 0.10f},  // 30 - Go To Jail
-
+        
         // right column (go to jail to go)
         {0.90f, 0.18f},  // 31
         {0.90f, 0.26f},  // 32
@@ -835,7 +846,7 @@ draw_player_tokens(plAppData* ptAppData, plRenderEncoder* ptRender)
         {0.90f, 0.74f},  // 38
         {0.90f, 0.82f}   // 39
     };
-
+    
     // player colors
     const plVec4 atPlayerColors[6] = {
         {1.0f, 0.0f, 0.0f, 1.0f},  // red
@@ -845,42 +856,244 @@ draw_player_tokens(plAppData* ptAppData, plRenderEncoder* ptRender)
         {1.0f, 0.0f, 1.0f, 1.0f},  // magenta
         {0.0f, 1.0f, 1.0f, 1.0f}   // cyan
     };
-
-    // use persistent drawlist and layer (no request/return needed)
+    
+    // use persistent drawlist and layer
     plDrawList2D* ptDrawlist = ptAppData->ptTokenDrawlist;
     plDrawLayer2D* ptLayer = ptAppData->ptTokenLayer;
-
+    
     // draw each active player
     for(uint8_t i = 0; i < ptAppData->pGameData->uPlayerCount; i++)
     {
         mPlayer* pPlayer = &ptAppData->pGameData->amPlayers[i];
         if(pPlayer->bIsBankrupt)
             continue;
-
+        
         // get board position
         plVec2 tNormPos = atBoardPositions[pPlayer->uPosition];
-
+        
         // convert to screen space
         float fX = fBoardX + (tNormPos.x * fBoardSize);
         float fY = fBoardY + (tNormPos.y * fBoardSize);
-
+        
         // offset multiple players on same space
         float fOffset = (float)i * 15.0f;
         fX += fOffset;
-
+        
         // draw circle for player token
         plVec2 tCenter = {fX, fY};
         uint32_t uColor = PL_COLOR_32(atPlayerColors[i].x, atPlayerColors[i].y, atPlayerColors[i].z, atPlayerColors[i].w);
-
+        
         plDrawSolidOptions tOptions = {.uColor = uColor};
         gptDraw->add_circle_filled(ptLayer, tCenter, 10.0f, 16, tOptions);
     }
+    
     // submit and prepare the layer
     gptDraw->submit_2d_layer(ptLayer);
     gptDraw->prepare_2d_drawlist(ptDrawlist);
-
+    
     // submit to backend for rendering
     gptDrawBackend->submit_2d_drawlist(ptDrawlist, ptRender, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 1);
+}
+
+void
+draw_preroll_menu(plAppData* ptAppData)
+{
+    mGameData* pGame = ptAppData->pGameData;
+    
+    // only show if menu flag is set
+    if(!pGame->bShowPrerollMenu)
+        return;
+    
+    // position menu in top right
+    gptUi->set_next_window_pos((plVec2){880.0f, 20.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){380.0f, 200.0f}, PL_UI_COND_ALWAYS);
+    
+    char acWindowTitle[64];
+    snprintf(acWindowTitle, sizeof(acWindowTitle), "Player %d's Turn", pGame->uCurrentPlayerIndex + 1);
+    
+    if(!gptUi->begin_window(acWindowTitle, NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR))
+        return;
+    
+    gptUi->layout_static(0.0f, 360, 1);
+    gptUi->text("What would you like to do?");
+    
+    gptUi->vertical_spacing();
+    
+    // all buttons same size - 45px height, 360px width
+    gptUi->layout_static(45.0f, 360, 1);
+    
+    if(gptUi->button("Manage Properties"))
+    {
+        m_set_input_int(&ptAppData->tGameFlow, 1);
+    }
+    
+    if(gptUi->button("Propose Trade"))
+    {
+        m_set_input_int(&ptAppData->tGameFlow, 2);
+    }
+    
+    if(gptUi->button("ROLL DICE"))
+    {
+        m_set_input_int(&ptAppData->tGameFlow, 3);
+    }
+    
+    gptUi->end_window();
+}
+
+void
+draw_postroll_menu(plAppData* ptAppData)
+{
+    mGameData* pGame = ptAppData->pGameData;
+    mPlayer* pPlayer = &pGame->amPlayers[pGame->uCurrentPlayerIndex];
+    
+    // only show if waiting for input on property decision
+    if(!m_is_waiting_input(&ptAppData->tGameFlow))
+        return;
+    
+    // get property info from game state
+    uint8_t uPropIdx = m_get_property_at_position(pGame, pPlayer->uPosition);
+    if(uPropIdx == BANK_PLAYER_INDEX)
+        return; // not on a property
+    
+    mProperty* pProp = &pGame->amProperties[uPropIdx];
+    
+    // only show menu if property is unowned
+    if(pProp->uOwnerIndex != BANK_PLAYER_INDEX)
+        return;
+    
+    // position menu in top right
+    gptUi->set_next_window_pos((plVec2){880.0f, 20.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){380.0f, 220.0f}, PL_UI_COND_ALWAYS);
+    
+    char acWindowTitle[64];
+    snprintf(acWindowTitle, sizeof(acWindowTitle), "Property Available");
+    
+    if(!gptUi->begin_window(acWindowTitle, NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR))
+        return;
+    
+    gptUi->layout_static(0.0f, 360, 1);
+    gptUi->text("%s", pProp->cName);
+    
+    gptUi->vertical_spacing();
+    
+    gptUi->layout_static(0.0f, 360, 1);
+    gptUi->text("Price: $%d", pProp->uPrice);
+    
+    // show if player can afford it
+    bool bCanAfford = m_can_afford(pPlayer, pProp->uPrice);
+    if(bCanAfford)
+    {
+        gptUi->text("You have: $%d", pPlayer->uMoney);
+    }
+    else
+    {
+        gptUi->color_text((plVec4){1.0f, 0.3f, 0.3f, 1.0f}, "You have: $%d (Cannot afford!)", pPlayer->uMoney);
+    }
+    
+    gptUi->vertical_spacing();
+    
+    // buttons - 45px height
+    gptUi->layout_static(45.0f, 360, 1);
+    
+    if(bCanAfford && gptUi->button("Buy Property"))
+    {
+        m_set_input_int(&ptAppData->tGameFlow, 1);
+    }
+    
+    if(gptUi->button("Pass (to Auction)"))
+    {
+        m_set_input_int(&ptAppData->tGameFlow, 2);
+    }
+    
+    gptUi->end_window();
+}
+
+void
+draw_jail_menu(plAppData* ptAppData)
+{
+    mGameData* pGame = ptAppData->pGameData;
+    mPlayer* pPlayer = &pGame->amPlayers[pGame->uCurrentPlayerIndex];
+    
+    // only show if in jail and waiting for input
+    if(pPlayer->uJailTurns == 0 || !m_is_waiting_input(&ptAppData->tGameFlow))
+        return;
+    
+    // position menu in top right
+    gptUi->set_next_window_pos((plVec2){880.0f, 20.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){380.0f, 260.0f}, PL_UI_COND_ALWAYS);
+    
+    char acWindowTitle[64];
+    snprintf(acWindowTitle, sizeof(acWindowTitle), "In Jail (Attempt %d/3)", pPlayer->uJailTurns);
+    
+    if(!gptUi->begin_window(acWindowTitle, NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR))
+        return;
+    
+    gptUi->layout_static(0.0f, 360, 1);
+    gptUi->text("Choose an option to get out:");
+    
+    gptUi->vertical_spacing();
+    
+    // buttons - 45px height
+    gptUi->layout_static(45.0f, 360, 1);
+    
+    // pay fine button
+    bool bCanAffordFine = pPlayer->uMoney >= pGame->uJailFine;
+    if(bCanAffordFine && gptUi->button("Pay $50 Fine"))
+    {
+        m_set_input_int(&ptAppData->tGameFlow, 1);
+    }
+    else if(!bCanAffordFine)
+    {
+        gptUi->color_text((plVec4){0.5f, 0.5f, 0.5f, 1.0f}, "Pay $50 Fine (Can't afford)");
+    }
+    
+    // use card button
+    if(pPlayer->bHasJailFreeCard && gptUi->button("Use Get Out of Jail Free Card"))
+    {
+        m_set_input_int(&ptAppData->tGameFlow, 2);
+    }
+    else if(!pPlayer->bHasJailFreeCard)
+    {
+        gptUi->color_text((plVec4){0.5f, 0.5f, 0.5f, 1.0f}, "Use Card (Don't have one)");
+    }
+    
+    // roll for doubles button
+    if(gptUi->button("Roll for Doubles"))
+    {
+        m_set_input_int(&ptAppData->tGameFlow, 3);
+    }
+    
+    gptUi->end_window();
+}
+
+void
+draw_notification(plAppData* ptAppData)
+{
+    mGameData* pGame = ptAppData->pGameData;
+    
+    // only show if notification flag is set
+    if(!pGame->bShowNotification)
+        return;
+    
+    // tick down timer (assuming ~60fps, so ~0.016s per frame)
+    pGame->fNotificationTimer -= 0.016f;
+    if(pGame->fNotificationTimer <= 0.0f)
+    {
+        m_clear_notification(pGame);
+        return;
+    }
+    
+    // banner at top center
+    gptUi->set_next_window_pos((plVec2){300.0f, 20.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){680.0f, 80.0f}, PL_UI_COND_ALWAYS);
+    
+    if(!gptUi->begin_window("##notification", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR | PL_UI_WINDOW_FLAGS_NO_TITLE_BAR))
+        return;
+    
+    gptUi->layout_static(0.0f, 660, 1);
+    gptUi->text("%s", pGame->acNotification);
+    
+    gptUi->end_window();
 }
 
 void 

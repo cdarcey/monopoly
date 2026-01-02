@@ -15,7 +15,7 @@
 #define LUXURY_TAX 100
 #define INCOME_TAX 200
 
-// property ownership array sizes (with buffer for trading/selling before data can be defragged)
+// property ownership array sizes (with buffer for trading/selling)
 #define PROPERTY_ARRAY_SIZE 35
 
 // ==================== ENUMS ==================== //
@@ -86,7 +86,7 @@ typedef enum _ePlayerPiece
 } ePlayerPiece;
 
 // special player indices
-#define BANK_PLAYER_INDEX 255 // for code readability
+#define BANK_PLAYER_INDEX 255
 
 // ==================== STRUCTS ==================== //
 
@@ -108,7 +108,7 @@ typedef struct _mProperty
     uint8_t        uPosition;            // board position (0-39)
     ePropertyType  eType;
     ePropertyColor eColor;
-    uint8_t        uOwnerIndex;          // index into players array, 255 = unowned "BANK_PLAYER_INDEX"
+    uint8_t        uOwnerIndex;          // index into players array, 255 = unowned
     bool           bIsMortgaged;
 } mProperty;
 
@@ -142,8 +142,8 @@ typedef struct _mCommunityChestCard
 // deck shuffling state
 typedef struct _mDeckState
 {
-    uint8_t auIndices[16]; // shuffled indices
-    uint8_t uCurrentIndex; // next card to draw
+    uint8_t auIndices[16];               // shuffled indices
+    uint8_t uCurrentIndex;               // next card to draw
 } mDeckState;
 
 // forward declaration for phase function pointer
@@ -158,21 +158,21 @@ typedef struct _mGameFlow
 {
     fPhaseFunc pfCurrentPhase;
     void*      pCurrentPhaseData;
-
-    // phase stack for nested operations
+    
+    // phase stack for nested operations (auctions, trades, etc)
     fPhaseFunc apPhaseStack[16];
     void*      apPhaseDataStack[16];
     int        iStackDepth;
-
+    
     // reference to game data
     mGameData* pGame;
-
+    
     // input state
-    void* pInputContext;
+    void* pInputContext;                 // platform-specific (e.g. window handle)
     bool  bInputReceived;
     int   iInputValue;
     char  szInputString[256];
-
+    
     // timing
     float fAccumulatedTime;
 } mGameFlow;
@@ -184,6 +184,53 @@ typedef struct _mSimpleTurnData
     bool bRolled;
 } mSimpleTurnData;
 
+// pre-roll phase data
+typedef struct _mPreRollData
+{
+    bool bShowedMenu;
+} mPreRollData;
+
+// post-roll phase data
+typedef struct _mPostRollData
+{
+    bool bMovedPlayer;
+    bool bHandledLanding;
+    eSquareType eSquareType;
+    uint8_t uPropertyIndex;  // if landed on property
+} mPostRollData;
+
+// jail phase data
+typedef struct _mJailData
+{
+    bool bShowedMenu;
+    bool bRolledDice;
+    uint8_t uAttemptNumber;  // 1, 2, or 3
+} mJailData;
+
+// future phase data structures (scaffolding)
+typedef struct _mTradeData
+{
+    uint8_t uInitiatingPlayer;
+    uint8_t uTargetPlayer;
+    // todo: add trade offer details
+} mTradeData;
+
+typedef struct _mAuctionData
+{
+    uint8_t uPropertyIndex;
+    uint8_t uHighestBidder;
+    uint32_t uHighestBid;
+    // todo: add bidding state
+} mAuctionData;
+
+typedef struct _mBankruptcyData
+{
+    uint8_t uBankruptPlayer;
+    uint8_t uCreditor;
+    uint32_t uAmountOwed;
+    // todo: add asset liquidation state
+} mBankruptcyData;
+
 // main game state
 typedef struct _mGameData
 {
@@ -194,7 +241,7 @@ typedef struct _mGameData
     mDeckState          tChanceDeck;
     mDeckState          tCommunityChestDeck;
     mDice               tDice;
-
+    
     uint8_t             uPlayerCount;
     uint8_t             uCurrentPlayerIndex;
     uint8_t             uActivePlayers;  // non-bankrupt players
@@ -202,6 +249,14 @@ typedef struct _mGameData
     uint32_t            uJailFine;
     eGameState          eState;
     bool                bIsRunning;
+    
+    // ui state flags
+    bool                bShowPrerollMenu;
+    
+    // notification system
+    char                acNotification[256];
+    bool                bShowNotification;
+    float               fNotificationTimer;
 } mGameData;
 
 // game initialization settings
@@ -232,7 +287,7 @@ bool m_is_waiting_input(mGameFlow* pFlow);
 void m_roll_dice(mDice* pDice);
 
 // movement
-void m_move_player(mPlayer* pPlayer, mDice* pDice);
+void m_move_player(mPlayer* pPlayer, mDice* pDice, mGameData* pGame);
 void m_move_player_to(mPlayer* pPlayer, uint8_t uPosition);
 
 // turn management
@@ -260,9 +315,25 @@ bool m_use_jail_free_card(mPlayer* pPlayer);
 bool m_mortgage_property(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex);
 bool m_unmortgage_property(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex);
 
-// ==================== SIMPLE PHASE FUNCTIONS ==================== //
+// notifications
+void m_set_notification(mGameData* pGame, const char* pcFormat, ...);
+void m_clear_notification(mGameData* pGame);
 
-// simple test phase - just roll and move
+// ==================== PHASE FUNCTIONS ==================== //
+
+// main turn phases
+ePhaseResult m_phase_pre_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
+ePhaseResult m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
+
+// jail phase
+ePhaseResult m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
+
+// future nested phases (scaffolding)
+// ePhaseResult m_phase_trade(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
+// ePhaseResult m_phase_auction(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
+// ePhaseResult m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
+
+// simple test phase - just roll and move (deprecated - will be removed)
 ePhaseResult m_phase_simple_turn(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 
 #endif // MONOPOLY_H
