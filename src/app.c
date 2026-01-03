@@ -12,6 +12,8 @@
 
         2. Property Management Phase
 
+            [ ] Create Helper function to cleanup property arrays 
+              i.e. put color groups together etc
             [x] Allow mortgaging/unmortgaging properties 
             [x] Show all owned properties with mortgage status
             [x] Calculate total asset value
@@ -24,7 +26,7 @@
             [x] Calculate rent with houses/hotels 
             [x] Add UI to property management for building
             [x] Make property array index enums for readability
-            [ ] Make sure post roll phases handle rent caluclations correctly now that houses can be added
+            [x] Make sure post roll phases handle rent calculations correctly now that houses can be added
 
         4. Trading Phase
 
@@ -36,9 +38,9 @@
             Secondary Features
         5. Auction Phase
 
-            [ ] Implement when player passes on property purchase
-            [ ] Bidding system with all players
-            [ ] Award to highest bidder
+            [x] Implement when player passes on property purchase
+            [x] Bidding system with all players
+            [x] Award to highest bidder
 
         6. Bankruptcy Phase
 
@@ -108,6 +110,7 @@ void   draw_postroll_menu(plAppData* ptAppData);
 void   draw_jail_menu(plAppData* ptAppData);
 void   draw_notification(plAppData* ptAppData);
 void   draw_property_management_menu(plAppData* ptAppData);
+void   draw_auction_menu(plAppData* ptAppData);
 
 //-----------------------------------------------------------------------------
 // [SECTION] structs
@@ -162,9 +165,6 @@ typedef struct _plAppData
     // monopoly game state
     mGameData* pGameData;
     mGameFlow  tGameFlow;
-
-    // frame counter for buffer warmup
-    uint32_t uFrameCount;
 
 } plAppData;
 
@@ -307,14 +307,14 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // create sampler
     plSamplerDesc tLinearSamplerDesc = {
-        .tMagFilter = PL_FILTER_LINEAR,
-        .tMinFilter = PL_FILTER_LINEAR,
-        .tMipmapMode = PL_MIPMAP_MODE_LINEAR,
+        .tMagFilter    = PL_FILTER_LINEAR,
+        .tMinFilter    = PL_FILTER_LINEAR,
+        .tMipmapMode   = PL_MIPMAP_MODE_LINEAR,
         .tUAddressMode = PL_ADDRESS_MODE_CLAMP_TO_EDGE,
         .tVAddressMode = PL_ADDRESS_MODE_CLAMP_TO_EDGE,
-        .fMinMip = 0.0f,
-        .fMaxMip = 1.0f,
-        .pcDebugName = "sampler_linear" 
+        .fMinMip       = 0.0f,
+        .fMaxMip       = 1.0f,
+        .pcDebugName   = "sampler_linear" 
     };
     ptAppData->tLinearSampler = gptGfx->create_sampler(ptAppData->ptDevice, &tLinearSamplerDesc);
 
@@ -340,12 +340,12 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // load board texture
     plTextureLoadConfig tBoardConfig = {
-        .pcFilePath = "../../monopoly/assets/monopoly-board.png",
-        .tSampler = ptAppData->tLinearSampler,
-        .ptOutTexture = &ptAppData->tBoardTexture,
-        .ptOutMemory = &ptAppData->tBoardTextureMemory,
+        .pcFilePath     = "../../monopoly/assets/monopoly-board.png",
+        .tSampler       = ptAppData->tLinearSampler,
+        .ptOutTexture   = &ptAppData->tBoardTexture,
+        .ptOutMemory    = &ptAppData->tBoardTextureMemory,
         .ptOutBindGroup = &ptAppData->tBoardBindGroup,
-        .pbOutLoaded = &ptAppData->bBoardTextureLoaded
+        .pbOutLoaded    = &ptAppData->bBoardTextureLoaded
     };
     load_texture(ptAppData, &tBoardConfig);
 
@@ -374,26 +374,26 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     };
 
     plShaderDesc tShaderDesc = {
-        .tVertexShader = tVertModule,
-        .tFragmentShader = tFragModule,
+        .tVertexShader            = tVertModule,
+        .tFragmentShader          = tFragModule,
         .atVertexBufferLayouts[0] = tVertexLayout,
-        .atBindGroupLayouts[0] = ptAppData->tTextureBindGroupLayoutDesc,
-        .tRenderPassLayout = ptAppData->tMainPassLayout,
-        .pcDebugName = "textured quad shader"
+        .atBindGroupLayouts[0]    = ptAppData->tTextureBindGroupLayoutDesc,
+        .tRenderPassLayout        = ptAppData->tMainPassLayout,
+        .pcDebugName              = "textured quad shader"
     };
     ptAppData->tTexturedQuadShader = gptGfx->create_shader(ptAppData->ptDevice, &tShaderDesc);
 
     // create render pass
     plRenderPassDesc tMainPassDesc = {
-        .tLayout = ptAppData->tMainPassLayout,
-        .tDimensions = {SCREEN_WIDTH, SCREEN_HEIGHT},
+        .tLayout        = ptAppData->tMainPassLayout,
+        .tDimensions    = {SCREEN_WIDTH, SCREEN_HEIGHT},
         .atColorTargets = {
             {
-                .tLoadOp = PL_LOAD_OP_CLEAR,
-                .tStoreOp = PL_STORE_OP_STORE,
+                .tLoadOp       = PL_LOAD_OP_CLEAR,
+                .tStoreOp      = PL_STORE_OP_STORE,
                 .tCurrentUsage = PL_TEXTURE_USAGE_UNSPECIFIED,
-                .tNextUsage = PL_TEXTURE_USAGE_PRESENT,
-                .tClearColor = {0.1f, 0.1f, 0.1f, 1.0f}
+                .tNextUsage    = PL_TEXTURE_USAGE_PRESENT,
+                .tClearColor = {0.0f, 0.4f, 0.2f, 1.0f} // monopoly style green for background
             }
         },
         .ptSwapchain = ptAppData->ptSwapchain,
@@ -418,8 +418,8 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     };
 
     const plBufferDesc tVertexDesc = {
-        .tUsage = PL_BUFFER_USAGE_VERTEX | PL_BUFFER_USAGE_TRANSFER_DESTINATION,
-        .szByteSize = sizeof(atVertices),
+        .tUsage      = PL_BUFFER_USAGE_VERTEX | PL_BUFFER_USAGE_TRANSFER_DESTINATION,
+        .szByteSize  = sizeof(atVertices),
         .pcDebugName = "quad vertices"
     };
     ptAppData->tQuadVertexBuffer = gptGfx->create_buffer(ptAppData->ptDevice, &tVertexDesc, NULL);
@@ -445,8 +445,8 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // upload geometry
     plBufferDesc tStagingDesc = {
-        .tUsage = PL_BUFFER_USAGE_STAGING,
-        .szByteSize = 4096,
+        .tUsage      = PL_BUFFER_USAGE_STAGING,
+        .szByteSize  = 4096,
         .pcDebugName = "staging buffer"
     };
     plBufferHandle tStagingHandle = gptGfx->create_buffer(ptAppData->ptDevice, &tStagingDesc, NULL);
@@ -474,11 +474,12 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     gptGfx->destroy_buffer(ptAppData->ptDevice, tStagingHandle);
 
+    // TODO: create menu system so player can adjust these before game starts
     // initialize monopoly game
     mGameSettings tSettings = {
         .uStartingMoney = 1500,
-        .uJailFine = 50,
-        .uPlayerCount = 2
+        .uJailFine      = 50,
+        .uPlayerCount   = 4
     };
     ptAppData->pGameData = m_init_game(tSettings);
     m_init_game_flow(&ptAppData->tGameFlow, ptAppData->pGameData, ptAppData->ptWindow);
@@ -486,29 +487,6 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     // create persistent drawlist and layer for player tokens
     ptAppData->ptTokenDrawlist = gptDraw->request_2d_drawlist();
     ptAppData->ptTokenLayer = gptDraw->request_2d_layer(ptAppData->ptTokenDrawlist);
-
-    // initialize frame counter for buffer warmup
-    ptAppData->uFrameCount = 0;
-
-    printf("=== Monopoly Game Started ===\n");
-    printf("2 players, $1500 starting money\n\n");
-
-    // TESTING: give player 1 some properties but not a full set to make sure they cannot build houses
-    ptAppData->pGameData->amProperties[ST_JAMES_PLACE_PROPERTY_ARRAY_INDEX].uOwnerIndex = PLAYER_ONE_ARRAY_INDEX;   // St. James Place
-    ptAppData->pGameData->amProperties[TENNESSEE_AVENUE_PROPERTY_ARRAY_INDEX].uOwnerIndex = PLAYER_ONE_ARRAY_INDEX;   // Tennessee Avenue
-    // ptAppData->pGameData->amProperties[NEW_YORK_AVENUE_PROPERTY_ARRAY_INDEX].uOwnerIndex = PLAYER_ONE_ARRAY_INDEX;  // New York Avenue
-
-    // Add to player's property list
-    ptAppData->pGameData->amPlayers[PLAYER_ONE_ARRAY_INDEX].auPropertiesOwned[0] = ST_JAMES_PLACE_PROPERTY_ARRAY_INDEX;
-    ptAppData->pGameData->amPlayers[PLAYER_ONE_ARRAY_INDEX].auPropertiesOwned[1] = TENNESSEE_AVENUE_PROPERTY_ARRAY_INDEX;
-    // ptAppData->pGameData->amPlayers[PLAYER_ONE_ARRAY_INDEX].auPropertiesOwned[2] = NEW_YORK_AVENUE_PROPERTY_ARRAY_INDEX;
-    ptAppData->pGameData->amPlayers[PLAYER_ONE_ARRAY_INDEX].uPropertyCount = 2;
-
-    // Give player 1 some extra cash for building tests
-    ptAppData->pGameData->amPlayers[0].uMoney = 5000;
-
-    printf("TEST: Player 1 owns Orange monopoly (St. James, Tennessee, New York)\n");
-    printf("TEST: Player 1 has $5000 for building\n");
 
     return ptAppData;
 }
@@ -548,14 +526,10 @@ pl_app_shutdown(plAppData* ptAppData)
     gptGfx->destroy_buffer(ptAppData->ptDevice, ptAppData->tQuadVertexBuffer);
     gptGfx->destroy_buffer(ptAppData->ptDevice, ptAppData->tQuadIndexBuffer);
 
-    // cleanup render shader
+    // cleanup shader, bind group pool, layout, and sampler
     gptGfx->destroy_shader(ptAppData->ptDevice, ptAppData->tTexturedQuadShader);
-
-    // cleanup bind group pool and layout
     gptGfx->cleanup_bind_group_pool(ptAppData->tBindGroupPoolTexAndSamp);
     gptGfx->destroy_bind_group_layout(ptAppData->ptDevice, ptAppData->tTextureBindGroupLayout);
-
-    // cleanup samplers
     gptGfx->destroy_sampler(ptAppData->ptDevice, ptAppData->tLinearSampler);
 
     // cleanup command pool
@@ -604,8 +578,6 @@ pl_app_resize(plWindow* ptWindow, plAppData* ptAppData)
 PL_EXPORT void
 pl_app_update(plAppData* ptAppData)
 {
-    // increment frame counter
-    ptAppData->uFrameCount++;
 
     // process input events and start frame calls
     gptIO->new_frame();
@@ -637,6 +609,10 @@ pl_app_update(plAppData* ptAppData)
     else if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_property_management)
     {
         draw_property_management_menu(ptAppData);
+    }
+    else if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_auction)
+    {
+        draw_auction_menu(ptAppData);
     }
         
     // show notification popup (on top of everything)
@@ -977,8 +953,8 @@ draw_preroll_menu(plAppData* ptAppData)
         return;
     
     // position menu in top right
-    gptUi->set_next_window_pos((plVec2){800.0f, 20.0f}, PL_UI_COND_ALWAYS);
-    gptUi->set_next_window_size((plVec2){380.0f, 220.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_pos((plVec2){800.0f, 15.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){400.0f, 250.0f}, PL_UI_COND_ALWAYS);
     
     char acWindowTitle[64];
     snprintf(acWindowTitle, sizeof(acWindowTitle), "Player %d's Turn", pGame->uCurrentPlayerIndex + 1);
@@ -1034,8 +1010,8 @@ draw_postroll_menu(plAppData* ptAppData)
         return;
     
     // position menu in top right
-    gptUi->set_next_window_pos((plVec2){800.0f, 20.0f}, PL_UI_COND_ALWAYS);
-    gptUi->set_next_window_size((plVec2){380.0f, 220.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_pos((plVec2){800.0f, 15.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){400.0f, 250.0f}, PL_UI_COND_ALWAYS);
     
     if(!gptUi->begin_window("Property Available", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR))
         return;
@@ -1082,14 +1058,18 @@ draw_jail_menu(plAppData* ptAppData)
 {
     mGameData* pGame = ptAppData->pGameData;
     mPlayer* pPlayer = &pGame->amPlayers[pGame->uCurrentPlayerIndex];
+
+    // only show if jail menu flag is set
+    if(!pGame->bShowJailMenu)
+        return;
     
     // only show if in jail and waiting for input
     if(pPlayer->uJailTurns == 0 || !m_is_waiting_input(&ptAppData->tGameFlow))
         return;
     
     // position menu in top right
-    gptUi->set_next_window_pos((plVec2){800.0f, 20.0f}, PL_UI_COND_ALWAYS);
-    gptUi->set_next_window_size((plVec2){380.0f, 220.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_pos((plVec2){800.0f, 15.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){400.0f, 250.0f}, PL_UI_COND_ALWAYS);
     
     char acWindowTitle[64];
     snprintf(acWindowTitle, sizeof(acWindowTitle), "In Jail (Attempt %d/3)", pPlayer->uJailTurns);
@@ -1153,7 +1133,7 @@ draw_notification(plAppData* ptAppData)
     }
     
     // banner at top center
-    gptUi->set_next_window_pos((plVec2){300.0f, 20.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_pos((plVec2){300.0f, 15.0f}, PL_UI_COND_ALWAYS);
     gptUi->set_next_window_size((plVec2){680.0f, 80.0f}, PL_UI_COND_ALWAYS);
     
     if(!gptUi->begin_window("##notification", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR | PL_UI_WINDOW_FLAGS_NO_TITLE_BAR))
@@ -1169,8 +1149,8 @@ void
 show_player_status(mGameData* pGameData)
 {
     // render player status ui
-    gptUi->set_next_window_pos((plVec2){880.0f, 400.0f}, PL_UI_COND_ALWAYS);
-    gptUi->set_next_window_size((plVec2){350.0f, 300.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_pos((plVec2){800.0f, 460.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){400.0f, 250.0f}, PL_UI_COND_ALWAYS);
 
     // for code readability  
     mPlayer* pPlayer = &pGameData->amPlayers[pGameData->uCurrentPlayerIndex];
@@ -1241,8 +1221,8 @@ draw_property_management_menu(plAppData* ptAppData)
     if(!pGame->bShowPropertyMenu)
         return;
     
-    gptUi->set_next_window_pos((plVec2){800.0f, 20.0f}, PL_UI_COND_ALWAYS);
-    gptUi->set_next_window_size((plVec2){380.0f, 600.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_pos((plVec2){800.0f, 15.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){400.0f, 600.0f}, PL_UI_COND_ALWAYS); // TODO: find correct size for minimal scrolling 
     
     if(!gptUi->begin_window("Property Management", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE))
         return;
@@ -1398,6 +1378,128 @@ draw_property_management_menu(plAppData* ptAppData)
     if(gptUi->button("Back to Turn Menu"))
     {
         m_set_input_int(&ptAppData->tGameFlow, 0);
+    }
+    
+    gptUi->end_window();
+}
+
+void
+draw_auction_menu(plAppData* ptAppData)
+{
+    mGameData* pGame = ptAppData->pGameData;
+    
+    if(!pGame->bShowAuctionMenu)
+        return;
+    
+    // get auction data from current phase
+    mAuctionData* pAuction = (mAuctionData*)ptAppData->tGameFlow.pCurrentPhaseData;
+    mProperty* pProp = &pGame->amProperties[pAuction->ePropertyIndex];
+    mPlayer* pCurrentBidder = &pGame->amPlayers[pAuction->uCurrentBidder];
+    
+    // position menu in center
+    gptUi->set_next_window_pos((plVec2){300.0f, 50.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){680.0f, 500.0f}, PL_UI_COND_ALWAYS);
+    
+    if(!gptUi->begin_window("Auction", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE))
+        return;
+    
+    // property being auctioned
+    gptUi->layout_static(0.0f, 660, 1);
+    gptUi->text("Property: %s", pProp->cName);
+    gptUi->text("List Price: $%d", pProp->uPrice);
+    
+    gptUi->vertical_spacing();
+    gptUi->separator();
+    gptUi->vertical_spacing();
+    
+    // current bid info
+    gptUi->layout_static(0.0f, 660, 1);
+    if(pAuction->uHighestBidder == BANK_PLAYER_INDEX)
+    {
+        gptUi->text("Current Bid: No bids yet");
+    }
+    else
+    {
+        gptUi->text("Current Bid: $%d by Player %d", pAuction->uHighestBid, pAuction->uHighestBidder + 1);
+    }
+    
+    gptUi->vertical_spacing();
+    gptUi->separator();
+    gptUi->vertical_spacing();
+    
+    // player status
+    gptUi->layout_static(0.0f, 660, 1);
+    gptUi->text("Players:");
+    
+    for(uint8_t i = 0; i < pGame->uPlayerCount; i++)
+    {
+        if(pGame->amPlayers[i].bIsBankrupt)
+            continue;
+        
+        char acPlayerStatus[128];
+        if(pAuction->abPlayersPassed[i])
+        {
+            snprintf(acPlayerStatus, sizeof(acPlayerStatus), "  Player %d: $%d [PASSED]", 
+                i + 1, pGame->amPlayers[i].uMoney);
+            gptUi->color_text((plVec4){0.7f, 0.7f, 0.7f, 1.0f}, acPlayerStatus);
+        }
+        else if(i == pAuction->uCurrentBidder)
+        {
+            snprintf(acPlayerStatus, sizeof(acPlayerStatus), "  Player %d: $%d [BIDDING NOW]", 
+                i + 1, pGame->amPlayers[i].uMoney);
+            gptUi->color_text((plVec4){0.0f, 1.0f, 0.0f, 1.0f}, acPlayerStatus);
+        }
+        else
+        {
+            snprintf(acPlayerStatus, sizeof(acPlayerStatus), "  Player %d: $%d", 
+                i + 1, pGame->amPlayers[i].uMoney);
+            gptUi->text(acPlayerStatus);
+        }
+    }
+    
+    gptUi->vertical_spacing();
+    gptUi->separator();
+    gptUi->vertical_spacing();
+    
+    // bidding controls for current bidder
+    gptUi->layout_static(0.0f, 660, 1);
+    gptUi->text("Player %d - Your turn to bid:", pAuction->uCurrentBidder + 1);
+    
+    gptUi->vertical_spacing();
+    
+    uint32_t uMinBid = pAuction->uHighestBid + 1;
+    
+    // show minimum bid
+    gptUi->layout_static(0.0f, 660, 1);
+    gptUi->text("Minimum bid: $%d", uMinBid);
+    
+    gptUi->vertical_spacing();
+    
+    // text input for bid amount
+    gptUi->layout_static(40.0f, 500, 1);
+    static char acBidInput[32] = ""; // static to persit through frames without global variable
+    gptUi->input_text("Bid Amount", acBidInput, 32, 0);
+
+    gptUi->layout_static(45.0f, 320, 2);
+
+    // submit bid button
+    char acSubmitBtn[64];
+    snprintf(acSubmitBtn, sizeof(acSubmitBtn), "Submit Bid");
+    if(gptUi->button(acSubmitBtn))
+    {
+        int iBidAmount = atoi(acBidInput); // Convert string to int
+        if(iBidAmount > 0)
+        {
+            m_set_input_int(&ptAppData->tGameFlow, iBidAmount);
+            acBidInput[0] = '\0';
+        }
+    }
+
+    // pass button
+    if(gptUi->button("Pass (Don't Bid)"))
+    {
+        m_set_input_int(&ptAppData->tGameFlow, 0);
+        acBidInput[0] = '\0';
     }
     
     gptUi->end_window();

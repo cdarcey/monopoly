@@ -117,6 +117,7 @@ m_roll_dice(mDice* pDice)
 
 // ==================== MOVEMENT ==================== //
 
+// move player with dice
 void
 m_move_player(mPlayer* pPlayer, mDice* pDice, mGameData* pGame)
 {
@@ -133,6 +134,7 @@ m_move_player(mPlayer* pPlayer, mDice* pDice, mGameData* pGame)
     }
 }
 
+// for sending player to specific location
 void
 m_move_player_to(mPlayer* pPlayer, uint8_t uPosition)
 {
@@ -156,6 +158,7 @@ m_next_player_turn(mGameData* pGame)
         {
             // increment round if we've wrapped back to the first active player after a full cycle
             // this happens when current player has a lower index than where we started
+            // protects from player one bankrupting messing up round counter
             if(pGame->uCurrentPlayerIndex < uStartingPlayer)
             {
                 pGame->uRoundCount++;
@@ -241,8 +244,7 @@ m_can_build_house(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex
     uint8_t uMinHouses = 255;
     for(uint8_t i = 0; i < TOTAL_PROPERTIES; i++)
     {
-        if(pGame->amProperties[i].eColor == pProp->eColor && 
-           pGame->amProperties[i].uOwnerIndex == uPlayerIndex)
+        if(pGame->amProperties[i].eColor == pProp->eColor && pGame->amProperties[i].uOwnerIndex == uPlayerIndex)
         {
             if(pGame->amProperties[i].uHouses < uMinHouses)
                 uMinHouses = pGame->amProperties[i].uHouses;
@@ -338,8 +340,7 @@ m_can_sell_house(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex)
     uint8_t uMaxHouses = 0;
     for(uint8_t i = 0; i < TOTAL_PROPERTIES; i++)
     {
-        if(pGame->amProperties[i].eColor == pProp->eColor && 
-           pGame->amProperties[i].uOwnerIndex == uPlayerIndex)
+        if(pGame->amProperties[i].eColor == pProp->eColor && pGame->amProperties[i].uOwnerIndex == uPlayerIndex)
         {
             uint8_t uHouses = pGame->amProperties[i].uHouses;
             if(pGame->amProperties[i].bHasHotel) uHouses = 5; // hotel counts as 5 for comparison
@@ -417,8 +418,7 @@ m_count_properties_of_color(mGameData* pGame, uint8_t uPlayerIndex, ePropertyCol
     
     for(uint8_t i = 0; i < TOTAL_PROPERTIES; i++)
     {
-        if(pGame->amProperties[i].eColor == eColor && 
-           pGame->amProperties[i].uOwnerIndex == uPlayerIndex)
+        if(pGame->amProperties[i].eColor == eColor && pGame->amProperties[i].uOwnerIndex == uPlayerIndex)
         {
             uCount++;
         }
@@ -675,7 +675,7 @@ m_unmortgage_property(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerI
 
 // ==================== NOTIFICATIONS ==================== //
 
-// TODO: is this worth using or should it be more explict passing a string that is formatted before func call
+// TODO: is this worth using or should it be more explict passing a string that is formatted before function call
 void
 m_set_notification(mGameData* pGame, const char* pcFormat, ...) 
 {
@@ -792,9 +792,37 @@ m_execute_chance_card(mGameData* pGame, uint8_t uCardIdx)
             break;
         }
         
-        case 9: // general repairs (skip for now - needs houses/hotels)
+        case 9: // general repairs - pay $25 per house, $100 per hotel
         {
-            // TODO: implement when houses/hotels are added
+            uint32_t uTotalCost = 0;
+            for(uint8_t uBuildingCount = 0; uBuildingCount < pPlayer->uPropertyCount; uBuildingCount++)
+            {
+                uint8_t uPropIdx = pPlayer->auPropertiesOwned[uBuildingCount];
+                if(uPropIdx == BANK_PLAYER_INDEX)
+                    break;
+
+                mProperty* pProp = &pGame->amProperties[uPropIdx];
+
+                if(pProp->bHasHotel)
+                {
+                    uTotalCost += 100;  // $100 per hotel
+                }
+                else
+                {
+                    uTotalCost += pProp->uHouses * 25;  // $25 per house
+                }
+            }
+
+            // charge player or bankrupt them
+            if(pPlayer->uMoney >= uTotalCost)
+            {
+                pPlayer->uMoney -= uTotalCost;
+            }
+            else
+            {
+                pPlayer->bIsBankrupt = true;
+                pGame->uActivePlayers--;
+            }
             break;
         }
         
@@ -1020,9 +1048,37 @@ m_execute_community_chest_card(mGameData* pGame, uint8_t uCardIdx)
             break;
         }
         
-        case 14: // street repairs (skip for now - needs houses/hotels)
+        case 14: // street repairs - pay $40 per house, $115 per hotel
         {
-            // TODO: implement when houses/hotels are added
+            uint32_t uTotalCost = 0;
+            for(uint8_t uBuildingCount = 0; uBuildingCount < pPlayer->uPropertyCount; uBuildingCount++)
+            {
+                uint8_t uPropIdx = pPlayer->auPropertiesOwned[uBuildingCount];
+                if(uPropIdx == BANK_PLAYER_INDEX)
+                    break;
+                
+                mProperty* pProp = &pGame->amProperties[uPropIdx];
+                
+                if(pProp->bHasHotel)
+                {
+                    uTotalCost += 115;  // $115 per hotel
+                }
+                else
+                {
+                    uTotalCost += pProp->uHouses * 40;  // $40 per house
+                }
+            }
+            
+            // charge player or bankrupt them
+            if(pPlayer->uMoney >= uTotalCost)
+            {
+                pPlayer->uMoney -= uTotalCost;
+            }
+            else
+            {
+                pPlayer->bIsBankrupt = true;
+                pGame->uActivePlayers--;
+            }
             break;
         }
         
@@ -1199,8 +1255,7 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
         pPostRoll->bMovedPlayer = true;
         pPostRoll->eSquareType = m_get_square_type(pPlayer->uPosition);
         
-        // if property square, find which property
-        if(pPostRoll->eSquareType == SQUARE_PROPERTY)
+        if(pPostRoll->eSquareType == SQUARE_PROPERTY) // if property square, find which property
         {
             pPostRoll->uPropertyIndex = m_get_property_at_position(pGame, pPlayer->uPosition);
         }
@@ -1253,11 +1308,15 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                     }
                     else
                     {
-                        m_set_notification(pGame, "Passed on %s - auction not yet implemented", pProp->cName);
-                        // TODO: push auction phase
+                        // start auction
+                        mAuctionData* pAuction = malloc(sizeof(mAuctionData));
+                        memset(pAuction, 0, sizeof(mAuctionData));
+                        
+                        pAuction->ePropertyIndex = pPostRoll->uPropertyIndex;
+                        
+                        m_push_phase(pFlow, m_phase_auction, pAuction);
                     }
-                    
-                    pPostRoll->bHandledLanding = true;
+                    break;
                 }
                 // owned by current player
                 else if(pProp->uOwnerIndex == pGame->uCurrentPlayerIndex)
@@ -1345,11 +1404,11 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
             case SQUARE_COMMUNITY_CHEST:
             {
                 // draw card
-                uint8_t uCardIdx = m_draw_community_chest_card(pGame);  // was m_draw_chance_card
-                mCommunityChestCard* pCard = &pGame->amCommunityChestCards[uCardIdx];  // was mChanceCard
+                uint8_t uCardIdx = m_draw_community_chest_card(pGame); 
+                mCommunityChestCard* pCard = &pGame->amCommunityChestCards[uCardIdx]; 
 
                 // show card to player
-                m_set_notification(pGame, "Community Chest: %s", pCard->cDescription);  // was "Community Chance"
+                m_set_notification(pGame, "Community Chest: %s", pCard->cDescription);
 
                 // execute card effect immediately
                 m_execute_community_chest_card(pGame, uCardIdx);
@@ -1418,8 +1477,7 @@ m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
         pJail->uAttemptNumber = pPlayer->uJailTurns;
         pJail->bShowedMenu = true;
         
-        // set flag for UI to show jail menu
-        pGame->bShowPrerollMenu = true;  // reuse this flag for jail menu
+        pGame->bShowJailMenu = true;
         
         return PHASE_RUNNING;
     }
@@ -1443,7 +1501,7 @@ m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                 
                 // end turn after paying fine
                 m_next_player_turn(pGame);
-                pGame->bShowPrerollMenu = false;
+                pGame->bShowJailMenu = false;
                 
                 mPreRollData* pNextPreRoll = malloc(sizeof(mPreRollData));
                 memset(pNextPreRoll, 0, sizeof(mPreRollData));
@@ -1472,7 +1530,7 @@ m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                 
                 // end turn after using card
                 m_next_player_turn(pGame);
-                pGame->bShowPrerollMenu = false;
+                pGame->bShowJailMenu = false;
                 
                 mPreRollData* pNextPreRoll = malloc(sizeof(mPreRollData));
                 memset(pNextPreRoll, 0, sizeof(mPreRollData));
@@ -1505,7 +1563,7 @@ m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                     m_set_notification(pGame, "Rolled doubles (%d+%d)! Released and moving...", pGame->tDice.uDie1, pGame->tDice.uDie2);
                     
                     // transition to post-roll to move with the doubles roll
-                    pGame->bShowPrerollMenu = false;
+                    pGame->bShowJailMenu = false;
                     mPostRollData* pPostRoll = malloc(sizeof(mPostRollData));
                     memset(pPostRoll, 0, sizeof(mPostRollData));
                     
@@ -1524,6 +1582,7 @@ m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                     if(pPlayer->uJailTurns > 3)
                     {
                         // must pay fine on third failed attempt
+                        // TODO: make sure this ends turn on forced release
                         if(pPlayer->uMoney >= pGame->uJailFine)
                         {
                             pPlayer->uMoney -= pGame->uJailFine;
@@ -1531,7 +1590,7 @@ m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                             m_set_notification(pGame, "Failed 3 attempts - paid $50 fine");
                             
                             // transition back to pre-roll
-                            pGame->bShowPrerollMenu = false;
+                            pGame->bShowJailMenu = false;
                             mPreRollData* pPreRoll = malloc(sizeof(mPreRollData));
                             memset(pPreRoll, 0, sizeof(mPreRollData));
                             
@@ -1768,3 +1827,140 @@ m_phase_property_management(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow
     return PHASE_RUNNING;
 }
 
+// ==================== AUCTION PHASE ==================== //
+
+ePhaseResult
+m_phase_auction(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
+{
+    mAuctionData* pAuction = (mAuctionData*)pPhaseData;
+    mGameData* pGame = pFlow->pGame;
+    
+    // show menu first time
+    if(!pAuction->bShowedMenu)
+    {
+        pGame->bShowAuctionMenu = true;
+        pAuction->bShowedMenu = true;
+        
+        // start with player after current player
+        pAuction->uCurrentBidder = (pGame->uCurrentPlayerIndex + 1) % pGame->uPlayerCount;
+        
+        // skip to first non-bankrupt player
+        while(pGame->amPlayers[pAuction->uCurrentBidder].bIsBankrupt && 
+              pAuction->uCurrentBidder != pGame->uCurrentPlayerIndex)
+        {
+            pAuction->uCurrentBidder = (pAuction->uCurrentBidder + 1) % pGame->uPlayerCount;
+        }
+        
+        pAuction->uHighestBidder = BANK_PLAYER_INDEX;
+        pAuction->uHighestBid = 0;
+        pAuction->uConsecutivePasses = 0;
+        
+        return PHASE_RUNNING;
+    }
+    
+    // wait for input
+    if(!pFlow->bInputReceived)
+        return PHASE_RUNNING;
+    
+    int iChoice = pFlow->iInputValue;
+    m_clear_input(pFlow);
+    
+    mPlayer* pCurrentBidder = &pGame->amPlayers[pAuction->uCurrentBidder];
+    
+    // pass
+    if(iChoice == 0)
+    {
+        if(!pAuction->abPlayersPassed[pAuction->uCurrentBidder])
+        {
+            pAuction->abPlayersPassed[pAuction->uCurrentBidder] = true;
+            pAuction->uConsecutivePasses++;
+        }
+        
+        // count how many players have passed
+        uint8_t uPlayersPassed = 0;
+        for(uint8_t i = 0; i < pGame->uPlayerCount; i++)
+        {
+            if(pGame->amPlayers[i].bIsBankrupt)
+                continue;
+            if(pAuction->abPlayersPassed[i])
+                uPlayersPassed++;
+        }
+        
+        // auction ends when everyone has passed or when everyone except the highest bidder has passed
+        bool bAuctionOver = (uPlayersPassed >= pGame->uActivePlayers) || 
+                            (pAuction->uHighestBidder != BANK_PLAYER_INDEX && 
+                             uPlayersPassed >= pGame->uActivePlayers - 1);
+        
+        if(bAuctionOver)
+        {
+            pGame->bShowAuctionMenu = false;
+            
+            // award property to highest bidder
+            if(pAuction->uHighestBidder != BANK_PLAYER_INDEX)
+            {
+                mProperty* pProp = &pGame->amProperties[pAuction->ePropertyIndex];
+                mPlayer* pWinner = &pGame->amPlayers[pAuction->uHighestBidder];
+                
+                pWinner->uMoney -= pAuction->uHighestBid;
+                pProp->uOwnerIndex = pAuction->uHighestBidder;
+                
+                // add to winner's property list
+                if(pWinner->uPropertyCount < PROPERTY_ARRAY_SIZE)
+                {
+                    pWinner->auPropertiesOwned[pWinner->uPropertyCount] = pAuction->ePropertyIndex;
+                    pWinner->uPropertyCount++;
+                }
+                
+                m_set_notification(pGame, "Player %d won %s for $%d!", 
+                    pAuction->uHighestBidder + 1, pProp->cName, pAuction->uHighestBid);
+            }
+            else
+            {
+                m_set_notification(pGame, "No bids - property remains unowned");
+            }
+            
+            mPostRollData* pPostRoll = (mPostRollData*)pFlow->apPhaseDataStack[pFlow->iStackDepth - 1];
+            pPostRoll->bHandledLanding = true;
+            
+            m_pop_phase(pFlow);
+            return PHASE_RUNNING;
+        }
+        
+        // move to next bidder
+        do {
+            pAuction->uCurrentBidder = (pAuction->uCurrentBidder + 1) % pGame->uPlayerCount;
+        } while(pGame->amPlayers[pAuction->uCurrentBidder].bIsBankrupt);
+        
+        return PHASE_RUNNING;
+    }
+    
+    // bid amount
+    uint32_t uBidAmount = (uint32_t)iChoice;
+    
+    // validate bid is higher than current
+    if(uBidAmount <= pAuction->uHighestBid)
+    {
+        m_set_notification(pGame, "Bid must be higher than $%d", pAuction->uHighestBid);
+        return PHASE_RUNNING;
+    }
+    
+    // validate player can afford bid
+    if(uBidAmount > pCurrentBidder->uMoney)
+    {
+        m_set_notification(pGame, "Cannot afford bid of $%d", uBidAmount);
+        return PHASE_RUNNING;
+    }
+    
+    // accept bid
+    pAuction->uHighestBid = uBidAmount;
+    pAuction->uHighestBidder = pAuction->uCurrentBidder;
+    pAuction->abPlayersPassed[pAuction->uCurrentBidder] = false;
+    pAuction->uConsecutivePasses = 0;
+    
+    // move to next bidder
+    do {
+        pAuction->uCurrentBidder = (pAuction->uCurrentBidder + 1) % pGame->uPlayerCount;
+    } while(pGame->amPlayers[pAuction->uCurrentBidder].bIsBankrupt);
+    
+    return PHASE_RUNNING;
+}

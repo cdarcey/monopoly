@@ -173,7 +173,7 @@ typedef struct _mProperty
     uint8_t        uHouses;
     ePropertyType  eType;
     ePropertyColor eColor;
-    uint8_t        uOwnerIndex;          // index into players array, 255 = unowned
+    uint8_t        uOwnerIndex;          // index into players array, 255 = unowned / banker "BANK_PLAYER_INDEX"
     bool           bIsMortgaged;
     bool           bHasHotel;
 } mProperty;
@@ -184,7 +184,7 @@ typedef struct _mPlayer
     uint32_t     uMoney;
     uint8_t      uPosition;              // board position (0-39)
     uint8_t      uJailTurns;             // turns spent in jail (0 = not in jail)
-    uint8_t      auPropertiesOwned[PROPERTY_ARRAY_SIZE];  // indices into game properties array, 255 = empty slot
+    uint8_t      auPropertiesOwned[PROPERTY_ARRAY_SIZE];  // indices into game properties array, 255 = banker "BANK_PLAYER_INDEX"
     uint8_t      uPropertyCount;         // actual count of owned properties
     ePlayerPiece ePiece;
     bool         bHasJailFreeCard;
@@ -208,8 +208,8 @@ typedef struct _mCommunityChestCard
 // deck shuffling state
 typedef struct _mDeckState
 {
-    uint8_t auIndices[16];               // shuffled indices
-    uint8_t uCurrentIndex;               // next card to draw
+    uint8_t auIndices[16]; // shuffled indices
+    uint8_t uCurrentIndex; // next card to draw
 } mDeckState;
 
 // forward declaration for phase function pointer
@@ -234,7 +234,7 @@ typedef struct _mGameFlow
     mGameData* pGame;
     
     // input state
-    void* pInputContext;                 // platform-specific (e.g. window handle)
+    void* pInputContext; // platform-specific (e.g. window handle)
     bool  bInputReceived;
     int   iInputValue;
     char  szInputString[256];
@@ -242,14 +242,6 @@ typedef struct _mGameFlow
     // timing
     float fAccumulatedTime;
 } mGameFlow;
-
-// TODO: remove when done using 
-// simple phase data for testing
-typedef struct _mSimpleTurnData
-{
-    bool bShowedPrompt;
-    bool bRolled;
-} mSimpleTurnData;
 
 // pre-roll phase data
 typedef struct _mPreRollData
@@ -271,23 +263,26 @@ typedef struct _mJailData
 {
     bool    bShowedMenu;
     bool    bRolledDice;
-    uint8_t uAttemptNumber;  // 1, 2, or 3
+    uint8_t uAttemptNumber;  // 0 not in jail, auto release on turn 3 
 } mJailData;
 
-// future phase data structures (scaffolding)
+// trade phase data 
 typedef struct _mTradeData
 {
-    uint8_t uInitiatingPlayer;
-    uint8_t uTargetPlayer;
-    // TODO: add trade offer details
+    ePlayerArrayIndex eInitiatingPlayer;
+    uint8_t           uTargetPlayer;      // Can be 0-5 or 255 for "none"
 } mTradeData;
 
+// auction phase data
 typedef struct _mAuctionData
 {
-    uint8_t  uPropertyIndex;
-    uint8_t  uHighestBidder;
-    uint32_t uHighestBid;
-    // TODO: add bidding state
+    ePropertyArrayIndex ePropertyIndex;
+    uint8_t             uHighestBidder;      // 255 = no bids yet
+    uint32_t            uHighestBid;
+    uint8_t             uCurrentBidder;      // whose turn to bid
+    bool                abPlayersPassed[MAX_PLAYERS];  // track who passed
+    uint8_t             uConsecutivePasses;  // end auction when = active players
+    bool                bShowedMenu;
 } mAuctionData;
 
 // property management phase data
@@ -298,10 +293,9 @@ typedef struct _mPropertyManagementData
 
 typedef struct _mBankruptcyData
 {
-    uint8_t  uBankruptPlayer;
-    uint8_t  uCreditor;
-    uint32_t uAmountOwed;
-    // TODO: add asset liquidation state
+    ePlayerArrayIndex eBankruptPlayer;
+    uint8_t           uCreditor;
+    uint32_t          uAmountOwed;
 } mBankruptcyData;
 
 // main game state
@@ -326,13 +320,15 @@ typedef struct _mGameData
     bool                bIsRunning;
     
     // ui state flags
-    bool                bShowPrerollMenu;
-    bool                bShowPropertyMenu;
+    bool bShowPrerollMenu;
+    bool bShowPropertyMenu;
+    bool bShowJailMenu;
+    bool bShowAuctionMenu;
     
     // notification system
-    char                acNotification[256];
-    bool                bShowNotification;
-    float               fNotificationTimer;
+    char  acNotification[256];
+    bool  bShowNotification;
+    float fNotificationTimer;
 } mGameData;
 
 // game initialization settings
@@ -430,7 +426,7 @@ ePhaseResult m_phase_property_management(void* pPhaseData, float fDeltaTime, mGa
 
 // future nested phases (scaffolding)
 // ePhaseResult m_phase_trade(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
-// ePhaseResult m_phase_auction(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
+ePhaseResult m_phase_auction(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 // ePhaseResult m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 
 
