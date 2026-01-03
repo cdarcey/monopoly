@@ -145,21 +145,21 @@ m_move_player_to(mPlayer* pPlayer, uint8_t uPosition)
 void
 m_next_player_turn(mGameData* pGame)
 {
+    uint8_t uStartingPlayer = pGame->uCurrentPlayerIndex;
     uint8_t uAttempts = 0;
     
     while(uAttempts < pGame->uPlayerCount)
     {
         pGame->uCurrentPlayerIndex = (pGame->uCurrentPlayerIndex + 1) % pGame->uPlayerCount;
-        
-        // increment round counter when we loop back to player 0
-        if(pGame->uCurrentPlayerIndex == 0)
-        {
-            pGame->uRoundCount++;
-        }
-        
         // skip bankrupt players
         if(!pGame->amPlayers[pGame->uCurrentPlayerIndex].bIsBankrupt)
         {
+            // increment round if we've wrapped back to the first active player after a full cycle
+            // this happens when current player has a lower index than where we started
+            if(pGame->uCurrentPlayerIndex < uStartingPlayer)
+            {
+                pGame->uRoundCount++;
+            }
             return;
         }
         
@@ -203,6 +203,207 @@ m_buy_property(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex)
         pPlayer->auPropertiesOwned[pPlayer->uPropertyCount] = uPropertyIndex;
         pPlayer->uPropertyCount++;
     }
+    
+    return true;
+}
+
+// ==================== BUILDING HOUSES/HOTELS ==================== //
+
+bool
+m_can_build_house(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex)
+{
+    if(uPropertyIndex >= TOTAL_PROPERTIES) return false;
+    if(uPlayerIndex >= pGame->uPlayerCount) return false;
+    
+    mProperty* pProp = &pGame->amProperties[uPropertyIndex];
+    mPlayer* pPlayer = &pGame->amPlayers[uPlayerIndex];
+    
+    
+    if(pProp->eType != PROPERTY_TYPE_STREET) return false; // must be a street property (not railroad or utility)
+    if(pProp->uOwnerIndex != uPlayerIndex) return false; // must own the property
+    if(pProp->bIsMortgaged) return false; // can't build on mortgaged property
+    if(pProp->bHasHotel) return false; // already has hotel
+    if(pProp->uHouses >= 4) return false; // already has 4 houses
+    if(!m_owns_color_set(pGame, uPlayerIndex, pProp->eColor)) return false; // must own complete color set
+    
+    // no mortgaged properties in the color set
+    for(uint8_t i = 0; i < TOTAL_PROPERTIES; i++)
+    {
+        if(pGame->amProperties[i].eColor == pProp->eColor && 
+           pGame->amProperties[i].uOwnerIndex == uPlayerIndex &&
+           pGame->amProperties[i].bIsMortgaged)
+        {
+            return false;
+        }
+    }
+    
+    // check even building rule - can't have more than 1 house difference
+    uint8_t uMinHouses = 255;
+    for(uint8_t i = 0; i < TOTAL_PROPERTIES; i++)
+    {
+        if(pGame->amProperties[i].eColor == pProp->eColor && 
+           pGame->amProperties[i].uOwnerIndex == uPlayerIndex)
+        {
+            if(pGame->amProperties[i].uHouses < uMinHouses)
+                uMinHouses = pGame->amProperties[i].uHouses;
+        }
+    }
+    
+    // this property can't have more houses than the minimum + 1
+    if(pProp->uHouses > uMinHouses) return false;
+    
+    // check house supply
+    if(pGame->uGlobalHouseSupply == 0) return false;
+    
+    // check if player can afford
+    if(!m_can_afford(pPlayer, pProp->uHouseCost)) return false;
+    
+    return true;
+}
+
+bool
+m_build_house(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex)
+{
+    if(!m_can_build_house(pGame, uPropertyIndex, uPlayerIndex)) return false;
+    
+    mProperty* pProp = &pGame->amProperties[uPropertyIndex];
+    mPlayer* pPlayer = &pGame->amPlayers[uPlayerIndex];
+    
+    // charge player
+    pPlayer->uMoney -= pProp->uHouseCost;
+    pProp->uHouses++;
+    pGame->uGlobalHouseSupply--;
+    
+    return true;
+}
+
+bool
+m_can_build_hotel(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex)
+{
+    if(uPropertyIndex >= TOTAL_PROPERTIES) return false;
+    if(uPlayerIndex >= pGame->uPlayerCount) return false;
+    
+    mProperty* pProp = &pGame->amProperties[uPropertyIndex];
+    mPlayer* pPlayer = &pGame->amPlayers[uPlayerIndex];
+    
+    if(pProp->eType != PROPERTY_TYPE_STREET) return false; // must be a street property
+    if(pProp->uOwnerIndex != uPlayerIndex) return false; // must own the property
+    if(pProp->bIsMortgaged) return false; // can't build on mortgaged property
+    if(pProp->bHasHotel) return false; // already has hotel
+    if(pProp->uHouses != 4) return false; // must have exactly 4 houses
+    if(!m_owns_color_set(pGame, uPlayerIndex, pProp->eColor)) return false; // must own complete color set
+    if(pGame->uGlobalHotelSupply == 0) return false; // check hotel supply
+    
+    // check if player can afford
+    if(!m_can_afford(pPlayer, pProp->uHouseCost)) return false;
+    
+    return true;
+}
+
+bool
+m_build_hotel(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex)
+{
+    if(!m_can_build_hotel(pGame, uPropertyIndex, uPlayerIndex)) return false;
+    
+    mProperty* pProp = &pGame->amProperties[uPropertyIndex];
+    mPlayer* pPlayer = &pGame->amPlayers[uPlayerIndex];
+    
+    // charge player (same as house cost)
+    pPlayer->uMoney -= pProp->uHouseCost;
+    
+    // remove 4 houses, add hotel
+    pProp->uHouses = 0;
+    pProp->bHasHotel = true;
+    
+    // update supply (return 4 houses, remove 1 hotel)
+    pGame->uGlobalHouseSupply += 4;
+    pGame->uGlobalHotelSupply--;
+    
+    return true;
+}
+
+bool
+m_can_sell_house(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex)
+{
+    if(uPropertyIndex >= TOTAL_PROPERTIES) return false;
+    if(uPlayerIndex >= pGame->uPlayerCount) return false;
+    
+    mProperty* pProp = &pGame->amProperties[uPropertyIndex];
+    
+    if(pProp->eType != PROPERTY_TYPE_STREET) return false; // must be a street property
+    if(pProp->uOwnerIndex != uPlayerIndex) return false; // must own the property
+    if(pProp->uHouses == 0) return false; // must have at least 1 house
+    
+    // check even selling rule - can't have more than 1 house difference after sale
+    uint8_t uMaxHouses = 0;
+    for(uint8_t i = 0; i < TOTAL_PROPERTIES; i++)
+    {
+        if(pGame->amProperties[i].eColor == pProp->eColor && 
+           pGame->amProperties[i].uOwnerIndex == uPlayerIndex)
+        {
+            uint8_t uHouses = pGame->amProperties[i].uHouses;
+            if(pGame->amProperties[i].bHasHotel) uHouses = 5; // hotel counts as 5 for comparison
+            
+            if(uHouses > uMaxHouses)
+                uMaxHouses = uHouses;
+        }
+    }
+    
+    // this property can't have fewer houses than maximum - 1
+    if(pProp->uHouses != uMaxHouses) return false;
+    
+    return true;
+}
+
+bool
+m_sell_house(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex)
+{
+    if(!m_can_sell_house(pGame, uPropertyIndex, uPlayerIndex)) return false;
+    
+    mProperty* pProp = &pGame->amProperties[uPropertyIndex];
+    mPlayer* pPlayer = &pGame->amPlayers[uPlayerIndex];
+    
+    // give player half the build cost
+    pPlayer->uMoney += (pProp->uHouseCost / 2);
+    pProp->uHouses--;
+    pGame->uGlobalHouseSupply++;
+    
+    return true;
+}
+
+bool
+m_can_sell_hotel(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex)
+{
+    if(uPropertyIndex >= TOTAL_PROPERTIES) return false;
+    if(uPlayerIndex >= pGame->uPlayerCount) return false;
+    
+    mProperty* pProp = &pGame->amProperties[uPropertyIndex];
+    if(pProp->eType != PROPERTY_TYPE_STREET) return false; // must be a street property
+    if(pProp->uOwnerIndex != uPlayerIndex) return false; // must own the property
+    if(!pProp->bHasHotel) return false; // must have a hotel
+    if(pGame->uGlobalHouseSupply < 4) return false; // need 4 houses available to convert hotel back
+    
+    return true;
+}
+
+bool
+m_sell_hotel(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex)
+{
+    if(!m_can_sell_hotel(pGame, uPropertyIndex, uPlayerIndex)) return false;
+    
+    mProperty* pProp = &pGame->amProperties[uPropertyIndex];
+    mPlayer* pPlayer = &pGame->amPlayers[uPlayerIndex];
+    
+    // give player half the build cost
+    pPlayer->uMoney += (pProp->uHouseCost / 2);
+    
+    // convert hotel to 4 houses
+    pProp->bHasHotel = false;
+    pProp->uHouses = 4;
+    
+    // update supply (remove 4 houses, return 1 hotel)
+    pGame->uGlobalHouseSupply -= 4;
+    pGame->uGlobalHotelSupply++;
     
     return true;
 }
@@ -257,34 +458,49 @@ m_calculate_rent(mGameData* pGame, uint8_t uPropertyIndex)
 {
     mProperty* pProp = &pGame->amProperties[uPropertyIndex];
     
-    // property owned by bank (not owned)
-    if(pProp->uOwnerIndex == BANK_PLAYER_INDEX) return 0;
-    
-    // mortgaged property
-    if(pProp->bIsMortgaged) return 0;
+    if(pProp->uOwnerIndex == BANK_PLAYER_INDEX) return 0; // property owned by bank (not owned)
+    if(pProp->bIsMortgaged) return 0; // mortgaged property
     
     // railroads: rent based on count owned
     if(pProp->eType == PROPERTY_TYPE_RAILROAD)
     {
         uint8_t uRailroadsOwned = m_count_properties_of_color(pGame, pProp->uOwnerIndex, COLOR_RAILROAD);
-        return pProp->uRentBase * (1 << (uRailroadsOwned - 1)); // doubles for each owned: 25, 50, 100, 200
+        // rent doubles for each railroad owned
+        uint32_t uMultiplier = 1;
+        for(uint8_t i = 1; i < uRailroadsOwned; i++)
+        {
+            uMultiplier *= 2;
+        }
+    
+        return pProp->uRentBase * uMultiplier;
     }
     
-    // utilities: rent based on dice roll (handled separately in gameplay)
+    // utilities: rent based on dice roll (multiplier returned, actual calculation in m_pay_rent)
     if(pProp->eType == PROPERTY_TYPE_UTILITY)
     {
         uint8_t uUtilitiesOwned = m_count_properties_of_color(pGame, pProp->uOwnerIndex, COLOR_UTILITY);
-        // multiplier will be applied to dice roll: 4x for 1, 10x for 2
-        return (uUtilitiesOwned == 2) ? 10 : 4;
+        return (uUtilitiesOwned == 2) ? 10 : 4; // multiplier will be applied to dice roll
     }
-    
-    // streets: check for monopoly
-    if(m_owns_color_set(pGame, pProp->uOwnerIndex, pProp->eColor))
+
+    // streets: check for houses/hotels first
+    if(pProp->eType == PROPERTY_TYPE_STREET)
     {
-        return pProp->uRentMonopoly;
+        if(pProp->bHasHotel) // hotel rent
+        {
+            return pProp->auRentWithHouses[5]; // index 5 = hotel
+        }
+        if(pProp->uHouses > 0) // house rent (1-4 houses)
+        {
+            return pProp->auRentWithHouses[pProp->uHouses]; // index 1-4 = houses
+        }
+        if(m_owns_color_set(pGame, pProp->uOwnerIndex, pProp->eColor)) // no buildings - check for monopoly
+        {
+            return pProp->uRentMonopoly; // double rent for monopoly with no buildings
+        }
+        return pProp->uRentBase; // base rent (no monopoly, no buildings)
     }
     
-    return pProp->uRentBase;
+    return 0;
 }
 
 bool
@@ -365,6 +581,35 @@ m_get_square_type(uint8_t uPosition)
     
     // everything else is a property (street, railroad, or utility)
     return SQUARE_PROPERTY;
+}
+
+const char*
+m_get_square_name(mGameData* pGame, uint8_t uPosition)
+{
+    // special squares
+    if(uPosition == 0) return "GO";
+    if(uPosition == 10) return "Jail (Visiting)";
+    if(uPosition == 20) return "Free Parking";
+    if(uPosition == 30) return "Go To Jail";
+    
+    // tax squares
+    if(uPosition == 4) return "Income Tax";
+    if(uPosition == 38) return "Luxury Tax";
+    
+    // chance squares
+    if(uPosition == 7 || uPosition == 22 || uPosition == 36) return "Chance";
+    
+    // community chest squares
+    if(uPosition == 2 || uPosition == 17 || uPosition == 33) return "Community Chest";
+    
+    // property - find the property name
+    uint8_t uPropIdx = m_get_property_at_position(pGame, uPosition);
+    if(uPropIdx != BANK_PLAYER_INDEX)
+    {
+        return pGame->amProperties[uPropIdx].cName;
+    }
+    
+    return "Unknown";
 }
 
 // ==================== JAIL ==================== //
@@ -468,9 +713,10 @@ m_execute_chance_card(mGameData* pGame, uint8_t uCardIdx)
         
         case 1: // advance to illinois avenue (position 24)
         {
-            if(pPlayer->uPosition > 24)
+            uint8_t uIllinoisPos = pGame->amProperties[ILLINOIS_AVENUE_PROPERTY_ARRAY_INDEX].uPosition;
+            if(pPlayer->uPosition > uIllinoisPos)
                 pPlayer->uMoney += GO_MONEY;
-            pPlayer->uPosition = 24;
+            pPlayer->uPosition = uIllinoisPos;
             break;
         }
         
@@ -484,15 +730,18 @@ m_execute_chance_card(mGameData* pGame, uint8_t uCardIdx)
         
         case 3: // advance to nearest utility
         {
-            if(pPlayer->uPosition > 12 && pPlayer->uPosition < 28)
+            uint8_t uElectricPos = pGame->amProperties[ELECTRIC_COMPANY_PROPERTY_ARRAY_INDEX].uPosition;
+            uint8_t uWaterPos = pGame->amProperties[WATER_WORKS_PROPERTY_ARRAY_INDEX].uPosition;
+            
+            if(pPlayer->uPosition > uElectricPos && pPlayer->uPosition < uWaterPos)
             {
-                pPlayer->uPosition = 28;
+                pPlayer->uPosition = uWaterPos;
             }
             else
             {
-                if(pPlayer->uPosition > 28)
+                if(pPlayer->uPosition > uWaterPos)
                     pPlayer->uMoney += GO_MONEY;
-                pPlayer->uPosition = 12;
+                pPlayer->uPosition = uElectricPos;
             }
             break;
         }
@@ -565,9 +814,10 @@ m_execute_chance_card(mGameData* pGame, uint8_t uCardIdx)
         
         case 11: // reading railroad (position 5)
         {
-            if(pPlayer->uPosition > 5)
+            uint8_t uReadingPos = pGame->amProperties[READING_RAILROAD_PROPERTY_ARRAY_INDEX].uPosition;
+            if(pPlayer->uPosition > uReadingPos)
                 pPlayer->uMoney += GO_MONEY;
-            pPlayer->uPosition = 5;
+            pPlayer->uPosition = uReadingPos;
             break;
         }
         
@@ -1365,53 +1615,153 @@ m_phase_property_management(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow
     int iChoice = pFlow->iInputValue;
     m_clear_input(pFlow);
     
-    // choice 0 = exit
+    // exit
     if(iChoice == 0)
     {
+        pGame->bShowPropertyMenu = false;
+        
+        // reset pre-roll menu so it shows again
         mPreRollData* pPreRoll = (mPreRollData*)pFlow->apPhaseDataStack[pFlow->iStackDepth - 1];
         pPreRoll->bShowedMenu = false;
-
-        pGame->bShowPropertyMenu = false;
+        
         m_pop_phase(pFlow);
         return PHASE_RUNNING;
     }
     
-    // choice is property index (1-based from UI, convert to 0-based)
-    uint8_t uPropArrayIdx = (uint8_t)(iChoice - 1);
+    uint8_t uPropArrayIdx = 0;
+    uint8_t uPropIdx = 0;
+    mProperty* pProp = NULL;
     
-    if(uPropArrayIdx >= pPlayer->uPropertyCount)
+    // build house (100-199)
+    if(iChoice >= 100 && iChoice < 200)
     {
-        m_set_notification(pGame, "Invalid property selection");
+        uPropArrayIdx = (uint8_t)(iChoice - 100);
+        if(uPropArrayIdx < pPlayer->uPropertyCount)
+        {
+            uPropIdx = pPlayer->auPropertiesOwned[uPropArrayIdx];
+            if(m_build_house(pGame, uPropIdx, pGame->uCurrentPlayerIndex))
+            {
+                pProp = &pGame->amProperties[uPropIdx];
+                m_set_notification(pGame, "Built house on %s ($%d)", pProp->cName, pProp->uHouseCost);
+            }
+            else
+            {
+                m_set_notification(pGame, "Cannot build house on this property");
+            }
+        }
         pPropMgmt->bShowedMenu = false;
         return PHASE_RUNNING;
     }
     
-    uint8_t uPropIdx = pPlayer->auPropertiesOwned[uPropArrayIdx];
-    mProperty* pProp = &pGame->amProperties[uPropIdx];
-    
-    // toggle mortgage status
-    if(pProp->bIsMortgaged)
+    // build hotel (200-299)
+    if(iChoice >= 200 && iChoice < 300)
     {
-        if(m_unmortgage_property(pGame, uPropIdx, pGame->uCurrentPlayerIndex))
+        uPropArrayIdx = (uint8_t)(iChoice - 200);
+        if(uPropArrayIdx < pPlayer->uPropertyCount)
         {
-            uint32_t uCost = pProp->uMortgageValue + (pProp->uMortgageValue / 10);
-            m_set_notification(pGame, "Unmortgaged %s for $%d", pProp->cName, uCost);
+            uPropIdx = pPlayer->auPropertiesOwned[uPropArrayIdx];
+            if(m_build_hotel(pGame, uPropIdx, pGame->uCurrentPlayerIndex))
+            {
+                pProp = &pGame->amProperties[uPropIdx];
+                m_set_notification(pGame, "Built hotel on %s ($%d)", pProp->cName, pProp->uHouseCost);
+            }
+            else
+            {
+                m_set_notification(pGame, "Cannot build hotel on this property");
+            }
         }
-        else
-        {
-            m_set_notification(pGame, "Cannot afford to unmortgage %s", pProp->cName);
-        }
+        pPropMgmt->bShowedMenu = false;
+        return PHASE_RUNNING;
     }
-    else
+    
+    // sell house (300-399)
+    if(iChoice >= 300 && iChoice < 400)
     {
-        if(m_mortgage_property(pGame, uPropIdx, pGame->uCurrentPlayerIndex))
+        uPropArrayIdx = (uint8_t)(iChoice - 300);
+        if(uPropArrayIdx < pPlayer->uPropertyCount)
         {
-            m_set_notification(pGame, "Mortgaged %s for $%d", pProp->cName, pProp->uMortgageValue);
+            uPropIdx = pPlayer->auPropertiesOwned[uPropArrayIdx];
+            pProp = &pGame->amProperties[uPropIdx];
+            uint32_t uRefund = pProp->uHouseCost / 2;
+            
+            if(m_sell_house(pGame, uPropIdx, pGame->uCurrentPlayerIndex))
+            {
+                m_set_notification(pGame, "Sold house from %s (+$%d)", pProp->cName, uRefund);
+            }
+            else
+            {
+                m_set_notification(pGame, "Cannot sell house from this property");
+            }
+        }
+        pPropMgmt->bShowedMenu = false;
+        return PHASE_RUNNING;
+    }
+    
+    // sell hotel (400-499)
+    if(iChoice >= 400 && iChoice < 500)
+    {
+        uPropArrayIdx = (uint8_t)(iChoice - 400);
+        if(uPropArrayIdx < pPlayer->uPropertyCount)
+        {
+            uPropIdx = pPlayer->auPropertiesOwned[uPropArrayIdx];
+            pProp = &pGame->amProperties[uPropIdx];
+            uint32_t uRefund = pProp->uHouseCost / 2;
+            
+            if(m_sell_hotel(pGame, uPropIdx, pGame->uCurrentPlayerIndex))
+            {
+                m_set_notification(pGame, "Sold hotel from %s (+$%d)", pProp->cName, uRefund);
+            }
+            else
+            {
+                m_set_notification(pGame, "Cannot sell hotel from this property");
+            }
+        }
+        pPropMgmt->bShowedMenu = false;
+        return PHASE_RUNNING;
+    }
+    
+    // mortgage/unmortgage (1-99)
+    if(iChoice >= 1 && iChoice < 100)
+    {
+        uPropArrayIdx = (uint8_t)(iChoice - 1);
+        
+        if(uPropArrayIdx >= pPlayer->uPropertyCount)
+        {
+            m_set_notification(pGame, "Invalid property selection");
+            pPropMgmt->bShowedMenu = false;
+            return PHASE_RUNNING;
+        }
+        
+        uPropIdx = pPlayer->auPropertiesOwned[uPropArrayIdx];
+        pProp = &pGame->amProperties[uPropIdx];
+        
+        // toggle mortgage status
+        if(pProp->bIsMortgaged)
+        {
+            if(m_unmortgage_property(pGame, uPropIdx, pGame->uCurrentPlayerIndex))
+            {
+                uint32_t uCost = pProp->uMortgageValue + (pProp->uMortgageValue / 10);
+                m_set_notification(pGame, "Unmortgaged %s for $%d", pProp->cName, uCost);
+            }
+            else
+            {
+                m_set_notification(pGame, "Cannot afford to unmortgage %s", pProp->cName);
+            }
         }
         else
         {
-            m_set_notification(pGame, "Cannot mortgage %s", pProp->cName);
+            if(m_mortgage_property(pGame, uPropIdx, pGame->uCurrentPlayerIndex))
+            {
+                m_set_notification(pGame, "Mortgaged %s for $%d", pProp->cName, pProp->uMortgageValue);
+            }
+            else
+            {
+                m_set_notification(pGame, "Cannot mortgage %s", pProp->cName);
+            }
         }
+        
+        pPropMgmt->bShowedMenu = false;
+        return PHASE_RUNNING;
     }
     
     pPropMgmt->bShowedMenu = false;

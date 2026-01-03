@@ -12,17 +12,19 @@
 
         2. Property Management Phase
 
-            [x] Allow mortgaging/unmortgaging properties (functions already exist, just wire up UI)
+            [x] Allow mortgaging/unmortgaging properties 
             [x] Show all owned properties with mortgage status
             [x] Calculate total asset value
             [x] This hooks into the "Manage Properties" button you already have
 
         3. Building Houses/Hotels
 
-            [ ] Add house/hotel counts to mProperty struct
-            [ ] Implement building rules (need monopoly, even building)
-            [ ] Calculate rent with houses/hotels
-            [ ] Add UI to property management for building
+            [x] Add house/hotel counts to mProperty struct
+            [x] Implement building rules (need monopoly, even building)
+            [x] Calculate rent with houses/hotels 
+            [x] Add UI to property management for building
+            [x] Make property array index enums for readability
+            [ ] Make sure post roll phases handle rent caluclations correctly now that houses can be added
 
         4. Trading Phase
 
@@ -491,6 +493,23 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     printf("=== Monopoly Game Started ===\n");
     printf("2 players, $1500 starting money\n\n");
 
+    // TESTING: give player 1 some properties but not a full set to make sure they cannot build houses
+    ptAppData->pGameData->amProperties[ST_JAMES_PLACE_PROPERTY_ARRAY_INDEX].uOwnerIndex = PLAYER_ONE_ARRAY_INDEX;   // St. James Place
+    ptAppData->pGameData->amProperties[TENNESSEE_AVENUE_PROPERTY_ARRAY_INDEX].uOwnerIndex = PLAYER_ONE_ARRAY_INDEX;   // Tennessee Avenue
+    // ptAppData->pGameData->amProperties[NEW_YORK_AVENUE_PROPERTY_ARRAY_INDEX].uOwnerIndex = PLAYER_ONE_ARRAY_INDEX;  // New York Avenue
+
+    // Add to player's property list
+    ptAppData->pGameData->amPlayers[PLAYER_ONE_ARRAY_INDEX].auPropertiesOwned[0] = ST_JAMES_PLACE_PROPERTY_ARRAY_INDEX;
+    ptAppData->pGameData->amPlayers[PLAYER_ONE_ARRAY_INDEX].auPropertiesOwned[1] = TENNESSEE_AVENUE_PROPERTY_ARRAY_INDEX;
+    // ptAppData->pGameData->amPlayers[PLAYER_ONE_ARRAY_INDEX].auPropertiesOwned[2] = NEW_YORK_AVENUE_PROPERTY_ARRAY_INDEX;
+    ptAppData->pGameData->amPlayers[PLAYER_ONE_ARRAY_INDEX].uPropertyCount = 2;
+
+    // Give player 1 some extra cash for building tests
+    ptAppData->pGameData->amPlayers[0].uMoney = 5000;
+
+    printf("TEST: Player 1 owns Orange monopoly (St. James, Tennessee, New York)\n");
+    printf("TEST: Player 1 has $5000 for building\n");
+
     return ptAppData;
 }
 
@@ -595,8 +614,6 @@ pl_app_update(plAppData* ptAppData)
     gptUi->new_frame();
     handle_keyboard_input(ptAppData);
 
-
-
     // show ui windows
     show_player_status(ptAppData->pGameData);
         
@@ -624,7 +641,6 @@ pl_app_update(plAppData* ptAppData)
         
     // show notification popup (on top of everything)
     draw_notification(ptAppData);
-
 
     // run game phase
     m_run_current_phase(&ptAppData->tGameFlow, 0.016f);
@@ -1174,9 +1190,9 @@ show_player_status(mGameData* pGameData)
 
     gptUi->vertical_spacing();
 
-    // show position
+    // show position TODO: make this print the name of the square instead of an interger
     gptUi->layout_static(0.0f, 320, 1);
-    gptUi->text("Position: %d", pPlayer->uPosition);
+    gptUi->text("Position: %s", m_get_square_name(pGameData, pPlayer->uPosition));
 
     gptUi->vertical_spacing();
 
@@ -1222,15 +1238,13 @@ draw_property_management_menu(plAppData* ptAppData)
     mGameData* pGame = ptAppData->pGameData;
     mPlayer* pPlayer = &pGame->amPlayers[pGame->uCurrentPlayerIndex];
     
-    // only show if menu flag is set
     if(!pGame->bShowPropertyMenu)
         return;
     
-    // position menu in top right
     gptUi->set_next_window_pos((plVec2){800.0f, 20.0f}, PL_UI_COND_ALWAYS);
-    gptUi->set_next_window_size((plVec2){380.0f, 500.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){380.0f, 600.0f}, PL_UI_COND_ALWAYS);
     
-    if(!gptUi->begin_window("Property Management", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR))
+    if(!gptUi->begin_window("Property Management", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE))
         return;
     
     gptUi->layout_static(0.0f, 360, 1);
@@ -1240,7 +1254,6 @@ draw_property_management_menu(plAppData* ptAppData)
     gptUi->separator();
     gptUi->vertical_spacing();
     
-    // show properties
     if(pPlayer->uPropertyCount == 0)
     {
         gptUi->layout_static(0.0f, 360, 1);
@@ -1248,38 +1261,113 @@ draw_property_management_menu(plAppData* ptAppData)
     }
     else
     {
-        for(uint8_t i = 0; i < pPlayer->uPropertyCount; i++)
+        for(uint8_t uPlayerPropArrayIdx = 0; uPlayerPropArrayIdx < pPlayer->uPropertyCount; uPlayerPropArrayIdx++)
         {
-            uint8_t uPropIdx = pPlayer->auPropertiesOwned[i];
-            if(uPropIdx == BANK_PLAYER_INDEX)
+            uint8_t uGlobalPropIdx = pPlayer->auPropertiesOwned[uPlayerPropArrayIdx];
+            if(uGlobalPropIdx == BANK_PLAYER_INDEX)
                 break;
             
-            mProperty* pProp = &pGame->amProperties[uPropIdx];
+            mProperty* pProp = &pGame->amProperties[uGlobalPropIdx];
             
             // property name with status
             gptUi->layout_static(0.0f, 360, 1);
-            if(pProp->bIsMortgaged)
+            char acPropStatus[128];
+            if(pProp->bHasHotel)
             {
-                gptUi->color_text((plVec4){1.0f, 0.5f, 0.0f, 1.0f}, "%s [MORTGAGED]", pProp->cName);
+                snprintf(acPropStatus, sizeof(acPropStatus), "%s [HOTEL]", pProp->cName);
+                gptUi->color_text((plVec4){0.0f, 1.0f, 0.0f, 1.0f}, acPropStatus);
+            }
+            else if(pProp->uHouses > 0)
+            {
+                snprintf(acPropStatus, sizeof(acPropStatus), "%s [%d Houses]", pProp->cName, pProp->uHouses);
+                gptUi->color_text((plVec4){0.0f, 0.8f, 1.0f, 1.0f}, acPropStatus);
+            }
+            else if(pProp->bIsMortgaged)
+            {
+                snprintf(acPropStatus, sizeof(acPropStatus), "%s [MORTGAGED]", pProp->cName);
+                gptUi->color_text((plVec4){1.0f, 0.5f, 0.0f, 1.0f}, acPropStatus);
             }
             else
             {
                 gptUi->text("%s", pProp->cName);
             }
             
-            // action button
-            gptUi->layout_static(35.0f, 360, 1);
+            // only show building options for streets
+            if(pProp->eType == PROPERTY_TYPE_STREET)
+            {
+                gptUi->layout_static(30.0f, 175, 2);
+                
+                // build house button
+                bool bCanBuildHouse = m_can_build_house(pGame, uGlobalPropIdx, pGame->uCurrentPlayerIndex);
+                char acHouseBtn[64];
+                snprintf(acHouseBtn, sizeof(acHouseBtn), "Build House ($%d)", pProp->uHouseCost);
+                
+                if(bCanBuildHouse && gptUi->button(acHouseBtn))
+                {
+                    m_set_input_int(&ptAppData->tGameFlow, 100 + uPlayerPropArrayIdx);
+                }
+                else if(!bCanBuildHouse)
+                {
+                    gptUi->color_text((plVec4){0.5f, 0.5f, 0.5f, 1.0f}, acHouseBtn);
+                }
+                
+                // sell house button
+                bool bCanSellHouse = m_can_sell_house(pGame, uGlobalPropIdx, pGame->uCurrentPlayerIndex);
+                char acSellHouseBtn[64];
+                snprintf(acSellHouseBtn, sizeof(acSellHouseBtn), "Sell House (+$%d)", pProp->uHouseCost / 2);
+                
+                if(bCanSellHouse && gptUi->button(acSellHouseBtn))
+                {
+                    m_set_input_int(&ptAppData->tGameFlow, 300 + uPlayerPropArrayIdx);
+                }
+                else if(!bCanSellHouse)
+                {
+                    gptUi->color_text((plVec4){0.5f, 0.5f, 0.5f, 1.0f}, acSellHouseBtn);
+                }
+                
+                gptUi->layout_static(30.0f, 175, 2);
+                
+                // build hotel button
+                bool bCanBuildHotel = m_can_build_hotel(pGame, uGlobalPropIdx, pGame->uCurrentPlayerIndex);
+                char acHotelBtn[64];
+                snprintf(acHotelBtn, sizeof(acHotelBtn), "Build Hotel ($%d)", pProp->uHouseCost);
+                
+                if(bCanBuildHotel && gptUi->button(acHotelBtn))
+                {
+                    m_set_input_int(&ptAppData->tGameFlow, 200 + uPlayerPropArrayIdx);
+                }
+                else if(!bCanBuildHotel)
+                {
+                    gptUi->color_text((plVec4){0.5f, 0.5f, 0.5f, 1.0f}, acHotelBtn);
+                }
+                
+                // sell hotel button
+                bool bCanSellHotel = m_can_sell_hotel(pGame, uGlobalPropIdx, pGame->uCurrentPlayerIndex);
+                char acSellHotelBtn[64];
+                snprintf(acSellHotelBtn, sizeof(acSellHotelBtn), "Sell Hotel (+$%d)", pProp->uHouseCost / 2);
+                
+                if(bCanSellHotel && gptUi->button(acSellHotelBtn))
+                {
+                    m_set_input_int(&ptAppData->tGameFlow, 400 + uPlayerPropArrayIdx);
+                }
+                else if(!bCanSellHotel)
+                {
+                    gptUi->color_text((plVec4){0.5f, 0.5f, 0.5f, 1.0f}, acSellHotelBtn);
+                }
+            }
+            
+            // mortgage/unmortgage button (all property types)
+            gptUi->layout_static(30.0f, 360, 1);
             if(pProp->bIsMortgaged)
             {
                 uint32_t uCost = pProp->uMortgageValue + (pProp->uMortgageValue / 10);
                 bool bCanAfford = pPlayer->uMoney >= uCost;
-
-                char acButtonText[64];
-                snprintf(acButtonText, sizeof(acButtonText), "Unmortgage ($%d)", uCost);
-
-                if(bCanAfford && gptUi->button(acButtonText))
+                char acUnmortgageBtn[64];
+                snprintf(acUnmortgageBtn, sizeof(acUnmortgageBtn), "Unmortgage ($%d)", uCost);
+                
+                if(bCanAfford && gptUi->button(acUnmortgageBtn))
                 {
-                    m_set_input_int(&ptAppData->tGameFlow, i + 1);
+                    m_set_input_int(&ptAppData->tGameFlow, uPlayerPropArrayIdx + 1);
                 }
                 else if(!bCanAfford)
                 {
@@ -1290,21 +1378,20 @@ draw_property_management_menu(plAppData* ptAppData)
             }
             else
             {
-                char acButtonText[64];
-                snprintf(acButtonText, sizeof(acButtonText), "Mortgage (Get $%d)", pProp->uMortgageValue);
-
-                if(gptUi->button(acButtonText))
+                char acMortgageBtn[64];
+                snprintf(acMortgageBtn, sizeof(acMortgageBtn), "Mortgage (Get $%d)", pProp->uMortgageValue);
+                
+                if(gptUi->button(acMortgageBtn))
                 {
-                    m_set_input_int(&ptAppData->tGameFlow, i + 1);
+                    m_set_input_int(&ptAppData->tGameFlow, uPlayerPropArrayIdx + 1);
                 }
             }
             
             gptUi->vertical_spacing();
+            gptUi->separator();
+            gptUi->vertical_spacing();
         }
     }
-    
-    gptUi->separator();
-    gptUi->vertical_spacing();
     
     // exit button
     gptUi->layout_static(45.0f, 360, 1);

@@ -9,7 +9,7 @@ static void
 m_init_properties(mProperty* pProperties)
 {
     // brown properties
-    pProperties[0] = (mProperty){
+    pProperties[MEDITERRANEAN_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Mediterranean Avenue",
         .uPrice         = 60,
         .uRentBase      = 2,
@@ -19,10 +19,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_BROWN,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 50,
+        .auRentWithHouses = {2, 10, 30, 90, 160, 250}
     };
 
-    pProperties[1] = (mProperty){
+    pProperties[BALTIC_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Baltic Avenue",
         .uPrice         = 60,
         .uRentBase      = 4,
@@ -32,11 +36,15 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_BROWN,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 50,
+        .auRentWithHouses = {4, 20, 60, 180, 320, 450}
     };
 
     // light blue properties
-    pProperties[2] = (mProperty){
+    pProperties[ORIENTAL_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Oriental Avenue",
         .uPrice         = 100,
         .uRentBase      = 6,
@@ -46,10 +54,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_LIGHT_BLUE,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 50,
+        .auRentWithHouses = {6, 30, 90, 270, 400, 550}
     };
 
-    pProperties[3] = (mProperty){
+    pProperties[VERMONT_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Vermont Avenue",
         .uPrice         = 100,
         .uRentBase      = 6,
@@ -59,10 +71,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_LIGHT_BLUE,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 50,
+        .auRentWithHouses = {6, 30, 90, 270, 400, 550}
     };
 
-    pProperties[4] = (mProperty){
+    pProperties[CONNECTICUT_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Connecticut Avenue",
         .uPrice         = 120,
         .uRentBase      = 8,
@@ -72,11 +88,15 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_LIGHT_BLUE,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 50,
+        .auRentWithHouses = {8, 40, 100, 300, 450, 600}
     };
 
     // pink properties
-    pProperties[5] = (mProperty){
+    pProperties[ST_CHARLES_PLACE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "St. Charles Place",
         .uPrice         = 140,
         .uRentBase      = 10,
@@ -86,10 +106,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_PINK,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 100,
+        .auRentWithHouses = {10, 50, 150, 450, 625, 750}
     };
 
-    pProperties[6] = (mProperty){
+    pProperties[STATES_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "States Avenue",
         .uPrice         = 140,
         .uRentBase      = 10,
@@ -99,10 +123,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_PINK,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 100,
+        .auRentWithHouses = {10, 50, 150, 450, 625, 750}
     };
 
-    pProperties[7] = (mProperty){
+    pProperties[VIRGINIA_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Virginia Avenue",
         .uPrice         = 160,
         .uRentBase      = 12,
@@ -112,11 +140,15 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_PINK,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 100,
+        .auRentWithHouses = {12, 60, 180, 500, 700, 900}
     };
 
     // orange properties
-    pProperties[8] = (mProperty){
+    pProperties[ST_JAMES_PLACE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "St. James Place",
         .uPrice         = 180,
         .uRentBase      = 14,
@@ -126,10 +158,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_ORANGE,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 100,
+        .auRentWithHouses = {14, 70, 200, 550, 750, 950}
     };
 
-    pProperties[9] = (mProperty){
+    pProperties[TENNESSEE_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Tennessee Avenue",
         .uPrice         = 180,
         .uRentBase      = 14,
@@ -139,10 +175,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_ORANGE,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 100,
+        .auRentWithHouses = {14, 70, 200, 550, 750, 950}
     };
 
-    pProperties[10] = (mProperty){
+    pProperties[NEW_YORK_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "New York Avenue",
         .uPrice         = 200,
         .uRentBase      = 16,
@@ -152,11 +192,15 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_ORANGE,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 100,
+        .auRentWithHouses = {16, 80, 220, 600, 800, 1000}
     };
 
     // red properties
-    pProperties[11] = (mProperty){
+    pProperties[KENTUCKY_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Kentucky Avenue",
         .uPrice         = 220,
         .uRentBase      = 18,
@@ -166,10 +210,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_RED,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 150,
+        .auRentWithHouses = {18, 90, 250, 700, 875, 1050}
     };
 
-    pProperties[12] = (mProperty){
+    pProperties[INDIANA_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Indiana Avenue",
         .uPrice         = 220,
         .uRentBase      = 18,
@@ -179,10 +227,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_RED,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 150,
+        .auRentWithHouses = {18, 90, 250, 700, 875, 1050}
     };
 
-    pProperties[13] = (mProperty){
+    pProperties[ILLINOIS_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Illinois Avenue",
         .uPrice         = 240,
         .uRentBase      = 20,
@@ -192,11 +244,15 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_RED,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 150,
+        .auRentWithHouses = {20, 100, 300, 750, 925, 1100}
     };
 
     // yellow properties
-    pProperties[14] = (mProperty){
+    pProperties[ATLANTIC_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Atlantic Avenue",
         .uPrice         = 260,
         .uRentBase      = 22,
@@ -206,10 +262,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_YELLOW,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 150,
+        .auRentWithHouses = {22, 110, 330, 800, 975, 1150}
     };
 
-    pProperties[15] = (mProperty){
+    pProperties[VENTNOR_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Ventnor Avenue",
         .uPrice         = 260,
         .uRentBase      = 22,
@@ -219,10 +279,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_YELLOW,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 150,
+        .auRentWithHouses = {22, 110, 330, 800, 975, 1150}
     };
 
-    pProperties[16] = (mProperty){
+    pProperties[MARVIN_GARDENS_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Marvin Gardens",
         .uPrice         = 280,
         .uRentBase      = 24,
@@ -232,11 +296,15 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_YELLOW,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 150,
+        .auRentWithHouses = {24, 120, 360, 850, 1025, 1200}
     };
 
     // green properties
-    pProperties[17] = (mProperty){
+    pProperties[PACIFIC_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Pacific Avenue",
         .uPrice         = 300,
         .uRentBase      = 26,
@@ -246,10 +314,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_GREEN,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 200,
+        .auRentWithHouses = {26, 130, 390, 900, 1100, 1275}
     };
 
-    pProperties[18] = (mProperty){
+    pProperties[NORTH_CAROLINA_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "North Carolina Avenue",
         .uPrice         = 300,
         .uRentBase      = 26,
@@ -259,10 +331,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_GREEN,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 200,
+        .auRentWithHouses = {26, 130, 390, 900, 1100, 1275}
     };
 
-    pProperties[19] = (mProperty){
+    pProperties[PENNSYLVANIA_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Pennsylvania Avenue",
         .uPrice         = 320,
         .uRentBase      = 28,
@@ -272,11 +348,15 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_GREEN,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 200,
+        .auRentWithHouses = {28, 150, 450, 1000, 1200, 1400}
     };
 
     // dark blue properties
-    pProperties[20] = (mProperty){
+    pProperties[PARK_PLACE_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Park Place",
         .uPrice         = 350,
         .uRentBase      = 35,
@@ -286,10 +366,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_DARK_BLUE,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 200,
+        .auRentWithHouses = {35, 175, 500, 1100, 1300, 1500}
     };
 
-    pProperties[21] = (mProperty){
+    pProperties[BOARDWALK_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Boardwalk",
         .uPrice         = 400,
         .uRentBase      = 50,
@@ -299,11 +383,15 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_STREET,
         .eColor         = COLOR_DARK_BLUE,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 200,
+        .auRentWithHouses = {50, 200, 600, 1400, 1700, 2000}
     };
 
-    // railroads
-    pProperties[22] = (mProperty){
+    // railroads - no houses/hotels
+    pProperties[READING_RAILROAD_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Reading Railroad",
         .uPrice         = 200,
         .uRentBase      = 25,
@@ -313,10 +401,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_RAILROAD,
         .eColor         = COLOR_RAILROAD,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 0,
+        .auRentWithHouses = {0}
     };
 
-    pProperties[23] = (mProperty){
+    pProperties[PENNSYLVANIA_RAILROAD_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Pennsylvania Railroad",
         .uPrice         = 200,
         .uRentBase      = 25,
@@ -326,10 +418,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_RAILROAD,
         .eColor         = COLOR_RAILROAD,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 0,
+        .auRentWithHouses = {0}
     };
 
-    pProperties[24] = (mProperty){
+    pProperties[BO_RAILROAD_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "B&O Railroad",
         .uPrice         = 200,
         .uRentBase      = 25,
@@ -339,10 +435,14 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_RAILROAD,
         .eColor         = COLOR_RAILROAD,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 0,
+        .auRentWithHouses = {0}
     };
 
-    pProperties[25] = (mProperty){
+    pProperties[SHORT_LINE_RAILROAD_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Short Line Railroad",
         .uPrice         = 200,
         .uRentBase      = 25,
@@ -352,34 +452,46 @@ m_init_properties(mProperty* pProperties)
         .eType          = PROPERTY_TYPE_RAILROAD,
         .eColor         = COLOR_RAILROAD,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 0,
+        .auRentWithHouses = {0}
     };
 
-    // utilities
-    pProperties[26] = (mProperty){
+    // utilities - no houses/hotels
+    pProperties[ELECTRIC_COMPANY_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Electric Company",
         .uPrice         = 150,
-        .uRentBase      = 0,  // calculated based on dice roll
+        .uRentBase      = 0,
         .uRentMonopoly  = 0,
         .uMortgageValue = 75,
         .uPosition      = 12,
         .eType          = PROPERTY_TYPE_UTILITY,
         .eColor         = COLOR_UTILITY,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 0,
+        .auRentWithHouses = {0}
     };
 
-    pProperties[27] = (mProperty){
+    pProperties[WATER_WORKS_PROPERTY_ARRAY_INDEX] = (mProperty){
         .cName          = "Water Works",
         .uPrice         = 150,
-        .uRentBase      = 0,  // calculated based on dice roll
+        .uRentBase      = 0,
         .uRentMonopoly  = 0,
         .uMortgageValue = 75,
         .uPosition      = 28,
         .eType          = PROPERTY_TYPE_UTILITY,
         .eColor         = COLOR_UTILITY,
         .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false
+        .bIsMortgaged   = false,
+        .uHouses        = 0,
+        .bHasHotel      = false,
+        .uHouseCost     = 0,
+        .auRentWithHouses = {0}
     };
 }
 
@@ -570,12 +682,14 @@ m_init_game(mGameSettings tSettings)
 
     // initialize game state
     pGame->uPlayerCount = tSettings.uPlayerCount;
-    pGame->uCurrentPlayerIndex = 0;
+    pGame->uCurrentPlayerIndex = PLAYER_ONE_ARRAY_INDEX;
     pGame->uActivePlayers = tSettings.uPlayerCount;
     pGame->uRoundCount = 0;
     pGame->uJailFine = tSettings.uJailFine;
     pGame->eState = GAME_STATE_RUNNING;
     pGame->bIsRunning = true;
+    pGame->uGlobalHotelSupply = 12;
+    pGame->uGlobalHouseSupply = 32;
 
     return pGame;
 }

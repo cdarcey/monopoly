@@ -58,6 +58,57 @@ typedef enum _ePropertyType
     PROPERTY_TYPE_UTILITY
 } ePropertyType;
 
+typedef enum _ePropertyArrayIndex
+{
+    // brown properties
+    MEDITERRANEAN_AVENUE_PROPERTY_ARRAY_INDEX = 0,
+    BALTIC_AVENUE_PROPERTY_ARRAY_INDEX,
+    
+    // light blue properties
+    ORIENTAL_AVENUE_PROPERTY_ARRAY_INDEX,
+    VERMONT_AVENUE_PROPERTY_ARRAY_INDEX,
+    CONNECTICUT_AVENUE_PROPERTY_ARRAY_INDEX,
+    
+    // pink properties
+    ST_CHARLES_PLACE_PROPERTY_ARRAY_INDEX,
+    STATES_AVENUE_PROPERTY_ARRAY_INDEX,
+    VIRGINIA_AVENUE_PROPERTY_ARRAY_INDEX,
+    
+    // orange properties
+    ST_JAMES_PLACE_PROPERTY_ARRAY_INDEX,
+    TENNESSEE_AVENUE_PROPERTY_ARRAY_INDEX,
+    NEW_YORK_AVENUE_PROPERTY_ARRAY_INDEX,
+    
+    // red properties
+    KENTUCKY_AVENUE_PROPERTY_ARRAY_INDEX,
+    INDIANA_AVENUE_PROPERTY_ARRAY_INDEX,
+    ILLINOIS_AVENUE_PROPERTY_ARRAY_INDEX,
+    
+    // yellow properties
+    ATLANTIC_AVENUE_PROPERTY_ARRAY_INDEX,
+    VENTNOR_AVENUE_PROPERTY_ARRAY_INDEX,
+    MARVIN_GARDENS_PROPERTY_ARRAY_INDEX,
+    
+    // green properties
+    PACIFIC_AVENUE_PROPERTY_ARRAY_INDEX,
+    NORTH_CAROLINA_AVENUE_PROPERTY_ARRAY_INDEX,
+    PENNSYLVANIA_AVENUE_PROPERTY_ARRAY_INDEX,
+    
+    // dark blue properties
+    PARK_PLACE_PROPERTY_ARRAY_INDEX,
+    BOARDWALK_PROPERTY_ARRAY_INDEX,
+    
+    // railroads
+    READING_RAILROAD_PROPERTY_ARRAY_INDEX,
+    PENNSYLVANIA_RAILROAD_PROPERTY_ARRAY_INDEX,
+    BO_RAILROAD_PROPERTY_ARRAY_INDEX,
+    SHORT_LINE_RAILROAD_PROPERTY_ARRAY_INDEX,
+    
+    // utilities
+    ELECTRIC_COMPANY_PROPERTY_ARRAY_INDEX,
+    WATER_WORKS_PROPERTY_ARRAY_INDEX
+} ePropertyArrayIndex;
+
 // game states
 typedef enum _eGameState
 {
@@ -85,6 +136,16 @@ typedef enum _ePlayerPiece
     PIECE_NONE
 } ePlayerPiece;
 
+typedef enum _ePlayerArrayIndex
+{
+    PLAYER_ONE_ARRAY_INDEX,
+    PLAYER_TWO_ARRAY_INDEX,
+    PLAYER_THREE_ARRAY_INDEX,
+    PLAYER_FOUR_ARRAY_INDEX,
+    PLAYER_FIVE_ARRAY_INDEX,
+    PLAYER_SIX_ARRAY_INDEX
+} ePlayerArrayIndex;
+
 // special player indices
 #define BANK_PLAYER_INDEX 255
 
@@ -101,15 +162,20 @@ typedef struct _mDice
 typedef struct _mProperty
 {
     char           cName[32];
+    uint32_t       auRentWithHouses[6];
     uint32_t       uPrice;
     uint32_t       uRentBase;
     uint32_t       uRentMonopoly;        // rent when owning full color set
     uint32_t       uMortgageValue;
+    uint32_t       uHouseCost;
+    uint32_t       uHotelCost;
     uint8_t        uPosition;            // board position (0-39)
+    uint8_t        uHouses;
     ePropertyType  eType;
     ePropertyColor eColor;
     uint8_t        uOwnerIndex;          // index into players array, 255 = unowned
     bool           bIsMortgaged;
+    bool           bHasHotel;
 } mProperty;
 
 // player data
@@ -254,6 +320,8 @@ typedef struct _mGameData
     uint8_t             uActivePlayers;  // non-bankrupt players
     uint64_t            uRoundCount;
     uint32_t            uJailFine;
+    uint32_t            uGlobalHouseSupply;
+    uint32_t            uGlobalHotelSupply;
     eGameState          eState;
     bool                bIsRunning;
     
@@ -305,6 +373,16 @@ void m_next_player_turn(mGameData* pGame);
 bool m_can_afford(mPlayer* pPlayer, uint32_t uAmount);
 bool m_buy_property(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex);
 
+// building houses/hotels
+bool m_can_build_house(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex);
+bool m_build_house(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex);
+bool m_can_build_hotel(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex);
+bool m_build_hotel(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex);
+bool m_can_sell_house(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex);
+bool m_sell_house(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex);
+bool m_can_sell_hotel(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex);
+bool m_sell_hotel(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex);
+
 // rent payment
 uint8_t  m_count_properties_of_color(mGameData* pGame, uint8_t uPlayerIndex, ePropertyColor eColor);
 uint8_t  m_get_color_set_size(ePropertyColor eColor);
@@ -315,6 +393,7 @@ bool     m_pay_rent(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPayerInde
 // property lookup
 uint8_t     m_get_property_at_position(mGameData* pGame, uint8_t uBoardPosition);
 eSquareType m_get_square_type(uint8_t uPosition);
+const char* m_get_square_name(mGameData* pGame, uint8_t uPosition);
 
 // jail
 bool m_use_jail_free_card(mPlayer* pPlayer);
