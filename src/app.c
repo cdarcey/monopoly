@@ -5,8 +5,8 @@
         1. Chance & Community Chest Cards
    
             [x] Implement the card draw system 
-            [ ] Create the 16 Chance cards with their effects
-            [ ] Create the 16 Community Chest cards with their effects
+            [x] Create the 16 Chance cards with their effects
+            [x] Create the 16 Community Chest cards with their effects
             [x] Add card execution logic to POST_ROLL phase
             [ ] Handle "Get Out of Jail Free" cards being held/returned
 

@@ -1158,7 +1158,7 @@ m_calculate_net_worth(mGameData* pGame, uint8_t uPlayerIndex)
     return iNetWorth;
 }
 
-// ==================== MAIN TURN PHASES ==================== //
+// ==================== PHASES ==================== //
 
 ePhaseResult
 m_phase_pre_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
@@ -1462,8 +1462,6 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
     return PHASE_RUNNING;
 }
 
-// ==================== JAIL PHASE ==================== //
-
 ePhaseResult
 m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
 {
@@ -1652,8 +1650,6 @@ m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
     }
 }
 
-// ==================== PROPERTY MANAGEMENT PHASE ==================== //
-
 ePhaseResult
 m_phase_property_management(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
 {
@@ -1827,8 +1823,6 @@ m_phase_property_management(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow
     return PHASE_RUNNING;
 }
 
-// ==================== AUCTION PHASE ==================== //
-
 ePhaseResult
 m_phase_auction(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
 {
@@ -1963,4 +1957,37 @@ m_phase_auction(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
     } while(pGame->amPlayers[pAuction->uCurrentBidder].bIsBankrupt);
     
     return PHASE_RUNNING;
+}
+
+ePhaseResult m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
+{
+    mBankruptcyData* pBankruptcy = (mBankruptcyData*)pPhaseData;
+    mGameData* pGame = pFlow->pGame;
+
+    /*
+    Step 1: Liquidation phase
+
+        Auto-sell all houses/hotels (half price to bank)
+        Auto-mortgage all unmortgaged properties
+        Calculate if this covers debt
+        
+    Step 2: If still can't pay
+
+        Transfer all assets based on creditor type
+        Set bankruptcy flag
+        Update active player count
+        
+    Step 3: Post-bankruptcy
+
+        Check game over condition
+        Continue to next player
+
+    TODO: decide on the flow of this phase
+
+        Should we auto-liquidate or give player a chance to choose what to sell?
+        Get Out of Jail Free cards - transfer to creditor or return to deck?
+        Do we need a bankruptcy UI screen or just notifications?
+        
+    */
+   return PHASE_RUNNING;
 }

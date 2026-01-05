@@ -414,20 +414,14 @@ int32_t m_calculate_net_worth(mGameData* pGame, uint8_t uPlayerIndex); // int be
 
 // ==================== PHASE FUNCTIONS ==================== //
 
-// main turn phases
+// phases
 ePhaseResult m_phase_pre_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 ePhaseResult m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
-
-// jail phase
 ePhaseResult m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
-
-// property managment phase
 ePhaseResult m_phase_property_management(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
-
-// future nested phases (scaffolding)
-// ePhaseResult m_phase_trade(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 ePhaseResult m_phase_auction(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
-// ePhaseResult m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
+ePhaseResult m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
+// TODO: ePhaseResult m_phase_trade(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 
 
 #endif // MONOPOLY_H
