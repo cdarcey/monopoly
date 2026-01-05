@@ -94,27 +94,25 @@
 #define PL_COLOR_32(r, g, b, a) ((uint32_t)((uint8_t)((a)*255.0f) << 24 | (uint8_t)((b)*255.0f) << 16 | (uint8_t)((g)*255.0f) << 8 | (uint8_t)((r)*255.0f)))
 
 //-----------------------------------------------------------------------------
-// [SECTION] forward declarations
-//-----------------------------------------------------------------------------
-
-typedef struct _plAppData plAppData;
-typedef struct _plTextureLoadConfig plTextureLoadConfig;
-
-void   handle_keyboard_input(plAppData* ptAppData);
-void   load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig);
-plMat4 create_orthographic_projection(float fScreenWidth, float fScreenHeight);
-void   show_player_status(mGameData* pGameData);
-void   draw_player_tokens(plAppData* ptAppData, plRenderEncoder* ptRender);
-void   draw_preroll_menu(plAppData* ptAppData);
-void   draw_postroll_menu(plAppData* ptAppData);
-void   draw_jail_menu(plAppData* ptAppData);
-void   draw_notification(plAppData* ptAppData);
-void   draw_property_management_menu(plAppData* ptAppData);
-void   draw_auction_menu(plAppData* ptAppData);
-
-//-----------------------------------------------------------------------------
 // [SECTION] structs
 //-----------------------------------------------------------------------------
+
+typedef struct _mPropertyBounds
+{
+    plVec2 tMin;   // top-left corner
+    plVec2 tMax;   // bottom-right corner
+    plVec2 tCenter; // center point (for drawing tokens)
+} mPropertyBounds;
+
+typedef struct _plTextureLoadConfig
+{
+    const char*               pcFilePath;
+    plSamplerHandle           tSampler;
+    plTextureHandle*          ptOutTexture;
+    plDeviceMemoryAllocation* ptOutMemory;
+    plBindGroupHandle*        ptOutBindGroup;
+    bool*                     pbOutLoaded;
+} plTextureLoadConfig;
 
 typedef struct _plAppData
 {
@@ -159,8 +157,9 @@ typedef struct _plAppData
     bool                     bBoardTextureLoaded;
 
     // player token drawing
-    plDrawList2D*  ptTokenDrawlist;
-    plDrawLayer2D* ptTokenLayer;
+    plDrawList2D*   ptTokenDrawlist;
+    plDrawLayer2D*  ptTokenLayer;
+    mPropertyBounds atPropertyBounds[40]; 
 
     // monopoly game state
     mGameData* pGameData;
@@ -168,15 +167,23 @@ typedef struct _plAppData
 
 } plAppData;
 
-typedef struct _plTextureLoadConfig
-{
-    const char*               pcFilePath;
-    plSamplerHandle           tSampler;
-    plTextureHandle*          ptOutTexture;
-    plDeviceMemoryAllocation* ptOutMemory;
-    plBindGroupHandle*        ptOutBindGroup;
-    bool*                     pbOutLoaded;
-} plTextureLoadConfig;
+//-----------------------------------------------------------------------------
+// [SECTION] forward declarations
+//-----------------------------------------------------------------------------
+
+void   handle_keyboard_input(plAppData* ptAppData);
+void   load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig);
+plMat4 create_orthographic_projection(float fScreenWidth, float fScreenHeight);
+void   show_player_status(mGameData* pGameData);
+void   init_property_bounds(mPropertyBounds* atBounds);
+void   draw_player_tokens(plAppData* ptAppData, plRenderEncoder* ptRender);
+void   draw_preroll_menu(plAppData* ptAppData);
+void   draw_postroll_menu(plAppData* ptAppData);
+void   draw_jail_menu(plAppData* ptAppData);
+void   draw_notification(plAppData* ptAppData);
+void   draw_property_management_menu(plAppData* ptAppData);
+void   draw_auction_menu(plAppData* ptAppData);
+
 
 //-----------------------------------------------------------------------------
 // [SECTION] global api pointers
@@ -479,7 +486,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     mGameSettings tSettings = {
         .uStartingMoney = 1500,
         .uJailFine      = 50,
-        .uPlayerCount   = 4
+        .uPlayerCount   = 5
     };
     ptAppData->pGameData = m_init_game(tSettings);
     m_init_game_flow(&ptAppData->tGameFlow, ptAppData->pGameData, ptAppData->ptWindow);
@@ -487,6 +494,9 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     // create persistent drawlist and layer for player tokens
     ptAppData->ptTokenDrawlist = gptDraw->request_2d_drawlist();
     ptAppData->ptTokenLayer = gptDraw->request_2d_layer(ptAppData->ptTokenDrawlist);
+
+    // init bounding boxes for properties 
+    init_property_bounds(ptAppData->atPropertyBounds);
 
     return ptAppData;
 }
@@ -837,109 +847,164 @@ create_orthographic_projection(float fScreenWidth, float fScreenHeight)
 }
 
 void
+init_property_bounds(mPropertyBounds* atBounds)
+{
+    // corners are larger than standard property pieces 
+    // bottom right corner (GO) - position 0
+    atBounds[0] = (mPropertyBounds){
+        .tMin = {655.0f, 615.0f},
+        .tMax = {750.0f, 710.0f},
+        .tCenter = {702.5f, 662.5f}
+    };
+    
+    // bottom row properties (positions 1-9)
+    float fBottomY = 615.0f;
+    float fBottomHeight = 95.0f; // 710 - 615
+    float afBottomX[] = {145.0f, 201.67f, 258.33f, 315.0f, 371.67f, 428.33f, 485.0f, 541.67f, 598.33f, 655.0f};
+    
+    for(uint8_t i = 0; i < 9; i++)
+    {
+        atBounds[i + 1] = (mPropertyBounds)
+        {
+            .tMin = {afBottomX[i], fBottomY},
+            .tMax = {afBottomX[i + 1], fBottomY + fBottomHeight},
+            .tCenter = {(afBottomX[i] + afBottomX[i + 1]) / 2.0f, fBottomY + fBottomHeight / 2.0f}
+        };
+    }
+    
+    // bottom left corner (jail) - position 10
+    atBounds[10] = (mPropertyBounds)
+    {
+        .tMin = {50.0f, 615.0f},
+        .tMax = {145.0f, 710.0f},
+        .tCenter = {97.5f, 662.5f}
+    };
+    
+    // left column properties (positions 11-19)
+    float fLeftX = 50.0f;
+    float fLeftWidth = 95.0f; // 145 - 50
+    float afLeftY[] = {615.0f, 558.33f, 501.67f, 445.0f, 388.33f, 331.67f, 275.0f, 218.33f, 161.67f, 105.0f};
+    
+    for(uint8_t i = 0; i < 9; i++)
+    {
+        atBounds[i + 11] = (mPropertyBounds){
+            .tMin = {fLeftX, afLeftY[i + 1]},
+            .tMax = {fLeftX + fLeftWidth, afLeftY[i]},
+            .tCenter = {fLeftX + fLeftWidth / 2.0f, (afLeftY[i] + afLeftY[i + 1]) / 2.0f}
+        };
+    }
+    
+    // top left corner (free parking) - position 20
+    atBounds[20] = (mPropertyBounds){
+        .tMin = {50.0f, 10.0f},
+        .tMax = {145.0f, 105.0f},
+        .tCenter = {97.5f, 57.5f}
+    };
+    
+    // top row properties (positions 21-29)
+    float fTopY = 10.0f;
+    float fTopHeight = 95.0f; // 105 - 10
+    float afTopX[] = {145.0f, 201.67f, 258.33f, 315.0f, 371.67f, 428.33f, 485.0f, 541.67f, 598.33f, 655.0f};
+    
+    for(uint8_t i = 0; i < 9; i++)
+    {
+        atBounds[i + 21] = (mPropertyBounds){
+            .tMin = {afTopX[i], fTopY},
+            .tMax = {afTopX[i + 1], fTopY + fTopHeight},
+            .tCenter = {(afTopX[i] + afTopX[i + 1]) / 2.0f, fTopY + fTopHeight / 2.0f}
+        };
+    }
+    
+    // top right corner (go to jail) - position 30
+    atBounds[30] = (mPropertyBounds){
+        .tMin = {655.0f, 10.0f},
+        .tMax = {750.0f, 105.0f},
+        .tCenter = {702.5f, 57.5f}
+    };
+    
+    // right column properties (positions 31-39)
+    float fRightX = 655.0f;
+    float fRightWidth = 95.0f; // 750 - 655
+    float afRightY[] = {105.0f, 161.67f, 218.33f, 275.0f, 331.67f, 388.33f, 445.0f, 501.67f, 558.33f, 615.0f};
+    
+    for(uint8_t i = 0; i < 9; i++)
+    {
+        atBounds[i + 31] = (mPropertyBounds){
+            .tMin = {fRightX, afRightY[i]},
+            .tMax = {fRightX + fRightWidth, afRightY[i + 1]},
+            .tCenter = {fRightX + fRightWidth / 2.0f, (afRightY[i] + afRightY[i + 1]) / 2.0f}
+        };
+    }
+}
+
+void
 draw_player_tokens(plAppData* ptAppData, plRenderEncoder* ptRender)
 {
-    // board offset and size (matching the textured quad)
-    const float fBoardX = 50.0f;
-    const float fBoardY = 10.0f;
-    const float fBoardSize = 700.0f;
-    
-    // TODO: calculate instead of hard code???
-    static const plVec2 atBoardPositions[40] = {
-        // bottom row (GO to Jail visiting)
-        {0.90f, 0.90f},  // 0 - GO
-        {0.82f, 0.90f},  // 1
-        {0.74f, 0.90f},  // 2
-        {0.66f, 0.90f},  // 3
-        {0.58f, 0.90f},  // 4
-        {0.50f, 0.90f},  // 5
-        {0.42f, 0.90f},  // 6
-        {0.34f, 0.90f},  // 7
-        {0.26f, 0.90f},  // 8
-        {0.18f, 0.90f},  // 9
-        {0.10f, 0.90f},  // 10 - Jail (just visiting)
-        
-        // left column (jail to free parking)
-        {0.10f, 0.82f},  // 11
-        {0.10f, 0.74f},  // 12
-        {0.10f, 0.66f},  // 13
-        {0.10f, 0.58f},  // 14
-        {0.10f, 0.50f},  // 15
-        {0.10f, 0.42f},  // 16
-        {0.10f, 0.34f},  // 17
-        {0.10f, 0.26f},  // 18
-        {0.10f, 0.18f},  // 19
-        {0.10f, 0.10f},  // 20 - Free Parking
-        
-        // top row (free parking to go to jail)
-        {0.18f, 0.10f},  // 21
-        {0.26f, 0.10f},  // 22
-        {0.34f, 0.10f},  // 23
-        {0.42f, 0.10f},  // 24
-        {0.50f, 0.10f},  // 25
-        {0.58f, 0.10f},  // 26
-        {0.66f, 0.10f},  // 27
-        {0.74f, 0.10f},  // 28
-        {0.82f, 0.10f},  // 29
-        {0.90f, 0.10f},  // 30 - Go To Jail
-        
-        // right column (go to jail to go)
-        {0.90f, 0.18f},  // 31
-        {0.90f, 0.26f},  // 32
-        {0.90f, 0.34f},  // 33
-        {0.90f, 0.42f},  // 34
-        {0.90f, 0.50f},  // 35
-        {0.90f, 0.58f},  // 36
-        {0.90f, 0.66f},  // 37
-        {0.90f, 0.74f},  // 38
-        {0.90f, 0.82f}   // 39
-    };
-    
-    // player colors
-    const plVec4 atPlayerColors[6] = {
-        {1.0f, 0.0f, 0.0f, 1.0f},  // red
-        {0.0f, 0.0f, 1.0f, 1.0f},  // blue
-        {0.0f, 1.0f, 0.0f, 1.0f},  // green
-        {1.0f, 1.0f, 0.0f, 1.0f},  // yellow
-        {1.0f, 0.0f, 1.0f, 1.0f},  // magenta
-        {0.0f, 1.0f, 1.0f, 1.0f}   // cyan
-    };
-    
-    // use persistent drawlist and layer
     plDrawList2D* ptDrawlist = ptAppData->ptTokenDrawlist;
     plDrawLayer2D* ptLayer = ptAppData->ptTokenLayer;
     
-    // draw each active player
+    const uint32_t atPlayerColors[6] = {
+        {PL_COLOR_32_RED},
+        {PL_COLOR_32_BLUE},
+        {PL_COLOR_32_GREEN},
+        {PL_COLOR_32_YELLOW},
+        {PL_COLOR_32_MAGENTA},
+        {PL_COLOR_32_ORANGE}
+    };
+    
     for(uint8_t i = 0; i < ptAppData->pGameData->uPlayerCount; i++)
     {
+        // get player to draw this iteration/ skip bankrupts
         mPlayer* pPlayer = &ptAppData->pGameData->amPlayers[i];
         if(pPlayer->bIsBankrupt)
             continue;
         
-        // get board position
-        plVec2 tNormPos = atBoardPositions[pPlayer->uPosition];
+        // count how many players are on this same space
+        uint8_t uPlayersOnSpace = 0;
+        for(uint8_t j = 0; j < ptAppData->pGameData->uPlayerCount; j++)
+        {
+            if(ptAppData->pGameData->amPlayers[j].uPosition == pPlayer->uPosition && !ptAppData->pGameData->amPlayers[j].bIsBankrupt)
+            {
+                uPlayersOnSpace++;
+            }
+        }
         
-        // convert to screen space
-        float fX = fBoardX + (tNormPos.x * fBoardSize);
-        float fY = fBoardY + (tNormPos.y * fBoardSize);
+        // get bounds for this position
+        mPropertyBounds* pBounds = &ptAppData->atPropertyBounds[pPlayer->uPosition];
+        plVec2 tCenter = pBounds->tCenter;
         
-        // offset multiple players on same space
-        float fOffset = (float)i * 15.0f;
-        fX += fOffset;
+        // calculate radius based on property size (corners not same as props)
+        float fWidth = pBounds->tMax.x - pBounds->tMin.x;
+        float fHeight = pBounds->tMax.y - pBounds->tMin.y;
+        float fSmallestDim = (fWidth < fHeight) ? fWidth : fHeight; // smallest to fit weather side prop or top/ bottom prop
+        float fRadius = (fSmallestDim / 2.0f) * 0.6f; // 60% for some padding
+        
+        // figure out player 1, player 2, etc..
+        uint8_t uPlayerSlot = 0;
+        for(uint8_t j = 0; j < i; j++)
+        {
+            if(ptAppData->pGameData->amPlayers[j].uPosition == pPlayer->uPosition && !ptAppData->pGameData->amPlayers[j].bIsBankrupt)
+            {
+                uPlayerSlot++;
+            }
+        }
+        
+        // calculate angle for this player (where to draw on the circle inside square)
+        float fAnglePerPlayer = (2.0f * PL_PI) / (float)uPlayersOnSpace;
+        float fAngle = fAnglePerPlayer * (float)uPlayerSlot;
+        
+        // calculate position using sin/cos
+        plVec2 tTokenPos;
+        tTokenPos.x = tCenter.x + fRadius * cosf(fAngle);
+        tTokenPos.y = tCenter.y + fRadius * sinf(fAngle);
         
         // draw circle for player token
-        plVec2 tCenter = {fX, fY};
-        uint32_t uColor = PL_COLOR_32(atPlayerColors[i].x, atPlayerColors[i].y, atPlayerColors[i].z, atPlayerColors[i].w);
-        
+        uint32_t uColor = atPlayerColors[i];
         plDrawSolidOptions tOptions = {.uColor = uColor};
-        gptDraw->add_circle_filled(ptLayer, tCenter, 10.0f, 16, tOptions);
+        gptDraw->add_circle_filled(ptLayer, tTokenPos, 10.0f, 16, tOptions);
     }
     
-    // submit and prepare the layer
     gptDraw->submit_2d_layer(ptLayer);
-    gptDraw->prepare_2d_drawlist(ptDrawlist);
-    
-    // submit to backend for rendering
     gptDrawBackend->submit_2d_drawlist(ptDrawlist, ptRender, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 1);
 }
 
