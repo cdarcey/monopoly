@@ -44,8 +44,8 @@
 
         6. Bankruptcy Phase
 
-            [ ] Proper asset liquidation (mortgage everything possible)
-            [ ] Transfer assets to creditor
+            [x] Proper asset liquidation (mortgage everything possible)
+            [x] Transfer assets to creditor
             [ ] Handle elimination properly
 
         7. Game End Conditions
@@ -972,31 +972,40 @@ draw_player_tokens(plAppData* ptAppData, plRenderEncoder* ptRender)
         // get bounds for this position
         mPropertyBounds* pBounds = &ptAppData->atPropertyBounds[pPlayer->uPosition];
         plVec2 tCenter = pBounds->tCenter;
-        
-        // calculate radius based on property size (corners not same as props)
-        float fWidth = pBounds->tMax.x - pBounds->tMin.x;
-        float fHeight = pBounds->tMax.y - pBounds->tMin.y;
-        float fSmallestDim = (fWidth < fHeight) ? fWidth : fHeight; // smallest to fit weather side prop or top/ bottom prop
-        float fRadius = (fSmallestDim / 2.0f) * 0.6f; // 60% for some padding
-        
-        // figure out player 1, player 2, etc..
-        uint8_t uPlayerSlot = 0;
-        for(uint8_t j = 0; j < i; j++)
-        {
-            if(ptAppData->pGameData->amPlayers[j].uPosition == pPlayer->uPosition && !ptAppData->pGameData->amPlayers[j].bIsBankrupt)
-            {
-                uPlayerSlot++;
-            }
-        }
-        
-        // calculate angle for this player (where to draw on the circle inside square)
-        float fAnglePerPlayer = (2.0f * PL_PI) / (float)uPlayersOnSpace;
-        float fAngle = fAnglePerPlayer * (float)uPlayerSlot;
-        
-        // calculate position using sin/cos
+
         plVec2 tTokenPos;
-        tTokenPos.x = tCenter.x + fRadius * cosf(fAngle);
-        tTokenPos.y = tCenter.y + fRadius * sinf(fAngle);
+
+        // if only one player, just center them
+        if(uPlayersOnSpace == 1)
+        {
+            tTokenPos = tCenter;
+        }
+        else
+        {
+            // calculate radius based on property size (corners not same as props)
+            float fWidth = pBounds->tMax.x - pBounds->tMin.x;
+            float fHeight = pBounds->tMax.y - pBounds->tMin.y;
+            float fSmallestDim = (fWidth < fHeight) ? fWidth : fHeight; // smallest to fit weather side prop or top/ bottom prop
+            float fRadius = (fSmallestDim / 2.0f) * 0.6f; // 60% for some padding
+            
+            // figure out player 1, player 2, etc..
+            uint8_t uPlayerSlot = 0;
+            for(uint8_t j = 0; j < i; j++)
+            {
+                if(ptAppData->pGameData->amPlayers[j].uPosition == pPlayer->uPosition && !ptAppData->pGameData->amPlayers[j].bIsBankrupt)
+                {
+                    uPlayerSlot++;
+                }
+            }
+            
+            // calculate angle for this player (where to draw on the circle inside square)
+            float fAnglePerPlayer = (2.0f * PL_PI) / (float)uPlayersOnSpace;
+            float fAngle = fAnglePerPlayer * (float)uPlayerSlot;
+            
+            // calculate position using sin/cos
+            tTokenPos.x = tCenter.x + fRadius * cosf(fAngle);
+            tTokenPos.y = tCenter.y + fRadius * sinf(fAngle);
+        }
         
         // draw circle for player token
         uint32_t uColor = atPlayerColors[i];

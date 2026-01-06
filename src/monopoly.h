@@ -1,8 +1,8 @@
 #ifndef MONOPOLY_H
 #define MONOPOLY_H
 
-#include <stdint.h>
-#include <stdbool.h>
+#include <stdint.h> // uint
+#include <stdbool.h> // bool
 
 // ==================== CONSTANTS ==================== //
 
@@ -411,6 +411,10 @@ uint8_t m_draw_community_chest_card(mGameData* pGame);
 
 //property management
 int32_t m_calculate_net_worth(mGameData* pGame, uint8_t uPlayerIndex); // int because can be nagative
+
+// bankruptcy 
+void m_transfer_assets_to_player(mGameData* pGame, uint8_t uFromPlayer, uint8_t uToPlayer);
+void m_transfer_assets_to_bank(mGameData* pGame, uint8_t uFromPlayer);
 
 // ==================== PHASE FUNCTIONS ==================== //
 

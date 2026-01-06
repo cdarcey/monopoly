@@ -1,0 +1,284 @@
+{
+  "properties": [
+    {
+      "name": "Mediterranean Avenue",
+      "type": "street",
+      "color": "brown",
+      "price": 60,
+      "position": 1,
+      "mortgage": 30,
+      "house_cost": 50,
+      "rent": [2, 10, 30, 90, 160, 250]
+    },
+    {
+      "name": "Baltic Avenue",
+      "type": "street",
+      "color": "brown",
+      "price": 60,
+      "position": 3,
+      "mortgage": 30,
+      "house_cost": 50,
+      "rent": [4, 20, 60, 180, 320, 450]
+    },
+    {
+      "name": "Oriental Avenue",
+      "type": "street",
+      "color": "light_blue",
+      "price": 100,
+      "position": 6,
+      "mortgage": 50,
+      "house_cost": 50,
+      "rent": [6, 30, 90, 270, 400, 550]
+    },
+    {
+      "name": "Vermont Avenue",
+      "type": "street",
+      "color": "light_blue",
+      "price": 100,
+      "position": 8,
+      "mortgage": 50,
+      "house_cost": 50,
+      "rent": [6, 30, 90, 270, 400, 550]
+    },
+    {
+      "name": "Connecticut Avenue",
+      "type": "street",
+      "color": "light_blue",
+      "price": 120,
+      "position": 9,
+      "mortgage": 60,
+      "house_cost": 50,
+      "rent": [8, 40, 100, 300, 450, 600]
+    },
+    {
+      "name": "St. Charles Place",
+      "type": "street",
+      "color": "pink",
+      "price": 140,
+      "position": 11,
+      "mortgage": 70,
+      "house_cost": 100,
+      "rent": [10, 50, 150, 450, 625, 750]
+    },
+    {
+      "name": "States Avenue",
+      "type": "street",
+      "color": "pink",
+      "price": 140,
+      "position": 13,
+      "mortgage": 70,
+      "house_cost": 100,
+      "rent": [10, 50, 150, 450, 625, 750]
+    },
+    {
+      "name": "Virginia Avenue",
+      "type": "street",
+      "color": "pink",
+      "price": 160,
+      "position": 14,
+      "mortgage": 80,
+      "house_cost": 100,
+      "rent": [12, 60, 180, 500, 700, 900]
+    },
+    {
+      "name": "St. James Place",
+      "type": "street",
+      "color": "orange",
+      "price": 180,
+      "position": 16,
+      "mortgage": 90,
+      "house_cost": 100,
+      "rent": [14, 70, 200, 550, 750, 950]
+    },
+    {
+      "name": "Tennessee Avenue",
+      "type": "street",
+      "color": "orange",
+      "price": 180,
+      "position": 18,
+      "mortgage": 90,
+      "house_cost": 100,
+      "rent": [14, 70, 200, 550, 750, 950]
+    },
+    {
+      "name": "New York Avenue",
+      "type": "street",
+      "color": "orange",
+      "price": 200,
+      "position": 19,
+      "mortgage": 100,
+      "house_cost": 100,
+      "rent": [16, 80, 220, 600, 800, 1000]
+    },
+    {
+      "name": "Kentucky Avenue",
+      "type": "street",
+      "color": "red",
+      "price": 220,
+      "position": 21,
+      "mortgage": 110,
+      "house_cost": 150,
+      "rent": [18, 90, 250, 700, 875, 1050]
+    },
+    {
+      "name": "Indiana Avenue",
+      "type": "street",
+      "color": "red",
+      "price": 220,
+      "position": 23,
+      "mortgage": 110,
+      "house_cost": 150,
+      "rent": [18, 90, 250, 700, 875, 1050]
+    },
+    {
+      "name": "Illinois Avenue",
+      "type": "street",
+      "color": "red",
+      "price": 240,
+      "position": 24,
+      "mortgage": 120,
+      "house_cost": 150,
+      "rent": [20, 100, 300, 750, 925, 1100]
+    },
+    {
+      "name": "Atlantic Avenue",
+      "type": "street",
+      "color": "yellow",
+      "price": 260,
+      "position": 26,
+      "mortgage": 130,
+      "house_cost": 150,
+      "rent": [22, 110, 330, 800, 975, 1150]
+    },
+    {
+      "name": "Ventnor Avenue",
+      "type": "street",
+      "color": "yellow",
+      "price": 260,
+      "position": 27,
+      "mortgage": 130,
+      "house_cost": 150,
+      "rent": [22, 110, 330, 800, 975, 1150]
+    },
+    {
+      "name": "Marvin Gardens",
+      "type": "street",
+      "color": "yellow",
+      "price": 280,
+      "position": 29,
+      "mortgage": 140,
+      "house_cost": 150,
+      "rent": [24, 120, 360, 850, 1025, 1200]
+    },
+    {
+      "name": "Pacific Avenue",
+      "type": "street",
+      "color": "green",
+      "price": 300,
+      "position": 31,
+      "mortgage": 150,
+      "house_cost": 200,
+      "rent": [26, 130, 390, 900, 1100, 1275]
+    },
+    {
+      "name": "North Carolina Avenue",
+      "type": "street",
+      "color": "green",
+      "price": 300,
+      "position": 32,
+      "mortgage": 150,
+      "house_cost": 200,
+      "rent": [26, 130, 390, 900, 1100, 1275]
+    },
+    {
+      "name": "Pennsylvania Avenue",
+      "type": "street",
+      "color": "green",
+      "price": 320,
+      "position": 34,
+      "mortgage": 160,
+      "house_cost": 200,
+      "rent": [28, 150, 450, 1000, 1200, 1400]
+    },
+    {
+      "name": "Park Place",
+      "type": "street",
+      "color": "dark_blue",
+      "price": 350,
+      "position": 37,
+      "mortgage": 175,
+      "house_cost": 200,
+      "rent": [35, 175, 500, 1100, 1300, 1500]
+    },
+    {
+      "name": "Boardwalk",
+      "type": "street",
+      "color": "dark_blue",
+      "price": 400,
+      "position": 39,
+      "mortgage": 200,
+      "house_cost": 200,
+      "rent": [50, 200, 600, 1400, 1700, 2000]
+    },
+    {
+      "name": "Reading Railroad",
+      "type": "railroad",
+      "color": "railroad",
+      "price": 200,
+      "position": 5,
+      "mortgage": 100,
+      "house_cost": 0,
+      "rent": [25, 0, 0, 0, 0, 0]
+    },
+    {
+      "name": "Pennsylvania Railroad",
+      "type": "railroad",
+      "color": "railroad",
+      "price": 200,
+      "position": 15,
+      "mortgage": 100,
+      "house_cost": 0,
+      "rent": [25, 0, 0, 0, 0, 0]
+    },
+    {
+      "name": "B&O Railroad",
+      "type": "railroad",
+      "color": "railroad",
+      "price": 200,
+      "position": 25,
+      "mortgage": 100,
+      "house_cost": 0,
+      "rent": [25, 0, 0, 0, 0, 0]
+    },
+    {
+      "name": "Short Line Railroad",
+      "type": "railroad",
+      "color": "railroad",
+      "price": 200,
+      "position": 35,
+      "mortgage": 100,
+      "house_cost": 0,
+      "rent": [25, 0, 0, 0, 0, 0]
+    },
+    {
+      "name": "Electric Company",
+      "type": "utility",
+      "color": "utility",
+      "price": 150,
+      "position": 12,
+      "mortgage": 75,
+      "house_cost": 0,
+      "rent": [0, 0, 0, 0, 0, 0]
+    },
+    {
+      "name": "Water Works",
+      "type": "utility",
+      "color": "utility",
+      "price": 150,
+      "position": 28,
+      "mortgage": 75,
+      "house_cost": 0,
+      "rent": [0, 0, 0, 0, 0, 0]
+    }
+  ]
+}

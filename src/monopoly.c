@@ -1125,7 +1125,6 @@ m_draw_community_chest_card(mGameData* pGame)
 }
 
 // property managment 
-
 int32_t
 m_calculate_net_worth(mGameData* pGame, uint8_t uPlayerIndex)
 {
@@ -1156,6 +1155,103 @@ m_calculate_net_worth(mGameData* pGame, uint8_t uPlayerIndex)
     }
     
     return iNetWorth;
+}
+
+void
+m_transfer_assets_to_player(mGameData* pGame, uint8_t uFromPlayer, uint8_t uToPlayer)
+{
+    mPlayer* pBankruptPlayer = &pGame->amPlayers[uFromPlayer];
+    mPlayer* pCreditor = &pGame->amPlayers[uToPlayer];
+    
+    // transfer all remaining money
+    pCreditor->uMoney += pBankruptPlayer->uMoney;
+    pBankruptPlayer->uMoney = 0;
+    
+    // transfer get out of jail free card if they have it
+    if(pBankruptPlayer->bHasJailFreeCard)
+    {
+        pCreditor->bHasJailFreeCard = true;
+        pBankruptPlayer->bHasJailFreeCard = false;
+    }
+    
+    // transfer all properties
+    for(uint8_t i = 0; i < pBankruptPlayer->uPropertyCount; i++)
+    {
+        uint8_t uPropIdx = pBankruptPlayer->auPropertiesOwned[i];
+        if(uPropIdx == BANK_PLAYER_INDEX)
+            break;
+        
+        mProperty* pProp = &pGame->amProperties[uPropIdx];
+        
+        // change ownership
+        pProp->uOwnerIndex = uToPlayer;
+        
+        // add to creditor's property list
+        if(pCreditor->uPropertyCount < PROPERTY_ARRAY_SIZE)
+        {
+            pCreditor->auPropertiesOwned[pCreditor->uPropertyCount] = uPropIdx;
+            pCreditor->uPropertyCount++;
+        }
+    }
+    
+    // clear bankrupt player's property list
+    pBankruptPlayer->uPropertyCount = 0;
+    for(uint8_t i = 0; i < PROPERTY_ARRAY_SIZE; i++)
+    {
+        pBankruptPlayer->auPropertiesOwned[i] = BANK_PLAYER_INDEX;
+    }
+}
+
+void
+m_transfer_assets_to_bank(mGameData* pGame, uint8_t uFromPlayer)
+{
+    mPlayer* pBankruptPlayer = &pGame->amPlayers[uFromPlayer];
+    
+    // money is lost (bank has inifinate money no need to return)
+    pBankruptPlayer->uMoney = 0;
+    
+    // return get out of jail free card to deck if they have it
+    if(pBankruptPlayer->bHasJailFreeCard)
+    {
+        pBankruptPlayer->bHasJailFreeCard = false;
+        // card goes back into deck rotation naturally since we track by player ownership
+    }
+    
+    // return all properties to bank
+    for(uint8_t i = 0; i < pBankruptPlayer->uPropertyCount; i++)
+    {
+        uint8_t uPropIdx = pBankruptPlayer->auPropertiesOwned[i];
+        if(uPropIdx == BANK_PLAYER_INDEX)
+            break;
+        
+        mProperty* pProp = &pGame->amProperties[uPropIdx];
+        
+        // sell all houses/hotels back to bank
+        while(pProp->uHouses > 0)
+        {
+            pProp->uHouses--;
+            pGame->uGlobalHouseSupply++;
+        }
+        
+        if(pProp->bHasHotel)
+        {
+            pProp->bHasHotel = false;
+            pGame->uGlobalHotelSupply++;
+        }
+        
+        // unmortgage property (bank takes it back fresh)
+        pProp->bIsMortgaged = false;
+        
+        // return to bank ownership
+        pProp->uOwnerIndex = BANK_PLAYER_INDEX;
+    }
+    
+    // clear bankrupt player's property list
+    pBankruptPlayer->uPropertyCount = 0;
+    for(uint8_t i = 0; i < PROPERTY_ARRAY_SIZE; i++)
+    {
+        pBankruptPlayer->auPropertiesOwned[i] = BANK_PLAYER_INDEX;
+    }
 }
 
 // ==================== PHASES ==================== //
@@ -1959,35 +2055,123 @@ m_phase_auction(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
     return PHASE_RUNNING;
 }
 
-ePhaseResult m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
+ePhaseResult 
+m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
 {
     mBankruptcyData* pBankruptcy = (mBankruptcyData*)pPhaseData;
     mGameData* pGame = pFlow->pGame;
-
-    /*
-    Step 1: Liquidation phase
-
-        Auto-sell all houses/hotels (half price to bank)
-        Auto-mortgage all unmortgaged properties
-        Calculate if this covers debt
+    mPlayer* pBankruptPlayer = &pGame->amPlayers[pBankruptcy->eBankruptPlayer];
+    
+    uint32_t uDebtOwed = pBankruptcy->uAmountOwed;
+    uint32_t uMoneyRaised = pBankruptPlayer->uMoney;
+    
+    // step 1: sell all hotels back to 4 houses
+    for(uint8_t i = 0; i < pBankruptPlayer->uPropertyCount; i++)
+    {
+        uint8_t uPropIdx = pBankruptPlayer->auPropertiesOwned[i];
+        if(uPropIdx == BANK_PLAYER_INDEX) break;
         
-    Step 2: If still can't pay
-
-        Transfer all assets based on creditor type
-        Set bankruptcy flag
-        Update active player count
+        mProperty* pProp = &pGame->amProperties[uPropIdx];
         
-    Step 3: Post-bankruptcy
-
-        Check game over condition
-        Continue to next player
-
-    TODO: decide on the flow of this phase
-
-        Should we auto-liquidate or give player a chance to choose what to sell?
-        Get Out of Jail Free cards - transfer to creditor or return to deck?
-        Do we need a bankruptcy UI screen or just notifications?
+        if(pProp->bHasHotel && pGame->uGlobalHouseSupply >= 4)
+        {
+            m_sell_hotel(pGame, uPropIdx, pBankruptcy->eBankruptPlayer);
+            uMoneyRaised += pProp->uHouseCost / 2;
+            
+            if(uMoneyRaised >= uDebtOwed)
+            {
+                // paid off debt through hotel sales
+                pBankruptPlayer->uMoney = uMoneyRaised - uDebtOwed;
+                m_pop_phase(pFlow);
+                return PHASE_RUNNING;
+            }
+        }
+    }
+    
+    // step 2: sell all houses
+    // keep selling until either debt paid or no houses left
+    bool bSoldHouse = true;
+    while(bSoldHouse && uMoneyRaised < uDebtOwed)
+    {
+        bSoldHouse = false;
         
-    */
-   return PHASE_RUNNING;
+        for(uint8_t i = 0; i < pBankruptPlayer->uPropertyCount; i++)
+        {
+            uint8_t uPropIdx = pBankruptPlayer->auPropertiesOwned[i];
+            if(uPropIdx == BANK_PLAYER_INDEX) break;
+            
+            if(m_can_sell_house(pGame, uPropIdx, pBankruptcy->eBankruptPlayer))
+            {
+                mProperty* pProp = &pGame->amProperties[uPropIdx];
+                m_sell_house(pGame, uPropIdx, pBankruptcy->eBankruptPlayer);
+                uMoneyRaised += pProp->uHouseCost / 2;
+                bSoldHouse = true;
+                
+                if(uMoneyRaised >= uDebtOwed)
+                {
+                    // paid off debt through house sales
+                    pBankruptPlayer->uMoney = uMoneyRaised - uDebtOwed;
+                    m_pop_phase(pFlow);
+                    return PHASE_RUNNING;
+                }
+            }
+        }
+    }
+    
+    // step 3: mortgage all unmortgaged properties
+    for(uint8_t i = 0; i < pBankruptPlayer->uPropertyCount; i++)
+    {
+        uint8_t uPropIdx = pBankruptPlayer->auPropertiesOwned[i];
+        if(uPropIdx == BANK_PLAYER_INDEX) break;
+        
+        mProperty* pProp = &pGame->amProperties[uPropIdx];
+        
+        if(!pProp->bIsMortgaged)
+        {
+            m_mortgage_property(pGame, uPropIdx, pBankruptcy->eBankruptPlayer);
+            uMoneyRaised += pProp->uMortgageValue;
+            
+            if(uMoneyRaised >= uDebtOwed)
+            {
+                // paid off debt through mortgages
+                pBankruptPlayer->uMoney = uMoneyRaised - uDebtOwed;
+                m_pop_phase(pFlow);
+                return PHASE_RUNNING;
+            }
+        }
+    }
+    
+    // step 4: still can't pay - declare bankruptcy
+
+    pBankruptPlayer->bIsBankrupt = true;
+    pGame->uActivePlayers--;
+
+    // transfer assets based on creditor type
+    if(pBankruptcy->uCreditor == BANK_PLAYER_INDEX)
+    {
+        // creditor is bank - auction all properties
+        m_transfer_assets_to_bank(pGame, pBankruptcy->eBankruptPlayer);
+        m_set_notification(pGame, "Player %d is bankrupt! Properties will be returned to the bank.", 
+            pBankruptcy->eBankruptPlayer + 1);
+    }
+    else
+    {
+        // creditor is another player - transfer everything
+        m_transfer_assets_to_player(pGame, pBankruptcy->eBankruptPlayer, pBankruptcy->uCreditor);
+        m_set_notification(pGame, "Player %d is bankrupt! Assets transferred to Player %d.", 
+            pBankruptcy->eBankruptPlayer + 1, pBankruptcy->uCreditor + 1);
+    }
+
+    // check if game is over
+    if(pGame->uActivePlayers == 1)
+    {
+        pGame->bIsRunning = false;
+        // TODO: show winner screen
+    }
+
+    m_pop_phase(pFlow);
+    return PHASE_RUNNING;
+        // TODO: mark player as bankrupt
+        // TODO: check if game is over
+
 }

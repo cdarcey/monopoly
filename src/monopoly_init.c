@@ -1,604 +1,40 @@
+
+#include <string.h> // memset etc...
+#include <time.h> // srand
+#include <stdio.h> // printf
+#include <stdarg.h>  // va_copy, va_start, va_end 
+
+#define PL_JSON_IMPLEMENTATION
+#include "pl_json.h"
+
 #include "monopoly_init.h"
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
 
-// ==================== HARDCODED PROPERTY DATA ==================== //
 
-static void
-m_init_properties(mProperty* pProperties)
+// helper function to convert color strings to enum
+static ePropertyColor
+m_string_to_color_enum(const char* cColor)
 {
-    // brown properties
-    pProperties[MEDITERRANEAN_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Mediterranean Avenue",
-        .uPrice         = 60,
-        .uRentBase      = 2,
-        .uRentMonopoly  = 4,
-        .uMortgageValue = 30,
-        .uPosition      = 1,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_BROWN,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 50,
-        .auRentWithHouses = {2, 10, 30, 90, 160, 250}
-    };
-
-    pProperties[BALTIC_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Baltic Avenue",
-        .uPrice         = 60,
-        .uRentBase      = 4,
-        .uRentMonopoly  = 8,
-        .uMortgageValue = 30,
-        .uPosition      = 3,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_BROWN,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 50,
-        .auRentWithHouses = {4, 20, 60, 180, 320, 450}
-    };
-
-    // light blue properties
-    pProperties[ORIENTAL_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Oriental Avenue",
-        .uPrice         = 100,
-        .uRentBase      = 6,
-        .uRentMonopoly  = 12,
-        .uMortgageValue = 50,
-        .uPosition      = 6,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_LIGHT_BLUE,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 50,
-        .auRentWithHouses = {6, 30, 90, 270, 400, 550}
-    };
-
-    pProperties[VERMONT_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Vermont Avenue",
-        .uPrice         = 100,
-        .uRentBase      = 6,
-        .uRentMonopoly  = 12,
-        .uMortgageValue = 50,
-        .uPosition      = 8,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_LIGHT_BLUE,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 50,
-        .auRentWithHouses = {6, 30, 90, 270, 400, 550}
-    };
-
-    pProperties[CONNECTICUT_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Connecticut Avenue",
-        .uPrice         = 120,
-        .uRentBase      = 8,
-        .uRentMonopoly  = 16,
-        .uMortgageValue = 60,
-        .uPosition      = 9,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_LIGHT_BLUE,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 50,
-        .auRentWithHouses = {8, 40, 100, 300, 450, 600}
-    };
-
-    // pink properties
-    pProperties[ST_CHARLES_PLACE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "St. Charles Place",
-        .uPrice         = 140,
-        .uRentBase      = 10,
-        .uRentMonopoly  = 20,
-        .uMortgageValue = 70,
-        .uPosition      = 11,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_PINK,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 100,
-        .auRentWithHouses = {10, 50, 150, 450, 625, 750}
-    };
-
-    pProperties[STATES_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "States Avenue",
-        .uPrice         = 140,
-        .uRentBase      = 10,
-        .uRentMonopoly  = 20,
-        .uMortgageValue = 70,
-        .uPosition      = 13,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_PINK,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 100,
-        .auRentWithHouses = {10, 50, 150, 450, 625, 750}
-    };
-
-    pProperties[VIRGINIA_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Virginia Avenue",
-        .uPrice         = 160,
-        .uRentBase      = 12,
-        .uRentMonopoly  = 24,
-        .uMortgageValue = 80,
-        .uPosition      = 14,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_PINK,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 100,
-        .auRentWithHouses = {12, 60, 180, 500, 700, 900}
-    };
-
-    // orange properties
-    pProperties[ST_JAMES_PLACE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "St. James Place",
-        .uPrice         = 180,
-        .uRentBase      = 14,
-        .uRentMonopoly  = 28,
-        .uMortgageValue = 90,
-        .uPosition      = 16,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_ORANGE,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 100,
-        .auRentWithHouses = {14, 70, 200, 550, 750, 950}
-    };
-
-    pProperties[TENNESSEE_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Tennessee Avenue",
-        .uPrice         = 180,
-        .uRentBase      = 14,
-        .uRentMonopoly  = 28,
-        .uMortgageValue = 90,
-        .uPosition      = 18,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_ORANGE,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 100,
-        .auRentWithHouses = {14, 70, 200, 550, 750, 950}
-    };
-
-    pProperties[NEW_YORK_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "New York Avenue",
-        .uPrice         = 200,
-        .uRentBase      = 16,
-        .uRentMonopoly  = 32,
-        .uMortgageValue = 100,
-        .uPosition      = 19,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_ORANGE,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 100,
-        .auRentWithHouses = {16, 80, 220, 600, 800, 1000}
-    };
-
-    // red properties
-    pProperties[KENTUCKY_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Kentucky Avenue",
-        .uPrice         = 220,
-        .uRentBase      = 18,
-        .uRentMonopoly  = 36,
-        .uMortgageValue = 110,
-        .uPosition      = 21,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_RED,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 150,
-        .auRentWithHouses = {18, 90, 250, 700, 875, 1050}
-    };
-
-    pProperties[INDIANA_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Indiana Avenue",
-        .uPrice         = 220,
-        .uRentBase      = 18,
-        .uRentMonopoly  = 36,
-        .uMortgageValue = 110,
-        .uPosition      = 23,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_RED,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 150,
-        .auRentWithHouses = {18, 90, 250, 700, 875, 1050}
-    };
-
-    pProperties[ILLINOIS_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Illinois Avenue",
-        .uPrice         = 240,
-        .uRentBase      = 20,
-        .uRentMonopoly  = 40,
-        .uMortgageValue = 120,
-        .uPosition      = 24,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_RED,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 150,
-        .auRentWithHouses = {20, 100, 300, 750, 925, 1100}
-    };
-
-    // yellow properties
-    pProperties[ATLANTIC_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Atlantic Avenue",
-        .uPrice         = 260,
-        .uRentBase      = 22,
-        .uRentMonopoly  = 44,
-        .uMortgageValue = 130,
-        .uPosition      = 26,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_YELLOW,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 150,
-        .auRentWithHouses = {22, 110, 330, 800, 975, 1150}
-    };
-
-    pProperties[VENTNOR_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Ventnor Avenue",
-        .uPrice         = 260,
-        .uRentBase      = 22,
-        .uRentMonopoly  = 44,
-        .uMortgageValue = 130,
-        .uPosition      = 27,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_YELLOW,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 150,
-        .auRentWithHouses = {22, 110, 330, 800, 975, 1150}
-    };
-
-    pProperties[MARVIN_GARDENS_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Marvin Gardens",
-        .uPrice         = 280,
-        .uRentBase      = 24,
-        .uRentMonopoly  = 48,
-        .uMortgageValue = 140,
-        .uPosition      = 29,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_YELLOW,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 150,
-        .auRentWithHouses = {24, 120, 360, 850, 1025, 1200}
-    };
-
-    // green properties
-    pProperties[PACIFIC_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Pacific Avenue",
-        .uPrice         = 300,
-        .uRentBase      = 26,
-        .uRentMonopoly  = 52,
-        .uMortgageValue = 150,
-        .uPosition      = 31,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_GREEN,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 200,
-        .auRentWithHouses = {26, 130, 390, 900, 1100, 1275}
-    };
-
-    pProperties[NORTH_CAROLINA_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "North Carolina Avenue",
-        .uPrice         = 300,
-        .uRentBase      = 26,
-        .uRentMonopoly  = 52,
-        .uMortgageValue = 150,
-        .uPosition      = 32,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_GREEN,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 200,
-        .auRentWithHouses = {26, 130, 390, 900, 1100, 1275}
-    };
-
-    pProperties[PENNSYLVANIA_AVENUE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Pennsylvania Avenue",
-        .uPrice         = 320,
-        .uRentBase      = 28,
-        .uRentMonopoly  = 56,
-        .uMortgageValue = 160,
-        .uPosition      = 34,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_GREEN,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 200,
-        .auRentWithHouses = {28, 150, 450, 1000, 1200, 1400}
-    };
-
-    // dark blue properties
-    pProperties[PARK_PLACE_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Park Place",
-        .uPrice         = 350,
-        .uRentBase      = 35,
-        .uRentMonopoly  = 70,
-        .uMortgageValue = 175,
-        .uPosition      = 37,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_DARK_BLUE,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 200,
-        .auRentWithHouses = {35, 175, 500, 1100, 1300, 1500}
-    };
-
-    pProperties[BOARDWALK_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Boardwalk",
-        .uPrice         = 400,
-        .uRentBase      = 50,
-        .uRentMonopoly  = 100,
-        .uMortgageValue = 200,
-        .uPosition      = 39,
-        .eType          = PROPERTY_TYPE_STREET,
-        .eColor         = COLOR_DARK_BLUE,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 200,
-        .auRentWithHouses = {50, 200, 600, 1400, 1700, 2000}
-    };
-
-    // railroads - no houses/hotels
-    pProperties[READING_RAILROAD_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Reading Railroad",
-        .uPrice         = 200,
-        .uRentBase      = 25,
-        .uRentMonopoly  = 0,
-        .uMortgageValue = 100,
-        .uPosition      = 5,
-        .eType          = PROPERTY_TYPE_RAILROAD,
-        .eColor         = COLOR_RAILROAD,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 0,
-        .auRentWithHouses = {0}
-    };
-
-    pProperties[PENNSYLVANIA_RAILROAD_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Pennsylvania Railroad",
-        .uPrice         = 200,
-        .uRentBase      = 25,
-        .uRentMonopoly  = 0,
-        .uMortgageValue = 100,
-        .uPosition      = 15,
-        .eType          = PROPERTY_TYPE_RAILROAD,
-        .eColor         = COLOR_RAILROAD,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 0,
-        .auRentWithHouses = {0}
-    };
-
-    pProperties[BO_RAILROAD_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "B&O Railroad",
-        .uPrice         = 200,
-        .uRentBase      = 25,
-        .uRentMonopoly  = 0,
-        .uMortgageValue = 100,
-        .uPosition      = 25,
-        .eType          = PROPERTY_TYPE_RAILROAD,
-        .eColor         = COLOR_RAILROAD,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 0,
-        .auRentWithHouses = {0}
-    };
-
-    pProperties[SHORT_LINE_RAILROAD_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Short Line Railroad",
-        .uPrice         = 200,
-        .uRentBase      = 25,
-        .uRentMonopoly  = 0,
-        .uMortgageValue = 100,
-        .uPosition      = 35,
-        .eType          = PROPERTY_TYPE_RAILROAD,
-        .eColor         = COLOR_RAILROAD,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 0,
-        .auRentWithHouses = {0}
-    };
-
-    // utilities - no houses/hotels
-    pProperties[ELECTRIC_COMPANY_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Electric Company",
-        .uPrice         = 150,
-        .uRentBase      = 0,
-        .uRentMonopoly  = 0,
-        .uMortgageValue = 75,
-        .uPosition      = 12,
-        .eType          = PROPERTY_TYPE_UTILITY,
-        .eColor         = COLOR_UTILITY,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 0,
-        .auRentWithHouses = {0}
-    };
-
-    pProperties[WATER_WORKS_PROPERTY_ARRAY_INDEX] = (mProperty){
-        .cName          = "Water Works",
-        .uPrice         = 150,
-        .uRentBase      = 0,
-        .uRentMonopoly  = 0,
-        .uMortgageValue = 75,
-        .uPosition      = 28,
-        .eType          = PROPERTY_TYPE_UTILITY,
-        .eColor         = COLOR_UTILITY,
-        .uOwnerIndex    = BANK_PLAYER_INDEX,
-        .bIsMortgaged   = false,
-        .uHouses        = 0,
-        .bHasHotel      = false,
-        .uHouseCost     = 0,
-        .auRentWithHouses = {0}
-    };
+    if(strcmp(cColor, "brown")      == 0) return COLOR_BROWN;
+    if(strcmp(cColor, "light_blue") == 0) return COLOR_LIGHT_BLUE;
+    if(strcmp(cColor, "pink")       == 0) return COLOR_PINK;
+    if(strcmp(cColor, "orange")     == 0) return COLOR_ORANGE;
+    if(strcmp(cColor, "red")        == 0) return COLOR_RED;
+    if(strcmp(cColor, "yellow")     == 0) return COLOR_YELLOW;
+    if(strcmp(cColor, "green")      == 0) return COLOR_GREEN;
+    if(strcmp(cColor, "dark_blue")  == 0) return COLOR_DARK_BLUE;
+    if(strcmp(cColor, "railroad")   == 0) return COLOR_RAILROAD;
+    if(strcmp(cColor, "utility")    == 0) return COLOR_UTILITY;
+    return COLOR_BROWN; // default
 }
 
-// ==================== HARDCODED CARD DATA ==================== //
-
-static void
-m_init_chance_cards(mChanceCard* pCards)
+// helper function to convert type strings to enum
+static ePropertyType
+m_string_to_type_enum(const char* cType)
 {
-    strcpy(pCards[0].cDescription, "Advance to Go (Collect $200)");
-    pCards[0].uCardID = 0;
-
-    strcpy(pCards[1].cDescription, "Advance to Illinois Avenue");
-    pCards[1].uCardID = 1;
-
-    strcpy(pCards[2].cDescription, "Advance to St. Charles Place");
-    pCards[2].uCardID = 2;
-
-    strcpy(pCards[3].cDescription, "Advance token to nearest Utility");
-    pCards[3].uCardID = 3;
-
-    strcpy(pCards[4].cDescription, "Advance token to nearest Railroad");
-    pCards[4].uCardID = 4;
-
-    strcpy(pCards[5].cDescription, "Bank pays you dividend of $50");
-    pCards[5].uCardID = 5;
-
-    strcpy(pCards[6].cDescription, "Get Out of Jail Free");
-    pCards[6].uCardID = 6;
-
-    strcpy(pCards[7].cDescription, "Go Back 3 Spaces");
-    pCards[7].uCardID = 7;
-
-    strcpy(pCards[8].cDescription, "Go to Jail");
-    pCards[8].uCardID = 8;
-
-    strcpy(pCards[9].cDescription, "Make general repairs on all your property");
-    pCards[9].uCardID = 9;
-
-    strcpy(pCards[10].cDescription, "Pay poor tax of $15");
-    pCards[10].uCardID = 10;
-
-    strcpy(pCards[11].cDescription, "Take a trip to Reading Railroad");
-    pCards[11].uCardID = 11;
-
-    strcpy(pCards[12].cDescription, "Take a walk on the Boardwalk");
-    pCards[12].uCardID = 12;
-
-    strcpy(pCards[13].cDescription, "You have been elected Chairman of the Board");
-    pCards[13].uCardID = 13;
-
-    strcpy(pCards[14].cDescription, "Your building loan matures - Collect $150");
-    pCards[14].uCardID = 14;
-
-    strcpy(pCards[15].cDescription, "You have won a crossword competition - Collect $100");
-    pCards[15].uCardID = 15;
-}
-
-static void
-m_init_community_chest_cards(mCommunityChestCard* pCards)
-{
-    strcpy(pCards[0].cDescription, "Advance to Go (Collect $200)");
-    pCards[0].uCardID = 0;
-
-    strcpy(pCards[1].cDescription, "Bank error in your favor - Collect $200");
-    pCards[1].uCardID = 1;
-
-    strcpy(pCards[2].cDescription, "Doctor's fees - Pay $50");
-    pCards[2].uCardID = 2;
-
-    strcpy(pCards[3].cDescription, "From sale of stock you get $50");
-    pCards[3].uCardID = 3;
-
-    strcpy(pCards[4].cDescription, "Get Out of Jail Free");
-    pCards[4].uCardID = 4;
-
-    strcpy(pCards[5].cDescription, "Go to Jail");
-    pCards[5].uCardID = 5;
-
-    strcpy(pCards[6].cDescription, "Grand Opera Night - Collect $50 from every player");
-    pCards[6].uCardID = 6;
-
-    strcpy(pCards[7].cDescription, "Holiday Fund matures - Receive $100");
-    pCards[7].uCardID = 7;
-
-    strcpy(pCards[8].cDescription, "Income tax refund - Collect $20");
-    pCards[8].uCardID = 8;
-
-    strcpy(pCards[9].cDescription, "It is your birthday - Collect $10 from every player");
-    pCards[9].uCardID = 9;
-
-    strcpy(pCards[10].cDescription, "Life insurance matures - Collect $100");
-    pCards[10].uCardID = 10;
-
-    strcpy(pCards[11].cDescription, "Hospital fees - Pay $100");
-    pCards[11].uCardID = 11;
-
-    strcpy(pCards[12].cDescription, "School fees - Pay $150");
-    pCards[12].uCardID = 12;
-
-    strcpy(pCards[13].cDescription, "Receive $25 consultancy fee");
-    pCards[13].uCardID = 13;
-
-    strcpy(pCards[14].cDescription, "You are assessed for street repairs");
-    pCards[14].uCardID = 14;
-
-    strcpy(pCards[15].cDescription, "You have won second prize in a beauty contest - Collect $10");
-    pCards[15].uCardID = 15;
+    if(strcmp(cType, "street")   == 0) return PROPERTY_TYPE_STREET;
+    if(strcmp(cType, "railroad") == 0) return PROPERTY_TYPE_RAILROAD;
+    if(strcmp(cType, "utility")  == 0) return PROPERTY_TYPE_UTILITY;
+    return PROPERTY_TYPE_STREET; // default
 }
 
 // ==================== DECK INITIALIZATION ==================== //
@@ -639,7 +75,7 @@ m_init_players(mPlayer* pPlayers, uint8_t uPlayerCount, uint32_t uStartingMoney)
         pPlayers[i].bHasJailFreeCard = false;
         pPlayers[i].bIsBankrupt = false;
 
-        // initialize property array with empty slots (bank owns = no property in this slot)
+        // initialize property array with empty slots
         for(uint8_t j = 0; j < PROPERTY_ARRAY_SIZE; j++)
         {
             pPlayers[i].auPropertiesOwned[j] = BANK_PLAYER_INDEX;
@@ -652,23 +88,139 @@ m_init_players(mPlayer* pPlayers, uint8_t uPlayerCount, uint32_t uStartingMoney)
 mGameData*
 m_init_game(mGameSettings tSettings)
 {
-    // seed random number generator
+    // seed random number generator (for dice)
     srand((unsigned int)time(NULL));
 
     // allocate and zero-initialize game data
     mGameData* pGame = calloc(1, sizeof(mGameData));
     if(!pGame)
     {
+        printf("Failed to allocate game data\n");
         return NULL;
     }
 
-    // initialize properties
-    m_init_properties(pGame->amProperties);
+    // ==================== LOAD PROPERTIES ==================== //
+    FILE* jsonFileProperties = fopen("../../monopoly/game_data/properties.json", "r");
+    if(!jsonFileProperties)
+    {
+        printf("Failed to open properties.json\n");
+        free(pGame);
+        return NULL;
+    }
 
-    // initialize cards
-    m_init_chance_cards(pGame->amChanceCards);
-    m_init_community_chest_cards(pGame->amCommunityChestCards);
+    char jsonBufferProperties[8000] = {0};
+    fread(jsonBufferProperties, 1, 8000, jsonFileProperties);
+    fclose(jsonFileProperties);
 
+    plJsonObject* tRootProperties = NULL;
+    pl_load_json(jsonBufferProperties, &tRootProperties);
+
+    uint32_t uPropertyCount = 0;
+    plJsonObject* tPropertyArray = pl_json_array_member(tRootProperties, "properties", &uPropertyCount);
+
+    for(uint32_t i = 0; i < uPropertyCount && i < TOTAL_PROPERTIES; i++)
+    {
+        plJsonObject* tProp = pl_json_member_by_index(tPropertyArray, i);
+        
+        char cName[50] = {0};
+        char cType[20] = {0};
+        char cColor[20] = {0};
+        
+        pl_json_string_member(tProp, "name", cName, 50);
+        pl_json_string_member(tProp, "type", cType, 20);
+        pl_json_string_member(tProp, "color", cColor, 20);
+        
+        strncpy(pGame->amProperties[i].cName, cName, 49);
+        pGame->amProperties[i].eType = m_string_to_type_enum(cType);
+        pGame->amProperties[i].eColor = m_string_to_color_enum(cColor);
+        pGame->amProperties[i].uPrice = pl_json_uint_member(tProp, "price", 0);
+        pGame->amProperties[i].uPosition = (uint8_t)pl_json_uint_member(tProp, "position", 0);
+        pGame->amProperties[i].uMortgageValue = pl_json_uint_member(tProp, "mortgage", 0);
+        pGame->amProperties[i].uHouseCost = pl_json_uint_member(tProp, "house_cost", 0);
+        
+        // read rent array
+        uint32_t uRentCount = 6;
+        int32_t aiRent[6] = {0}; // function requires int type 
+        pl_json_int_array_member(tProp, "rent", aiRent, &uRentCount);
+        
+        for(uint8_t j = 0; j < 6; j++)
+        {
+            pGame->amProperties[i].auRentWithHouses[j] = (uint32_t)aiRent[j];
+        }
+        
+        // set base rent and monopoly rent from rent array
+        pGame->amProperties[i].uRentBase = pGame->amProperties[i].auRentWithHouses[0];
+        pGame->amProperties[i].uRentMonopoly = pGame->amProperties[i].auRentWithHouses[0] * 2;
+        
+        // initialize default values
+        pGame->amProperties[i].uOwnerIndex = BANK_PLAYER_INDEX;
+        pGame->amProperties[i].bIsMortgaged = false;
+        pGame->amProperties[i].uHouses = 0;
+        pGame->amProperties[i].bHasHotel = false;
+    }
+
+    pl_unload_json(&tRootProperties);
+
+    // ==================== LOAD CHANCE CARDS ==================== //
+    FILE* jsonFileChance = fopen("../../monopoly/game_data/chance_cards.json", "r");
+    if(!jsonFileChance)
+    {
+        printf("Failed to open chance_cards.json\n");
+        free(pGame);
+        return NULL;
+    }
+
+    char jsonBufferChance[4000] = {0};
+    fread(jsonBufferChance, 1, 4000, jsonFileChance);
+    fclose(jsonFileChance);
+
+    plJsonObject* tRootChance = NULL;
+    pl_load_json(jsonBufferChance, &tRootChance);
+
+    uint32_t uChanceCount = 0;
+    plJsonObject* tChanceArray = pl_json_array_member(tRootChance, "chance_cards", &uChanceCount);
+
+    for(uint32_t i = 0; i < uChanceCount && i < 16; i++)
+    {
+        plJsonObject* tCard = pl_json_member_by_index(tChanceArray, i);
+        
+        pGame->amChanceCards[i].uCardID = pl_json_uint_member(tCard, "id", 0);
+        pl_json_string_member(tCard, "description", pGame->amChanceCards[i].cDescription, 199);
+    }
+
+    pl_unload_json(&tRootChance);
+
+    // ==================== LOAD COMMUNITY CHEST CARDS ==================== //
+    FILE* jsonFileCommChest = fopen("../../monopoly/game_data/community_chest_cards.json", "r");
+    if(!jsonFileCommChest)
+    {
+        printf("Failed to open community_chest_cards.json\n");
+        free(pGame);
+        return NULL;
+    }
+
+    char jsonBufferCommChest[4000] = {0};
+    fread(jsonBufferCommChest, 1, 4000, jsonFileCommChest);
+    fclose(jsonFileCommChest);
+
+    plJsonObject* tRootCommChest = NULL;
+    pl_load_json(jsonBufferCommChest, &tRootCommChest);
+
+    uint32_t uCommChestCount = 0;
+    plJsonObject* tCommChestArray = pl_json_array_member(tRootCommChest, "community_chest_cards", &uCommChestCount);
+
+    for(uint32_t i = 0; i < uCommChestCount && i < 16; i++)
+    {
+        plJsonObject* tCard = pl_json_member_by_index(tCommChestArray, i);
+        
+        pGame->amCommunityChestCards[i].uCardID = pl_json_uint_member(tCard, "id", 0);
+        pl_json_string_member(tCard, "description", pGame->amCommunityChestCards[i].cDescription, 199);
+    }
+
+    pl_unload_json(&tRootCommChest);
+
+    // ==================== INITIALIZE OTHER COMPONENTS ==================== //
+    
     // shuffle decks
     m_shuffle_deck(&pGame->tChanceDeck);
     m_shuffle_deck(&pGame->tCommunityChestDeck);

@@ -6,13 +6,14 @@
       "includePath": [
         "${workspaceFolder}/**",
         "${workspaceFolder}/src",
-        "${workspaceFolder}/extensions",
         "${workspaceFolder}/../pilotlight/editor",
         "${workspaceFolder}/../pilotlight/src",
         "${workspaceFolder}/../pilotlight/libs",
         "${workspaceFolder}/../pilotlight/extensions",
         "${workspaceFolder}/../pilotlight/dependencies/stb",
-        "${workspaceFolder}/../pilotlight/dependencies/cgltf"
+        "${workspaceFolder}/../pilotlight/dependencies/cgltf",
+        "${workspaceFolder}/../pilotlight/libs/"
+
       ],
       "defines": [
         "_DEBUG",

@@ -1,0 +1,20 @@
+{
+  "community_chest_cards": [
+    {"id": 0, "description": "Advance to Go (Collect $200)"},
+    {"id": 1, "description": "Bank error in your favor - Collect $200"},
+    {"id": 2, "description": "Doctor's fees - Pay $50"},
+    {"id": 3, "description": "From sale of stock you get $50"},
+    {"id": 4, "description": "Get Out of Jail Free"},
+    {"id": 5, "description": "Go to Jail"},
+    {"id": 6, "description": "Grand Opera Night - Collect $50 from every player"},
+    {"id": 7, "description": "Holiday Fund matures - Receive $100"},
+    {"id": 8, "description": "Income tax refund - Collect $20"},
+    {"id": 9, "description": "It is your birthday - Collect $10 from every player"},
+    {"id": 10, "description": "Life insurance matures - Collect $100"},
+    {"id": 11, "description": "Hospital fees - Pay $100"},
+    {"id": 12, "description": "School fees - Pay $150"},
+    {"id": 13, "description": "Receive $25 consultancy fee"},
+    {"id": 14, "description": "You are assessed for street repairs"},
+    {"id": 15, "description": "You have won second prize in a beauty contest - Collect $10"}
+  ]
+}

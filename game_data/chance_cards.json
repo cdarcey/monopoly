@@ -1,0 +1,20 @@
+{
+  "chance_cards": [
+    {"id": 0, "description": "Advance to Go (Collect $200)"},
+    {"id": 1, "description": "Advance to Illinois Avenue"},
+    {"id": 2, "description": "Advance to St. Charles Place"},
+    {"id": 3, "description": "Advance token to nearest Utility"},
+    {"id": 4, "description": "Advance token to nearest Railroad"},
+    {"id": 5, "description": "Bank pays you dividend of $50"},
+    {"id": 6, "description": "Get Out of Jail Free"},
+    {"id": 7, "description": "Go Back 3 Spaces"},
+    {"id": 8, "description": "Go to Jail"},
+    {"id": 9, "description": "Make general repairs on all your property"},
+    {"id": 10, "description": "Pay poor tax of $15"},
+    {"id": 11, "description": "Take a trip to Reading Railroad"},
+    {"id": 12, "description": "Take a walk on the Boardwalk"},
+    {"id": 13, "description": "You have been elected Chairman of the Board"},
+    {"id": 14, "description": "Your building loan matures - Collect $150"},
+    {"id": 15, "description": "You have won a crossword competition - Collect $100"}
+  ]
+}
