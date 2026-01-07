@@ -30,10 +30,10 @@
 
         4. Trading Phase
 
-            [ ] Design trade offer structure (properties, money, jail cards)
-            [ ] Create UI for selecting trade items
-            [ ] Implement trade acceptance/rejection
-            [ ] Handle trade validation (can't trade mortgaged properties)
+            [x] Design trade offer structure (properties, money, jail cards)
+            [x] Create UI for selecting trade items
+            [x] Implement trade acceptance/rejection
+            [x] Handle trade validation (can't trade mortgaged properties)
 
             Secondary Features
         5. Auction Phase
@@ -175,6 +175,7 @@ void   handle_keyboard_input(plAppData* ptAppData);
 void   load_texture(plAppData* ptAppData, const plTextureLoadConfig* ptConfig);
 plMat4 create_orthographic_projection(float fScreenWidth, float fScreenHeight);
 void   show_player_status(mGameData* pGameData);
+void   draw_dice_result(plAppData* ptAppData);
 void   init_property_bounds(mPropertyBounds* atBounds);
 void   draw_player_tokens(plAppData* ptAppData, plRenderEncoder* ptRender);
 void   draw_preroll_menu(plAppData* ptAppData);
@@ -183,6 +184,7 @@ void   draw_jail_menu(plAppData* ptAppData);
 void   draw_notification(plAppData* ptAppData);
 void   draw_property_management_menu(plAppData* ptAppData);
 void   draw_auction_menu(plAppData* ptAppData);
+void   draw_trade_menu(plAppData* ptAppData);
 
 
 //-----------------------------------------------------------------------------
@@ -598,6 +600,7 @@ pl_app_update(plAppData* ptAppData)
 
     // show ui windows
     show_player_status(ptAppData->pGameData);
+    draw_dice_result(ptAppData);
         
     // show phase-specific menus
     if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_pre_roll)
@@ -623,6 +626,10 @@ pl_app_update(plAppData* ptAppData)
     else if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_auction)
     {
         draw_auction_menu(ptAppData);
+    }
+    else if(ptAppData->tGameFlow.pfCurrentPhase == m_phase_trade)
+    {
+        draw_trade_menu(ptAppData);
     }
         
     // show notification popup (on top of everything)
@@ -1028,7 +1035,7 @@ draw_preroll_menu(plAppData* ptAppData)
     
     // position menu in top right
     gptUi->set_next_window_pos((plVec2){800.0f, 15.0f}, PL_UI_COND_ALWAYS);
-    gptUi->set_next_window_size((plVec2){400.0f, 250.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){400.0f, 230.0f}, PL_UI_COND_ALWAYS);
     
     char acWindowTitle[64];
     snprintf(acWindowTitle, sizeof(acWindowTitle), "Player %d's Turn", pGame->uCurrentPlayerIndex + 1);
@@ -1036,13 +1043,13 @@ draw_preroll_menu(plAppData* ptAppData)
     if(!gptUi->begin_window(acWindowTitle, NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR))
         return;
     
-    gptUi->layout_static(0.0f, 360, 1);
+    gptUi->layout_static(0.0f, 390, 1);
     gptUi->text("What would you like to do?");
     
     gptUi->vertical_spacing();
     
     // all buttons same size - 45px height, 360px width
-    gptUi->layout_static(45.0f, 360, 1);
+    gptUi->layout_static(45.0f, 390, 1);
     
     if(gptUi->button("Manage Properties"))
     {
@@ -1068,63 +1075,111 @@ draw_postroll_menu(plAppData* ptAppData)
     mGameData* pGame = ptAppData->pGameData;
     mPlayer* pPlayer = &pGame->amPlayers[pGame->uCurrentPlayerIndex];
     
-    // only show if waiting for input on property decision
-    if(!m_is_waiting_input(&ptAppData->tGameFlow))
-        return;
+    // check if we're on an unowned property
+    bool bOnUnownedProperty = false;
+    mProperty* pProp = NULL;
+    uint8_t uPropIdx = BANK_PLAYER_INDEX;
     
-    // get property info from game state
-    uint8_t uPropIdx = m_get_property_at_position(pGame, pPlayer->uPosition);
-    if(uPropIdx == BANK_PLAYER_INDEX)
-        return; // not on a property
-    
-    mProperty* pProp = &pGame->amProperties[uPropIdx];
-    
-    // only show menu if property is unowned
-    if(pProp->uOwnerIndex != BANK_PLAYER_INDEX)
-        return;
-    
-    // position menu in top right
-    gptUi->set_next_window_pos((plVec2){800.0f, 15.0f}, PL_UI_COND_ALWAYS);
-    gptUi->set_next_window_size((plVec2){400.0f, 250.0f}, PL_UI_COND_ALWAYS);
-    
-    if(!gptUi->begin_window("Property Available", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR))
-        return;
-    
-    gptUi->layout_static(0.0f, 360, 1);
-    gptUi->text("%s", pProp->cName);
-    
-    gptUi->vertical_spacing();
-    
-    gptUi->layout_static(0.0f, 360, 1);
-    gptUi->text("Price: $%d", pProp->uPrice);
-    
-    // show if player can afford it
-    bool bCanAfford = m_can_afford(pPlayer, pProp->uPrice);
-    if(bCanAfford)
+    if(m_get_square_type(pPlayer->uPosition) == SQUARE_PROPERTY)
     {
-        gptUi->text("You have: $%d", pPlayer->uMoney);
-    }
-    else
-    {
-        gptUi->color_text((plVec4){1.0f, 0.3f, 0.3f, 1.0f}, "You have: $%d (Cannot afford!)", pPlayer->uMoney);
+        uPropIdx = m_get_property_at_position(pGame, pPlayer->uPosition);
+        if(uPropIdx != BANK_PLAYER_INDEX)
+        {
+            pProp = &pGame->amProperties[uPropIdx];
+            if(pProp->uOwnerIndex == BANK_PLAYER_INDEX)
+            {
+                bOnUnownedProperty = true;
+            }
+        }
     }
     
-    gptUi->vertical_spacing();
-    
-    // buttons - 45px height
-    gptUi->layout_static(45.0f, 360, 1);
-    
-    if(bCanAfford && gptUi->button("Buy Property"))
+    // show property purchase menu if on unowned property
+    if(bOnUnownedProperty && m_is_waiting_input(&ptAppData->tGameFlow))
     {
-        m_set_input_int(&ptAppData->tGameFlow, 1);
+        gptUi->set_next_window_pos((plVec2){800.0f, 15.0f}, PL_UI_COND_ALWAYS);
+        gptUi->set_next_window_size((plVec2){400.0f, 350.0f}, PL_UI_COND_ALWAYS);
+        
+        if(!gptUi->begin_window("Property Available", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR))
+            return;
+        
+        gptUi->layout_static(0.0f, 390, 1);
+        gptUi->text("%s", pProp->cName);
+        
+        gptUi->vertical_spacing();
+        
+        gptUi->layout_static(0.0f, 390, 1);
+        gptUi->text("Price: $%d", pProp->uPrice);
+        gptUi->vertical_spacing();
+        
+        bool bCanAfford = m_can_afford(pPlayer, pProp->uPrice);
+        if(bCanAfford)
+        {
+            gptUi->text("You have: $%d", pPlayer->uMoney);
+        }
+        else
+        {
+            gptUi->color_text((plVec4){1.0f, 0.3f, 0.3f, 1.0f}, "You have: $%d (Cannot afford!)", pPlayer->uMoney);
+        }
+        
+        gptUi->vertical_spacing();
+        
+        gptUi->layout_static(45.0f, 390, 1);
+        
+        if(bCanAfford && gptUi->button("Buy Property"))
+        {
+            m_set_input_int(&ptAppData->tGameFlow, 1);
+        }
+        
+        if(gptUi->button("Pass (to Auction)"))
+        {
+            m_set_input_int(&ptAppData->tGameFlow, 2);
+        }
+        
+        if(gptUi->button("Manage Properties"))
+        {
+            m_set_input_int(&ptAppData->tGameFlow, 3);
+        }
+        
+        if(gptUi->button("Propose Trade"))
+        {
+            m_set_input_int(&ptAppData->tGameFlow, 4);
+        }
+        
+        gptUi->end_window();
     }
-    
-    if(gptUi->button("Pass (to Auction)"))
+    // show end-of-turn menu after forced actions
+    else if(m_is_waiting_input(&ptAppData->tGameFlow))
     {
-        m_set_input_int(&ptAppData->tGameFlow, 2);
+        gptUi->set_next_window_pos((plVec2){800.0f, 15.0f}, PL_UI_COND_ALWAYS);
+        gptUi->set_next_window_size((plVec2){400.0f, 240.0f}, PL_UI_COND_ALWAYS);
+        
+        if(!gptUi->begin_window("Turn Options", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR))
+            return;
+        
+        gptUi->layout_static(0.0f, 390, 1);
+        gptUi->text("Post roll actions");
+        
+        gptUi->vertical_spacing();
+        
+        gptUi->layout_static(45.0f, 390, 1);
+        
+        if(gptUi->button("Manage Properties"))
+        {
+            m_set_input_int(&ptAppData->tGameFlow, 1);
+        }
+        
+        if(gptUi->button("Propose Trade"))
+        {
+            m_set_input_int(&ptAppData->tGameFlow, 2);
+        }
+        
+        if(gptUi->button("End Turn"))
+        {
+            m_set_input_int(&ptAppData->tGameFlow, 3);
+        }
+        
+        gptUi->end_window();
     }
-    
-    gptUi->end_window();
 }
 
 void
@@ -1151,13 +1206,13 @@ draw_jail_menu(plAppData* ptAppData)
     if(!gptUi->begin_window(acWindowTitle, NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_SCROLLBAR))
         return;
     
-    gptUi->layout_static(0.0f, 360, 1);
+    gptUi->layout_static(0.0f, 390, 1);
     gptUi->text("Choose an option to get out:");
     
     gptUi->vertical_spacing();
     
     // buttons - 45px height
-    gptUi->layout_static(45.0f, 360, 1);
+    gptUi->layout_static(45.0f, 390, 1);
     
     // pay fine button
     bool bCanAffordFine = m_can_afford(pPlayer, pGame->uJailFine);
@@ -1235,17 +1290,15 @@ show_player_status(mGameData* pGameData)
     if(!gptUi->begin_window(acWindowTitle, NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE))
         return;
 
-    // show money
-    gptUi->layout_static(0.0f, 320, 1);
+    // show cash and net worth on same line
+    gptUi->layout_static(0.0f, 160, 2);
     gptUi->text("Cash: $%d", pPlayer->uMoney);
-
-    gptUi->layout_static(0.0f, 320, 1);
     gptUi->text("Net Worth: $%d", m_calculate_net_worth(pGameData, pGameData->uCurrentPlayerIndex));
-
+    
     gptUi->vertical_spacing();
 
-    // show position TODO: make this print the name of the square instead of an interger
-    gptUi->layout_static(0.0f, 320, 1);
+    // show position on single line
+    gptUi->layout_static(0.0f, 360, 1);
     gptUi->text("Position: %s", m_get_square_name(pGameData, pPlayer->uPosition));
 
     gptUi->vertical_spacing();
@@ -1254,7 +1307,7 @@ show_player_status(mGameData* pGameData)
     gptUi->vertical_spacing();
 
     // properties owned (collapsible) 
-    // TODO: reset collapsed status so that menu auto collapses at the start of player turn 
+    gptUi->layout_static(0.0f, 360, 1);
     if(gptUi->begin_collapsing_header("Properties Owned", 0))
     {
         gptUi->layout_static(0.0f, 310, 1);
@@ -1270,7 +1323,7 @@ show_player_status(mGameData* pGameData)
             
             if(pProp->bIsMortgaged)
             {
-                gptUi->color_text((plVec4){1.0f, 0.5f, 0.0f, 1.0f}, "  %s [M]", pProp->cName);
+                gptUi->color_text((plVec4){1.0f, 0.5f, 0.5f, 1.0f}, "  %s [M]", pProp->cName);
             }
             else
             {
@@ -1286,6 +1339,28 @@ show_player_status(mGameData* pGameData)
     gptUi->end_window();
 }
 
+void 
+draw_dice_result(plAppData* ptAppData)
+{
+    // only show if in post-roll phase
+    if(ptAppData->tGameFlow.pfCurrentPhase != m_phase_post_roll)
+        return;
+
+    // position right above player status window
+    gptUi->set_next_window_pos((plVec2){800.0f, 390.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){400.0f, 60.0f}, PL_UI_COND_ALWAYS);
+
+    if(!gptUi->begin_window("Dice Result", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE | PL_UI_WINDOW_FLAGS_NO_TITLE_BAR))
+        return;
+
+    gptUi->layout_static(0.0f, 360, 1);
+    gptUi->text("Dice: %d + %d = %d", 
+        ptAppData->pGameData->tDice.uDie1, 
+        ptAppData->pGameData->tDice.uDie2, 
+        ptAppData->pGameData->tDice.uDie1 + ptAppData->pGameData->tDice.uDie2);
+
+    gptUi->end_window();
+}
 void
 draw_property_management_menu(plAppData* ptAppData)
 {
@@ -1296,12 +1371,12 @@ draw_property_management_menu(plAppData* ptAppData)
         return;
     
     gptUi->set_next_window_pos((plVec2){800.0f, 15.0f}, PL_UI_COND_ALWAYS);
-    gptUi->set_next_window_size((plVec2){400.0f, 600.0f}, PL_UI_COND_ALWAYS); // TODO: find correct size for minimal scrolling 
+    gptUi->set_next_window_size((plVec2){400.0f, 400.0f}, PL_UI_COND_ALWAYS);
     
     if(!gptUi->begin_window("Property Management", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE))
         return;
     
-    gptUi->layout_static(0.0f, 360, 1);
+    gptUi->layout_static(0.0f, 390, 1);
     gptUi->text("Cash: $%d", pPlayer->uMoney);
     
     gptUi->vertical_spacing();
@@ -1310,7 +1385,7 @@ draw_property_management_menu(plAppData* ptAppData)
     
     if(pPlayer->uPropertyCount == 0)
     {
-        gptUi->layout_static(0.0f, 360, 1);
+        gptUi->layout_static(0.0f, 390, 1);
         gptUi->text("No properties owned");
     }
     else
@@ -1324,7 +1399,7 @@ draw_property_management_menu(plAppData* ptAppData)
             mProperty* pProp = &pGame->amProperties[uGlobalPropIdx];
             
             // property name with status
-            gptUi->layout_static(0.0f, 360, 1);
+            gptUi->layout_static(0.0f, 390, 1);
             char acPropStatus[128];
             if(pProp->bHasHotel)
             {
@@ -1411,7 +1486,7 @@ draw_property_management_menu(plAppData* ptAppData)
             }
             
             // mortgage/unmortgage button (all property types)
-            gptUi->layout_static(30.0f, 360, 1);
+            gptUi->layout_static(30.0f, 390, 1);
             if(pProp->bIsMortgaged)
             {
                 uint32_t uCost = pProp->uMortgageValue + (pProp->uMortgageValue / 10);
@@ -1448,7 +1523,7 @@ draw_property_management_menu(plAppData* ptAppData)
     }
     
     // exit button
-    gptUi->layout_static(45.0f, 360, 1);
+    gptUi->layout_static(45.0f, 390, 1);
     if(gptUi->button("Back to Turn Menu"))
     {
         m_set_input_int(&ptAppData->tGameFlow, 0);
@@ -1574,6 +1649,281 @@ draw_auction_menu(plAppData* ptAppData)
     {
         m_set_input_int(&ptAppData->tGameFlow, 0);
         acBidInput[0] = '\0';
+    }
+    
+    gptUi->end_window();
+}
+
+void
+draw_trade_menu(plAppData* ptAppData)
+{
+    mGameData* pGame = ptAppData->pGameData;
+    
+    if(!pGame->bShowTradeMenu)
+        return;
+    
+    mTradeData* pTrade = (mTradeData*)ptAppData->tGameFlow.pCurrentPhaseData;
+    mPlayer* pCurrentPlayer = &pGame->amPlayers[pGame->uCurrentPlayerIndex];
+    
+    // centered window
+    gptUi->set_next_window_pos((plVec2){300.0f, 150.0f}, PL_UI_COND_ALWAYS);
+    gptUi->set_next_window_size((plVec2){680.0f, 500.0f}, PL_UI_COND_ALWAYS);
+    
+    if(!gptUi->begin_window("Trade", NULL, PL_UI_WINDOW_FLAGS_NO_RESIZE | PL_UI_WINDOW_FLAGS_NO_COLLAPSE | PL_UI_WINDOW_FLAGS_NO_MOVE))
+        return;
+    
+    switch(pTrade->eStep)
+    {
+        case TRADE_STEP_SELECT_PLAYER:
+        {
+            gptUi->layout_static(0.0f, 640, 1);
+            gptUi->text("Select a player to trade with:");
+            gptUi->vertical_spacing();
+            
+            gptUi->layout_static(45.0f, 640, 1);
+            
+            for(uint8_t i = 0; i < pGame->uPlayerCount; i++)
+            {
+                if(i == pGame->uCurrentPlayerIndex)
+                    continue; // skip current player
+                
+                if(pGame->amPlayers[i].bIsBankrupt)
+                    continue; // skip bankrupt players
+                
+                char acButtonLabel[64];
+                snprintf(acButtonLabel, sizeof(acButtonLabel), "Player %d ($%d)", i + 1, pGame->amPlayers[i].uMoney);
+                
+                if(gptUi->button(acButtonLabel))
+                {
+                    m_set_input_int(&ptAppData->tGameFlow, i + 1);
+                }
+            }
+            
+            gptUi->vertical_spacing();
+            
+            if(gptUi->button("Cancel"))
+            {
+                m_set_input_int(&ptAppData->tGameFlow, 0);
+            }
+            
+            break;
+        }
+        
+        case TRADE_STEP_BUILD_OFFER:
+        {
+            mPlayer* pTargetPlayer = &pGame->amPlayers[pTrade->uTargetPlayer];
+            
+            gptUi->layout_static(0.0f, 640, 1);
+            gptUi->text("Trading with Player %d", pTrade->uTargetPlayer + 1);
+            gptUi->separator();
+            gptUi->vertical_spacing();
+            
+            // two column layout: your offer | their properties (you want)
+            gptUi->layout_static(0.0f, 310, 2);
+            
+            // LEFT COLUMN: Your offer
+            gptUi->text("=== You Offer ===");
+            
+            // RIGHT COLUMN: What you want
+            gptUi->text("=== You Request ===");
+            
+            gptUi->layout_static(0.0f, 310, 2);
+            
+            // LEFT: Money offer controls
+            gptUi->text("Money: $%d", pTrade->uOfferedMoney);
+            
+            // RIGHT: Money request controls
+            gptUi->text("Money: $%d", pTrade->uRequestedMoney);
+            
+            gptUi->layout_static(30.0f, 150, 4);
+            
+            // LEFT: Money offer buttons
+            if(gptUi->button("-$100##offer"))
+            {
+                m_set_input_int(&ptAppData->tGameFlow, 300);
+            }
+            
+            if(gptUi->button("+$100##offer"))
+            {
+                m_set_input_int(&ptAppData->tGameFlow, 400);
+            }
+            
+            // RIGHT: Money request buttons
+            if(gptUi->button("-$100##request"))
+            {
+                m_set_input_int(&ptAppData->tGameFlow, 500);
+            }
+            
+            if(gptUi->button("+$100##request"))
+            {
+                m_set_input_int(&ptAppData->tGameFlow, 600);
+            }
+            
+            gptUi->vertical_spacing();
+            
+            gptUi->layout_static(0.0f, 310, 2);
+            
+            // LEFT: Your properties
+            gptUi->text("--- Your Properties ---");
+            
+            // RIGHT: Their properties
+            gptUi->text("--- Their Properties ---");
+            
+            // Property lists
+            gptUi->layout_static(30.0f, 310, 2);
+            
+            // LEFT COLUMN: Show current player's properties
+            for(uint8_t i = 0; i < pCurrentPlayer->uPropertyCount; i++)
+            {
+                uint8_t uPropIdx = pCurrentPlayer->auPropertiesOwned[i];
+                if(uPropIdx == BANK_PLAYER_INDEX)
+                    break;
+                
+                mProperty* pProp = &pGame->amProperties[uPropIdx];
+                
+                // check if in offer
+                bool bInOffer = false;
+                for(uint8_t j = 0; j < pTrade->uOfferedPropertyCount; j++)
+                {
+                    if(pTrade->auOfferedProperties[j] == uPropIdx)
+                    {
+                        bInOffer = true;
+                        break;
+                    }
+                }
+                
+                char acLabel[64];
+                if(bInOffer)
+                    snprintf(acLabel, sizeof(acLabel), "[X] %s", pProp->cName);
+                else
+                    snprintf(acLabel, sizeof(acLabel), "[ ] %s", pProp->cName);
+                
+                if(gptUi->button(acLabel))
+                {
+                    m_set_input_int(&ptAppData->tGameFlow, 100 + i);
+                }
+            }
+            
+            // RIGHT COLUMN: Show target player's properties
+            for(uint8_t i = 0; i < pTargetPlayer->uPropertyCount; i++)
+            {
+                uint8_t uPropIdx = pTargetPlayer->auPropertiesOwned[i];
+                if(uPropIdx == BANK_PLAYER_INDEX)
+                    break;
+                
+                mProperty* pProp = &pGame->amProperties[uPropIdx];
+                
+                // check if in request
+                bool bInRequest = false;
+                for(uint8_t j = 0; j < pTrade->uRequestedPropertyCount; j++)
+                {
+                    if(pTrade->auRequestedProperties[j] == uPropIdx)
+                    {
+                        bInRequest = true;
+                        break;
+                    }
+                }
+                
+                char acLabel[64];
+                if(bInRequest)
+                    snprintf(acLabel, sizeof(acLabel), "[X] %s##req", pProp->cName);
+                else
+                    snprintf(acLabel, sizeof(acLabel), "[ ] %s##req", pProp->cName);
+                
+                if(gptUi->button(acLabel))
+                {
+                    m_set_input_int(&ptAppData->tGameFlow, 200 + i);
+                }
+            }
+            
+            gptUi->vertical_spacing();
+            
+            gptUi->layout_static(45.0f, 310, 2);
+            
+            if(gptUi->button("Send Offer"))
+            {
+                m_set_input_int(&ptAppData->tGameFlow, 1);
+            }
+            
+            if(gptUi->button("Back"))
+            {
+                m_set_input_int(&ptAppData->tGameFlow, 0);
+            }
+            
+            break;
+        }
+        
+        case TRADE_STEP_AWAITING_RESPONSE:
+        {
+            mPlayer* pTargetPlayer = &pGame->amPlayers[pTrade->uTargetPlayer];
+            
+            gptUi->layout_static(0.0f, 640, 1);
+            gptUi->text("Trade Offer from Player %d to Player %d", 
+                pGame->uCurrentPlayerIndex + 1, 
+                pTrade->uTargetPlayer + 1);
+            gptUi->separator();
+            gptUi->vertical_spacing();
+            
+            // Show what Player 1 offers
+            gptUi->layout_static(0.0f, 640, 1);
+            gptUi->text("Player %d offers:", pGame->uCurrentPlayerIndex + 1);
+            
+            if(pTrade->uOfferedMoney > 0)
+            {
+                gptUi->text("  $%d", pTrade->uOfferedMoney);
+            }
+            
+            for(uint8_t i = 0; i < pTrade->uOfferedPropertyCount; i++)
+            {
+                mProperty* pProp = &pGame->amProperties[pTrade->auOfferedProperties[i]];
+                gptUi->text("  %s", pProp->cName);
+            }
+            
+            if(pTrade->uOfferedPropertyCount == 0 && pTrade->uOfferedMoney == 0)
+            {
+                gptUi->text("  (Nothing)");
+            }
+            
+            gptUi->vertical_spacing();
+            
+            // Show what Player 1 wants
+            gptUi->layout_static(0.0f, 640, 1);
+            gptUi->text("Player %d requests:", pGame->uCurrentPlayerIndex + 1);
+            
+            if(pTrade->uRequestedMoney > 0)
+            {
+                gptUi->text("  $%d", pTrade->uRequestedMoney);
+            }
+            
+            for(uint8_t i = 0; i < pTrade->uRequestedPropertyCount; i++)
+            {
+                mProperty* pProp = &pGame->amProperties[pTrade->auRequestedProperties[i]];
+                gptUi->text("  %s", pProp->cName);
+            }
+            
+            if(pTrade->uRequestedPropertyCount == 0 && pTrade->uRequestedMoney == 0)
+            {
+                gptUi->text("  (Nothing)");
+            }
+            
+            gptUi->vertical_spacing();
+            gptUi->separator();
+            gptUi->vertical_spacing();
+            
+            gptUi->layout_static(45.0f, 310, 2);
+            
+            if(gptUi->button("Accept Trade"))
+            {
+                m_set_input_int(&ptAppData->tGameFlow, 1);
+            }
+            
+            if(gptUi->button("Reject Trade"))
+            {
+                m_set_input_int(&ptAppData->tGameFlow, 2);
+            }
+            
+            break;
+        }
     }
     
     gptUi->end_window();

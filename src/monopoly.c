@@ -675,7 +675,6 @@ m_unmortgage_property(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerI
 
 // ==================== NOTIFICATIONS ==================== //
 
-// TODO: is this worth using or should it be more explict passing a string that is formatted before function call
 void
 m_set_notification(mGameData* pGame, const char* pcFormat, ...) 
 {
@@ -1351,12 +1350,11 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
         pPostRoll->bMovedPlayer = true;
         pPostRoll->eSquareType = m_get_square_type(pPlayer->uPosition);
         
-        if(pPostRoll->eSquareType == SQUARE_PROPERTY) // if property square, find which property
+        if(pPostRoll->eSquareType == SQUARE_PROPERTY)
         {
             pPostRoll->uPropertyIndex = m_get_property_at_position(pGame, pPlayer->uPosition);
         }
         
-        // don't advance yet - need to handle landing
         return PHASE_RUNNING;
     }
     
@@ -1391,7 +1389,7 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                     int iChoice = pFlow->iInputValue;
                     m_clear_input(pFlow);
                     
-                    if(iChoice == 1)
+                    if(iChoice == 1) // buy property
                     {
                         if(m_buy_property(pGame, pPostRoll->uPropertyIndex, pGame->uCurrentPlayerIndex))
                         {
@@ -1401,18 +1399,37 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                         {
                             m_set_notification(pGame, "Cannot afford %s", pProp->cName);
                         }
+                        pPostRoll->bHandledLanding = true;
+                        m_clear_input(pFlow);
+                        return PHASE_RUNNING;
                     }
-                    else
+                    else if(iChoice == 2) // pass - start auction
                     {
-                        // start auction
                         mAuctionData* pAuction = malloc(sizeof(mAuctionData));
                         memset(pAuction, 0, sizeof(mAuctionData));
                         
                         pAuction->ePropertyIndex = pPostRoll->uPropertyIndex;
                         
                         m_push_phase(pFlow, m_phase_auction, pAuction);
+                        pPostRoll->bHandledLanding = true;
                     }
-                    break;
+                    else if(iChoice == 3) // manage properties
+                    {
+                        mPropertyManagementData* pPropMgmt = malloc(sizeof(mPropertyManagementData));
+                        memset(pPropMgmt, 0, sizeof(mPropertyManagementData));
+                        m_push_phase(pFlow, m_phase_property_management, pPropMgmt);
+                        // DON'T set bHandledLanding - return to property decision after managing
+                    }
+                    else if(iChoice == 4) // propose trade (from property menu)
+                    {
+                        mTradeData* pTradeData = malloc(sizeof(mTradeData));
+                        memset(pTradeData, 0, sizeof(mTradeData));
+                        pTradeData->eStep = TRADE_STEP_SELECT_PLAYER;
+                        m_push_phase(pFlow, m_phase_trade, pTradeData);
+                        // dont set bHandledLanding - return to property decision after trade
+                    }
+                    
+                    return PHASE_RUNNING;
                 }
                 // owned by current player
                 else if(pProp->uOwnerIndex == pGame->uCurrentPlayerIndex)
@@ -1436,8 +1453,13 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                     }
                     else
                     {
-                        m_set_notification(pGame, "BANKRUPT! Cannot afford $%d rent", uRent);
-                        // TODO: bankruptcy phase
+                        // trigger bankruptcy phase
+                        mBankruptcyData* pBankruptcyData = malloc(sizeof(mBankruptcyData));
+                        memset(pBankruptcyData, 0, sizeof(mBankruptcyData));
+                        pBankruptcyData->eBankruptPlayer = pGame->uCurrentPlayerIndex;
+                        pBankruptcyData->uCreditor = pProp->uOwnerIndex;
+                        pBankruptcyData->uAmountOwed = uRent;
+                        m_push_phase(pFlow, m_phase_bankruptcy, pBankruptcyData);
                     }
                     
                     pPostRoll->bHandledLanding = true;
@@ -1454,10 +1476,13 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                 }
                 else
                 {
-                    pPlayer->bIsBankrupt = true;
-                    pGame->uActivePlayers--;
-                    m_set_notification(pGame, "BANKRUPT! Cannot afford $%d tax", INCOME_TAX);
-                    // TODO: bankruptcy phase
+                    // trigger bankruptcy phase
+                    mBankruptcyData* pBankruptcyData = malloc(sizeof(mBankruptcyData));
+                    memset(pBankruptcyData, 0, sizeof(mBankruptcyData));
+                    pBankruptcyData->eBankruptPlayer = pGame->uCurrentPlayerIndex;
+                    pBankruptcyData->uCreditor = BANK_PLAYER_INDEX;
+                    pBankruptcyData->uAmountOwed = INCOME_TAX;
+                    m_push_phase(pFlow, m_phase_bankruptcy, pBankruptcyData);
                 }
                 pPostRoll->bHandledLanding = true;
                 break;
@@ -1472,10 +1497,13 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                 }
                 else
                 {
-                    pPlayer->bIsBankrupt = true;
-                    pGame->uActivePlayers--;
-                    m_set_notification(pGame, "BANKRUPT! Cannot afford $%d tax", LUXURY_TAX);
-                    // TODO:: bankruptcy phase
+                    // trigger bankruptcy phase
+                    mBankruptcyData* pBankruptcyData = malloc(sizeof(mBankruptcyData));
+                    memset(pBankruptcyData, 0, sizeof(mBankruptcyData));
+                    pBankruptcyData->eBankruptPlayer = pGame->uCurrentPlayerIndex;
+                    pBankruptcyData->uCreditor = BANK_PLAYER_INDEX;
+                    pBankruptcyData->uAmountOwed = LUXURY_TAX;
+                    m_push_phase(pFlow, m_phase_bankruptcy, pBankruptcyData);
                 }
                 pPostRoll->bHandledLanding = true;
                 break;
@@ -1545,6 +1573,33 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
             return PHASE_RUNNING;
     }
     
+    // after handling landing, show end-of-turn options
+    if(!pFlow->bInputReceived)
+        return PHASE_RUNNING;
+
+    int iChoice = pFlow->iInputValue;
+    m_clear_input(pFlow);
+
+    if(iChoice == 1) // manage properties
+    {
+        mPropertyManagementData* pPropMgmt = malloc(sizeof(mPropertyManagementData));
+        memset(pPropMgmt, 0, sizeof(mPropertyManagementData));
+        m_push_phase(pFlow, m_phase_property_management, pPropMgmt);
+        return PHASE_RUNNING;
+    }
+    else if(iChoice == 2) // propose trade (end-of-turn menu)
+    {
+        mTradeData* pTradeData = malloc(sizeof(mTradeData));
+        memset(pTradeData, 0, sizeof(mTradeData));
+        pTradeData->eStep = TRADE_STEP_SELECT_PLAYER;
+        m_push_phase(pFlow, m_phase_trade, pTradeData);
+        return PHASE_RUNNING;
+    }
+    else if(iChoice == 3) // end turn
+    {
+        // fall through to next player turn logic below
+    }
+    
     m_next_player_turn(pGame);
     
     mPreRollData* pNextPreRoll = malloc(sizeof(mPreRollData));
@@ -1553,6 +1608,7 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
     free(pPostRoll);
     pFlow->pCurrentPhaseData = pNextPreRoll;
     pFlow->pfCurrentPhase = m_phase_pre_roll;
+    pGame->bShowPrerollMenu = true;
     m_clear_input(pFlow);
     
     return PHASE_RUNNING;
@@ -2174,4 +2230,302 @@ m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
         // TODO: mark player as bankrupt
         // TODO: check if game is over
 
+}
+
+ePhaseResult
+m_phase_trade(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
+{
+    mTradeData* pTrade = (mTradeData*)pPhaseData;
+    mGameData* pGame = pFlow->pGame;
+    mPlayer* pCurrentPlayer = &pGame->amPlayers[pGame->uCurrentPlayerIndex];
+    
+    // show menu once per step
+    if(!pTrade->bShowedMenu)
+    {
+        pGame->bShowTradeMenu = true;
+        pTrade->bShowedMenu = true;
+        return PHASE_RUNNING;
+    }
+    
+    if(!pFlow->bInputReceived)
+        return PHASE_RUNNING;
+    
+    int iChoice = pFlow->iInputValue;
+    m_clear_input(pFlow);
+    
+    switch(pTrade->eStep)
+    {
+        case TRADE_STEP_SELECT_PLAYER:
+        {
+            if(iChoice == 0) // cancel
+            {
+                pGame->bShowTradeMenu = false;
+                m_pop_phase(pFlow);
+                return PHASE_RUNNING;
+            }
+            
+            // player selection (1-6 maps to player indices 0-5)
+            if(iChoice >= 1 && iChoice <= 6)
+            {
+                uint8_t uSelectedPlayer = (uint8_t)(iChoice - 1);
+                
+                // validate selection
+                if(uSelectedPlayer == pGame->uCurrentPlayerIndex)
+                {
+                    m_set_notification(pGame, "Cannot trade with yourself");
+                    pTrade->bShowedMenu = false;
+                    return PHASE_RUNNING;
+                }
+                
+                if(uSelectedPlayer >= pGame->uPlayerCount || pGame->amPlayers[uSelectedPlayer].bIsBankrupt)
+                {
+                    m_set_notification(pGame, "Invalid player selection");
+                    pTrade->bShowedMenu = false;
+                    return PHASE_RUNNING;
+                }
+                
+                pTrade->uTargetPlayer = uSelectedPlayer;
+                pTrade->eStep = TRADE_STEP_BUILD_OFFER;
+                pTrade->bShowedMenu = false;
+                return PHASE_RUNNING;
+            }
+            break;
+        }
+        
+        case TRADE_STEP_BUILD_OFFER:
+        {
+            if(iChoice == 0) // back to player selection
+            {
+                pTrade->eStep = TRADE_STEP_SELECT_PLAYER;
+                pTrade->uOfferedPropertyCount = 0;
+                pTrade->uRequestedPropertyCount = 0;
+                pTrade->uOfferedMoney = 0;
+                pTrade->uRequestedMoney = 0;
+                pTrade->bShowedMenu = false;
+                return PHASE_RUNNING;
+            }
+            
+            if(iChoice == 1) // send offer
+            {
+                // validate offer isn't empty
+                if(pTrade->uOfferedPropertyCount == 0 && pTrade->uOfferedMoney == 0 &&
+                   pTrade->uRequestedPropertyCount == 0 && pTrade->uRequestedMoney == 0)
+                {
+                    m_set_notification(pGame, "Trade cannot be empty");
+                    pTrade->bShowedMenu = false;
+                    return PHASE_RUNNING;
+                }
+                
+                pTrade->eStep = TRADE_STEP_AWAITING_RESPONSE;
+                pTrade->bShowedMenu = false;
+                m_set_notification(pGame, "Trade offer sent to Player %d", pTrade->uTargetPlayer + 1);
+                return PHASE_RUNNING;
+            }
+            
+            // toggle offered properties (100-199)
+            if(iChoice >= 100 && iChoice < 200)
+            {
+                uint8_t uPropArrayIdx = (uint8_t)(iChoice - 100);
+                if(uPropArrayIdx < pCurrentPlayer->uPropertyCount)
+                {
+                    uint8_t uPropIdx = pCurrentPlayer->auPropertiesOwned[uPropArrayIdx];
+                    
+                    // check if already in offer
+                    bool bFound = false;
+                    uint8_t uFoundIdx = 0;
+                    for(uint8_t i = 0; i < pTrade->uOfferedPropertyCount; i++)
+                    {
+                        if(pTrade->auOfferedProperties[i] == uPropIdx)
+                        {
+                            bFound = true;
+                            uFoundIdx = i;
+                            break;
+                        }
+                    }
+                    
+                    if(bFound)
+                    {
+                        // remove from offer
+                        for(uint8_t i = uFoundIdx; i < pTrade->uOfferedPropertyCount - 1; i++)
+                        {
+                            pTrade->auOfferedProperties[i] = pTrade->auOfferedProperties[i + 1];
+                        }
+                        pTrade->uOfferedPropertyCount--;
+                    }
+                    else
+                    {
+                        // add to offer
+                        if(pTrade->uOfferedPropertyCount < PROPERTY_ARRAY_SIZE)
+                        {
+                            pTrade->auOfferedProperties[pTrade->uOfferedPropertyCount] = uPropIdx;
+                            pTrade->uOfferedPropertyCount++;
+                        }
+                    }
+                }
+                pTrade->bShowedMenu = false;
+                return PHASE_RUNNING;
+            }
+            
+            // toggle requested properties (200-299)
+            if(iChoice >= 200 && iChoice < 300)
+            {
+                uint8_t uPropArrayIdx = (uint8_t)(iChoice - 200);
+                mPlayer* pTargetPlayer = &pGame->amPlayers[pTrade->uTargetPlayer];
+                
+                if(uPropArrayIdx < pTargetPlayer->uPropertyCount)
+                {
+                    uint8_t uPropIdx = pTargetPlayer->auPropertiesOwned[uPropArrayIdx];
+                    
+                    // check if already in request
+                    bool bFound = false;
+                    uint8_t uFoundIdx = 0;
+                    for(uint8_t i = 0; i < pTrade->uRequestedPropertyCount; i++)
+                    {
+                        if(pTrade->auRequestedProperties[i] == uPropIdx)
+                        {
+                            bFound = true;
+                            uFoundIdx = i;
+                            break;
+                        }
+                    }
+                    
+                    if(bFound)
+                    {
+                        // remove from request
+                        for(uint8_t i = uFoundIdx; i < pTrade->uRequestedPropertyCount - 1; i++)
+                        {
+                            pTrade->auRequestedProperties[i] = pTrade->auRequestedProperties[i + 1];
+                        }
+                        pTrade->uRequestedPropertyCount--;
+                    }
+                    else
+                    {
+                        // add to request
+                        if(pTrade->uRequestedPropertyCount < PROPERTY_ARRAY_SIZE)
+                        {
+                            pTrade->auRequestedProperties[pTrade->uRequestedPropertyCount] = uPropIdx;
+                            pTrade->uRequestedPropertyCount++;
+                        }
+                    }
+                }
+                pTrade->bShowedMenu = false;
+                return PHASE_RUNNING;
+            }
+            
+            // adjust offered money (300-399: subtract $100, 400-499: add $100)
+            if(iChoice >= 300 && iChoice < 400)
+            {
+                if(pTrade->uOfferedMoney >= 100)
+                    pTrade->uOfferedMoney -= 100;
+                pTrade->bShowedMenu = false;
+                return PHASE_RUNNING;
+            }
+            
+            if(iChoice >= 400 && iChoice < 500)
+            {
+                if(pTrade->uOfferedMoney + 100 <= pCurrentPlayer->uMoney)
+                    pTrade->uOfferedMoney += 100;
+                pTrade->bShowedMenu = false;
+                return PHASE_RUNNING;
+            }
+            
+            // adjust requested money (500-599: subtract $100, 600-699: add $100)
+            if(iChoice >= 500 && iChoice < 600)
+            {
+                if(pTrade->uRequestedMoney >= 100)
+                    pTrade->uRequestedMoney -= 100;
+                pTrade->bShowedMenu = false;
+                return PHASE_RUNNING;
+            }
+            
+            if(iChoice >= 600 && iChoice < 700)
+            {
+                mPlayer* pTargetPlayer = &pGame->amPlayers[pTrade->uTargetPlayer];
+                if(pTrade->uRequestedMoney + 100 <= pTargetPlayer->uMoney)
+                    pTrade->uRequestedMoney += 100;
+                pTrade->bShowedMenu = false;
+                return PHASE_RUNNING;
+            }
+            
+            break;
+        }
+        
+        case TRADE_STEP_AWAITING_RESPONSE:
+        {
+            if(iChoice == 1) // accept
+            {
+                // execute trade
+                mPlayer* pTargetPlayer = &pGame->amPlayers[pTrade->uTargetPlayer];
+                
+                // transfer offered properties
+                for(uint8_t i = 0; i < pTrade->uOfferedPropertyCount; i++)
+                {
+                    uint8_t uPropIdx = pTrade->auOfferedProperties[i];
+                    m_transfer_property(pGame, uPropIdx, pGame->uCurrentPlayerIndex, pTrade->uTargetPlayer);
+                }
+                
+                // transfer requested properties
+                for(uint8_t i = 0; i < pTrade->uRequestedPropertyCount; i++)
+                {
+                    uint8_t uPropIdx = pTrade->auRequestedProperties[i];
+                    m_transfer_property(pGame, uPropIdx, pTrade->uTargetPlayer, pGame->uCurrentPlayerIndex);
+                }
+                
+                // transfer money
+                pCurrentPlayer->uMoney -= pTrade->uOfferedMoney;
+                pTargetPlayer->uMoney += pTrade->uOfferedMoney;
+                
+                pCurrentPlayer->uMoney += pTrade->uRequestedMoney;
+                pTargetPlayer->uMoney -= pTrade->uRequestedMoney;
+                
+                m_set_notification(pGame, "Trade completed!");
+                
+                pGame->bShowTradeMenu = false;
+                m_pop_phase(pFlow);
+                return PHASE_RUNNING;
+            }
+            else if(iChoice == 2) // reject
+            {
+                m_set_notification(pGame, "Trade rejected");
+                pGame->bShowTradeMenu = false;
+                m_pop_phase(pFlow);
+                return PHASE_RUNNING;
+            }
+            break;
+        }
+    }
+    
+    pTrade->bShowedMenu = false;
+    return PHASE_RUNNING;
+}
+
+void
+m_transfer_property(mGameData* pGame, uint8_t uPropIdx, uint8_t uFromPlayer, uint8_t uToPlayer)
+{
+    mProperty* pProp = &pGame->amProperties[uPropIdx];
+    mPlayer* pFrom = &pGame->amPlayers[uFromPlayer];
+    mPlayer* pTo = &pGame->amPlayers[uToPlayer];
+    
+    // remove from old owner
+    for(uint8_t i = 0; i < pFrom->uPropertyCount; i++)
+    {
+        if(pFrom->auPropertiesOwned[i] == uPropIdx)
+        {
+            // shift remaining properties down
+            for(uint8_t j = i; j < pFrom->uPropertyCount - 1; j++)
+            {
+                pFrom->auPropertiesOwned[j] = pFrom->auPropertiesOwned[j + 1];
+            }
+            pFrom->auPropertiesOwned[pFrom->uPropertyCount - 1] = BANK_PLAYER_INDEX;
+            pFrom->uPropertyCount--;
+            break;
+        }
+    }
+    
+    // add to new owner
+    pTo->auPropertiesOwned[pTo->uPropertyCount] = uPropIdx;
+    pTo->uPropertyCount++;
+    
+    // update property ownership
+    pProp->uOwnerIndex = uToPlayer;
 }

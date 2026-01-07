@@ -267,10 +267,24 @@ typedef struct _mJailData
 } mJailData;
 
 // trade phase data 
+typedef enum _eTradeStep
+{
+    TRADE_STEP_SELECT_PLAYER,
+    TRADE_STEP_BUILD_OFFER,
+    TRADE_STEP_AWAITING_RESPONSE
+} eTradeStep;
+
 typedef struct _mTradeData
 {
-    ePlayerArrayIndex eInitiatingPlayer;
-    uint8_t           uTargetPlayer;      // Can be 0-5 or 255 for "none"
+    eTradeStep eStep;
+    uint8_t    uTargetPlayer;                             // who we're trading with
+    uint8_t    auOfferedProperties[PROPERTY_ARRAY_SIZE];  // properties we're offering
+    uint8_t    uOfferedPropertyCount;
+    uint32_t   uOfferedMoney;
+    uint8_t    auRequestedProperties[PROPERTY_ARRAY_SIZE]; // properties we want
+    uint8_t    uRequestedPropertyCount;
+    uint32_t   uRequestedMoney;
+    bool       bShowedMenu;
 } mTradeData;
 
 // auction phase data
@@ -324,6 +338,7 @@ typedef struct _mGameData
     bool bShowPropertyMenu;
     bool bShowJailMenu;
     bool bShowAuctionMenu;
+    bool bShowTradeMenu;
     
     // notification system
     char  acNotification[256];
@@ -425,7 +440,8 @@ ePhaseResult m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 ePhaseResult m_phase_property_management(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 ePhaseResult m_phase_auction(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 ePhaseResult m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
-// TODO: ePhaseResult m_phase_trade(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
+ePhaseResult m_phase_trade(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 
-
+// helper for trading 
+void m_transfer_property(mGameData* pGame, uint8_t uPropIdx, uint8_t uFromPlayer, uint8_t uToPlayer);
 #endif // MONOPOLY_H
