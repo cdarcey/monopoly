@@ -418,8 +418,8 @@ void m_set_notification(mGameData* pGame, const char* pcFormat, ...);
 void m_clear_notification(mGameData* pGame);
 
 // card execution
-void    m_execute_chance_card(mGameData* pGame, uint8_t uCardIdx);
-void    m_execute_community_chest_card(mGameData* pGame, uint8_t uCardIdx);
+void    m_execute_chance_card(mGameData* pGame, uint8_t uCardIdx, mGameFlow* pFlow);
+void    m_execute_community_chest_card(mGameData* pGame, uint8_t uCardIdx, mGameFlow* pFlow);
 void    m_shuffle_deck(mDeckState* pDeck);
 uint8_t m_draw_chance_card(mGameData* pGame);
 uint8_t m_draw_community_chest_card(mGameData* pGame);
@@ -442,6 +442,13 @@ ePhaseResult m_phase_auction(void* pPhaseData, float fDeltaTime, mGameFlow* pFlo
 ePhaseResult m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 ePhaseResult m_phase_trade(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow);
 
-// helper for trading 
+// helpers
 void m_transfer_property(mGameData* pGame, uint8_t uPropIdx, uint8_t uFromPlayer, uint8_t uToPlayer);
+void m_trigger_card_bankruptcy(mGameData* pGame, mGameFlow* pFlow, uint32_t uAmountOwed);
+
+// fall through game over check 
+// Add this to monopoly.c
+
+bool
+m_check_game_over(mGameData* pGame);
 #endif // MONOPOLY_H

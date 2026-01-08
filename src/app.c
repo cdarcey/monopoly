@@ -486,9 +486,9 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     // TODO: create menu system so player can adjust these before game starts
     // initialize monopoly game
     mGameSettings tSettings = {
-        .uStartingMoney = 1500,
+        .uStartingMoney = 200,
         .uJailFine      = 50,
-        .uPlayerCount   = 5
+        .uPlayerCount   = 2
     };
     ptAppData->pGameData = m_init_game(tSettings);
     m_init_game_flow(&ptAppData->tGameFlow, ptAppData->pGameData, ptAppData->ptWindow);
@@ -637,6 +637,10 @@ pl_app_update(plAppData* ptAppData)
 
     // run game phase
     m_run_current_phase(&ptAppData->tGameFlow, 0.016f);
+    if(m_check_game_over(ptAppData->pGameData))
+    {
+        //  TODO: add some shutdown screen
+    }
 
     // end ui frame
     gptUi->end_frame();
@@ -1074,13 +1078,14 @@ draw_postroll_menu(plAppData* ptAppData)
 {
     mGameData* pGame = ptAppData->pGameData;
     mPlayer* pPlayer = &pGame->amPlayers[pGame->uCurrentPlayerIndex];
+    mPostRollData* pPostRoll = (mPostRollData*)ptAppData->tGameFlow.pCurrentPhaseData;
     
-    // check if we're on an unowned property
+    // check if we're on an unowned property and haven't handled landing yet
     bool bOnUnownedProperty = false;
     mProperty* pProp = NULL;
     uint8_t uPropIdx = BANK_PLAYER_INDEX;
     
-    if(m_get_square_type(pPlayer->uPosition) == SQUARE_PROPERTY)
+    if(m_get_square_type(pPlayer->uPosition) == SQUARE_PROPERTY && !pPostRoll->bHandledLanding)
     {
         uPropIdx = m_get_property_at_position(pGame, pPlayer->uPosition);
         if(uPropIdx != BANK_PLAYER_INDEX)
@@ -1092,7 +1097,7 @@ draw_postroll_menu(plAppData* ptAppData)
             }
         }
     }
-    
+
     // show property purchase menu if on unowned property
     if(bOnUnownedProperty && m_is_waiting_input(&ptAppData->tGameFlow))
     {

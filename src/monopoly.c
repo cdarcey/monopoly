@@ -696,8 +696,20 @@ m_clear_notification(mGameData* pGame)
 
 // ==================== CARD EXECUTION ==================== //
 
+// Helper function to trigger bankruptcy from cards
 void
-m_execute_chance_card(mGameData* pGame, uint8_t uCardIdx)
+m_trigger_card_bankruptcy(mGameData* pGame, mGameFlow* pFlow, uint32_t uAmountOwed)
+{
+    mBankruptcyData* pBankruptcyData = malloc(sizeof(mBankruptcyData));
+    memset(pBankruptcyData, 0, sizeof(mBankruptcyData));
+    pBankruptcyData->eBankruptPlayer = pGame->uCurrentPlayerIndex;
+    pBankruptcyData->uCreditor = BANK_PLAYER_INDEX;
+    pBankruptcyData->uAmountOwed = uAmountOwed;
+    m_push_phase(pFlow, m_phase_bankruptcy, pBankruptcyData);
+}
+
+void
+m_execute_chance_card(mGameData* pGame, uint8_t uCardIdx, mGameFlow* pFlow)
 {
     mPlayer* pPlayer = &pGame->amPlayers[pGame->uCurrentPlayerIndex];
     
@@ -804,23 +816,21 @@ m_execute_chance_card(mGameData* pGame, uint8_t uCardIdx)
 
                 if(pProp->bHasHotel)
                 {
-                    uTotalCost += 100;  // $100 per hotel
+                    uTotalCost += 100;
                 }
                 else
                 {
-                    uTotalCost += pProp->uHouses * 25;  // $25 per house
+                    uTotalCost += pProp->uHouses * 25;
                 }
             }
 
-            // charge player or bankrupt them
             if(pPlayer->uMoney >= uTotalCost)
             {
                 pPlayer->uMoney -= uTotalCost;
             }
             else
             {
-                pPlayer->bIsBankrupt = true;
-                pGame->uActivePlayers--;
+                m_trigger_card_bankruptcy(pGame, pFlow, uTotalCost);
             }
             break;
         }
@@ -833,8 +843,7 @@ m_execute_chance_card(mGameData* pGame, uint8_t uCardIdx)
             }
             else
             {
-                pPlayer->bIsBankrupt = true;
-                pGame->uActivePlayers--;
+                m_trigger_card_bankruptcy(pGame, pFlow, 15);
             }
             break;
         }
@@ -856,6 +865,9 @@ m_execute_chance_card(mGameData* pGame, uint8_t uCardIdx)
         
         case 13: // elected chairman - pay each player $50
         {
+            uint32_t uTotalCost = 0;
+            uint8_t uActivePlayers = 0;
+            
             for(uint8_t i = 0; i < pGame->uPlayerCount; i++)
             {
                 if(i == pGame->uCurrentPlayerIndex)
@@ -863,17 +875,26 @@ m_execute_chance_card(mGameData* pGame, uint8_t uCardIdx)
                 if(pGame->amPlayers[i].bIsBankrupt)
                     continue;
                 
-                if(pPlayer->uMoney >= 50)
+                uActivePlayers++;
+                uTotalCost += 50;
+            }
+            
+            if(pPlayer->uMoney >= uTotalCost)
+            {
+                for(uint8_t i = 0; i < pGame->uPlayerCount; i++)
                 {
+                    if(i == pGame->uCurrentPlayerIndex)
+                        continue;
+                    if(pGame->amPlayers[i].bIsBankrupt)
+                        continue;
+                    
                     pPlayer->uMoney -= 50;
                     pGame->amPlayers[i].uMoney += 50;
                 }
-                else
-                {
-                    pPlayer->bIsBankrupt = true;
-                    pGame->uActivePlayers--;
-                    break;
-                }
+            }
+            else
+            {
+                m_trigger_card_bankruptcy(pGame, pFlow, uTotalCost);
             }
             break;
         }
@@ -893,7 +914,7 @@ m_execute_chance_card(mGameData* pGame, uint8_t uCardIdx)
 }
 
 void
-m_execute_community_chest_card(mGameData* pGame, uint8_t uCardIdx)
+m_execute_community_chest_card(mGameData* pGame, uint8_t uCardIdx, mGameFlow* pFlow)
 {
     mPlayer* pPlayer = &pGame->amPlayers[pGame->uCurrentPlayerIndex];
     
@@ -920,8 +941,7 @@ m_execute_community_chest_card(mGameData* pGame, uint8_t uCardIdx)
             }
             else
             {
-                pPlayer->bIsBankrupt = true;
-                pGame->uActivePlayers--;
+                m_trigger_card_bankruptcy(pGame, pFlow, 50);
             }
             break;
         }
@@ -961,10 +981,16 @@ m_execute_community_chest_card(mGameData* pGame, uint8_t uCardIdx)
                 }
                 else
                 {
+                    // other player goes bankrupt, current player is creditor
                     pPlayer->uMoney += pGame->amPlayers[i].uMoney;
                     pGame->amPlayers[i].uMoney = 0;
-                    pGame->amPlayers[i].bIsBankrupt = true;
-                    pGame->uActivePlayers--;
+                    
+                    mBankruptcyData* pBankruptcyData = malloc(sizeof(mBankruptcyData));
+                    memset(pBankruptcyData, 0, sizeof(mBankruptcyData));
+                    pBankruptcyData->eBankruptPlayer = i;
+                    pBankruptcyData->uCreditor = pGame->uCurrentPlayerIndex;
+                    pBankruptcyData->uAmountOwed = 50;
+                    m_push_phase(pFlow, m_phase_bankruptcy, pBankruptcyData);
                 }
             }
             break;
@@ -998,10 +1024,16 @@ m_execute_community_chest_card(mGameData* pGame, uint8_t uCardIdx)
                 }
                 else
                 {
+                    // other player goes bankrupt, current player is creditor
                     pPlayer->uMoney += pGame->amPlayers[i].uMoney;
                     pGame->amPlayers[i].uMoney = 0;
-                    pGame->amPlayers[i].bIsBankrupt = true;
-                    pGame->uActivePlayers--;
+                    
+                    mBankruptcyData* pBankruptcyData = malloc(sizeof(mBankruptcyData));
+                    memset(pBankruptcyData, 0, sizeof(mBankruptcyData));
+                    pBankruptcyData->eBankruptPlayer = i;
+                    pBankruptcyData->uCreditor = pGame->uCurrentPlayerIndex;
+                    pBankruptcyData->uAmountOwed = 10;
+                    m_push_phase(pFlow, m_phase_bankruptcy, pBankruptcyData);
                 }
             }
             break;
@@ -1021,8 +1053,7 @@ m_execute_community_chest_card(mGameData* pGame, uint8_t uCardIdx)
             }
             else
             {
-                pPlayer->bIsBankrupt = true;
-                pGame->uActivePlayers--;
+                m_trigger_card_bankruptcy(pGame, pFlow, 100);
             }
             break;
         }
@@ -1035,8 +1066,7 @@ m_execute_community_chest_card(mGameData* pGame, uint8_t uCardIdx)
             }
             else
             {
-                pPlayer->bIsBankrupt = true;
-                pGame->uActivePlayers--;
+                m_trigger_card_bankruptcy(pGame, pFlow, 150);
             }
             break;
         }
@@ -1060,23 +1090,21 @@ m_execute_community_chest_card(mGameData* pGame, uint8_t uCardIdx)
                 
                 if(pProp->bHasHotel)
                 {
-                    uTotalCost += 115;  // $115 per hotel
+                    uTotalCost += 115;
                 }
                 else
                 {
-                    uTotalCost += pProp->uHouses * 40;  // $40 per house
+                    uTotalCost += pProp->uHouses * 40;
                 }
             }
             
-            // charge player or bankrupt them
             if(pPlayer->uMoney >= uTotalCost)
             {
                 pPlayer->uMoney -= uTotalCost;
             }
             else
             {
-                pPlayer->bIsBankrupt = true;
-                pGame->uActivePlayers--;
+                m_trigger_card_bankruptcy(pGame, pFlow, uTotalCost);
             }
             break;
         }
@@ -1380,15 +1408,15 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                 mProperty* pProp = &pGame->amProperties[pPostRoll->uPropertyIndex];
                 
                 // unowned property - offer to buy or auction
-                if(pProp->uOwnerIndex == BANK_PLAYER_INDEX)
+                if(pProp->uOwnerIndex == BANK_PLAYER_INDEX && !pPostRoll->bHandledLanding)
                 {
                     // wait for input from UI
                     if(!pFlow->bInputReceived)
                         return PHASE_RUNNING;
-                    
+
                     int iChoice = pFlow->iInputValue;
                     m_clear_input(pFlow);
-                    
+
                     if(iChoice == 1) // buy property
                     {
                         if(m_buy_property(pGame, pPostRoll->uPropertyIndex, pGame->uCurrentPlayerIndex))
@@ -1400,18 +1428,18 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                             m_set_notification(pGame, "Cannot afford %s", pProp->cName);
                         }
                         pPostRoll->bHandledLanding = true;
-                        m_clear_input(pFlow);
                         return PHASE_RUNNING;
                     }
                     else if(iChoice == 2) // pass - start auction
                     {
                         mAuctionData* pAuction = malloc(sizeof(mAuctionData));
                         memset(pAuction, 0, sizeof(mAuctionData));
-                        
+
                         pAuction->ePropertyIndex = pPostRoll->uPropertyIndex;
-                        
+
                         m_push_phase(pFlow, m_phase_auction, pAuction);
-                        pPostRoll->bHandledLanding = true;
+                        pPostRoll->bHandledLanding = true;  
+                        return PHASE_RUNNING;
                     }
                     else if(iChoice == 3) // manage properties
                     {
@@ -1519,7 +1547,7 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                 m_set_notification(pGame, "Chance: %s", pCard->cDescription);
 
                 // execute card effect immediately
-                m_execute_chance_card(pGame, uCardIdx);
+                m_execute_chance_card(pGame, uCardIdx, pFlow);
 
                 pPostRoll->bHandledLanding = true;
                 break;
@@ -1535,7 +1563,7 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                 m_set_notification(pGame, "Community Chest: %s", pCard->cDescription);
 
                 // execute card effect immediately
-                m_execute_community_chest_card(pGame, uCardIdx);
+                m_execute_community_chest_card(pGame, uCardIdx, pFlow);
 
                 pPostRoll->bHandledLanding = true;
                 break;
@@ -1732,22 +1760,23 @@ m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                     if(pPlayer->uJailTurns > 3)
                     {
                         // must pay fine on third failed attempt
-                        // TODO: make sure this ends turn on forced release
-                        if(pPlayer->uMoney >= pGame->uJailFine)
+                        if(m_can_afford(pPlayer, pGame->uJailFine))
                         {
                             pPlayer->uMoney -= pGame->uJailFine;
                             pPlayer->uJailTurns = 0;
                             m_set_notification(pGame, "Failed 3 attempts - paid $50 fine");
-                            
-                            // transition back to pre-roll
+
+                            // end turn after forced payment
+                            m_next_player_turn(pGame);
                             pGame->bShowJailMenu = false;
-                            mPreRollData* pPreRoll = malloc(sizeof(mPreRollData));
-                            memset(pPreRoll, 0, sizeof(mPreRollData));
-                            
+
+                            mPreRollData* pNextPreRoll = malloc(sizeof(mPreRollData));
+                            memset(pNextPreRoll, 0, sizeof(mPreRollData));
+
                             free(pJail);
-                            pFlow->pCurrentPhaseData = pPreRoll;
+                            pFlow->pCurrentPhaseData = pNextPreRoll;
                             pFlow->pfCurrentPhase = m_phase_pre_roll;
-                            
+
                             return PHASE_RUNNING;
                         }
                         else
@@ -2138,6 +2167,13 @@ m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
             {
                 // paid off debt through hotel sales
                 pBankruptPlayer->uMoney = uMoneyRaised - uDebtOwed;
+                
+                // pay the creditor
+                if(pBankruptcy->uCreditor != BANK_PLAYER_INDEX)
+                {
+                    pGame->amPlayers[pBankruptcy->uCreditor].uMoney += uDebtOwed;
+                }
+                
                 m_pop_phase(pFlow);
                 return PHASE_RUNNING;
             }
@@ -2145,7 +2181,6 @@ m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
     }
     
     // step 2: sell all houses
-    // keep selling until either debt paid or no houses left
     bool bSoldHouse = true;
     while(bSoldHouse && uMoneyRaised < uDebtOwed)
     {
@@ -2167,6 +2202,13 @@ m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                 {
                     // paid off debt through house sales
                     pBankruptPlayer->uMoney = uMoneyRaised - uDebtOwed;
+                    
+                    // pay the creditor
+                    if(pBankruptcy->uCreditor != BANK_PLAYER_INDEX)
+                    {
+                        pGame->amPlayers[pBankruptcy->uCreditor].uMoney += uDebtOwed;
+                    }
+                    
                     m_pop_phase(pFlow);
                     return PHASE_RUNNING;
                 }
@@ -2191,6 +2233,13 @@ m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
             {
                 // paid off debt through mortgages
                 pBankruptPlayer->uMoney = uMoneyRaised - uDebtOwed;
+                
+                // pay the creditor
+                if(pBankruptcy->uCreditor != BANK_PLAYER_INDEX)
+                {
+                    pGame->amPlayers[pBankruptcy->uCreditor].uMoney += uDebtOwed;
+                }
+                
                 m_pop_phase(pFlow);
                 return PHASE_RUNNING;
             }
@@ -2198,16 +2247,15 @@ m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
     }
     
     // step 4: still can't pay - declare bankruptcy
-
     pBankruptPlayer->bIsBankrupt = true;
     pGame->uActivePlayers--;
 
     // transfer assets based on creditor type
     if(pBankruptcy->uCreditor == BANK_PLAYER_INDEX)
     {
-        // creditor is bank - auction all properties
+        // creditor is bank - return all properties to bank
         m_transfer_assets_to_bank(pGame, pBankruptcy->eBankruptPlayer);
-        m_set_notification(pGame, "Player %d is bankrupt! Properties will be returned to the bank.", 
+        m_set_notification(pGame, "Player %d is bankrupt! Properties returned to the bank.", 
             pBankruptcy->eBankruptPlayer + 1);
     }
     else
@@ -2218,18 +2266,29 @@ m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
             pBankruptcy->eBankruptPlayer + 1, pBankruptcy->uCreditor + 1);
     }
 
-    // check if game is over
+    // check if game is over (only 1 player left)
     if(pGame->uActivePlayers == 1)
     {
         pGame->bIsRunning = false;
-        // TODO: show winner screen
+        
+        // find the winner
+        for(uint8_t i = 0; i < pGame->uPlayerCount; i++)
+        {
+            if(!pGame->amPlayers[i].bIsBankrupt)
+            {
+                m_set_notification(pGame, "GAME OVER! Player %d wins!", i + 1);
+                break;
+            }
+        }
+    }
+    else
+    {
+        // game continues - move to next player's turn
+        m_next_player_turn(pGame);
     }
 
     m_pop_phase(pFlow);
     return PHASE_RUNNING;
-        // TODO: mark player as bankrupt
-        // TODO: check if game is over
-
 }
 
 ePhaseResult
@@ -2528,4 +2587,32 @@ m_transfer_property(mGameData* pGame, uint8_t uPropIdx, uint8_t uFromPlayer, uin
     
     // update property ownership
     pProp->uOwnerIndex = uToPlayer;
+}
+
+// Add this to monopoly.c
+
+bool
+m_check_game_over(mGameData* pGame)
+{
+    // check if only one player remains
+    if(pGame->uActivePlayers <= 1)
+    {
+        pGame->bIsRunning = false;
+        
+        // find and announce the winner
+        for(uint8_t i = 0; i < pGame->uPlayerCount; i++)
+        {
+            if(!pGame->amPlayers[i].bIsBankrupt)
+            {
+                m_set_notification(pGame, "GAME OVER! Player %d wins!", i + 1);
+                return true;
+            }
+        }
+        
+        // edge case: all players bankrupt somehow (shouldn't happen)
+        m_set_notification(pGame, "GAME OVER! No winners.");
+        return true;
+    }
+    
+    return false;
 }
