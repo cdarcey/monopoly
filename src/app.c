@@ -379,6 +379,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     };
 
     plShaderDesc tShaderDesc = {
+        .atBlendStates            = gptGfx->get_blend_state(PL_BLEND_MODE_ALPHA),
         .tVertexShader            = tVertModule,
         .tFragmentShader          = tFragModule,
         .atVertexBufferLayouts[0] = tVertexLayout,
