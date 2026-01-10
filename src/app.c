@@ -72,7 +72,6 @@
 // pilot light extensions
 #include "pl_graphics_ext.h"
 #include "pl_draw_ext.h"
-#include "pl_draw_backend_ext.h"
 #include "pl_ui_ext.h"
 #include "pl_shader_ext.h"
 
@@ -195,7 +194,6 @@ const plIOI*          gptIO          = NULL;
 const plWindowI*      gptWindows     = NULL;
 const plGraphicsI*    gptGfx         = NULL;
 const plDrawI*        gptDraw        = NULL;
-const plDrawBackendI* gptDrawBackend = NULL;
 const plUiI*          gptUi          = NULL;
 const plShaderI*      gptShader      = NULL;
 
@@ -213,7 +211,6 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
         gptWindows     = pl_get_api_latest(ptApiRegistry, plWindowI);
         gptGfx         = pl_get_api_latest(ptApiRegistry, plGraphicsI);
         gptDraw        = pl_get_api_latest(ptApiRegistry, plDrawI);
-        gptDrawBackend = pl_get_api_latest(ptApiRegistry, plDrawBackendI);
         gptUi          = pl_get_api_latest(ptApiRegistry, plUiI);
         gptShader      = pl_get_api_latest(ptApiRegistry, plShaderI);
         return ptAppData;
@@ -233,7 +230,6 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     gptWindows     = pl_get_api_latest(ptApiRegistry, plWindowI);
     gptGfx         = pl_get_api_latest(ptApiRegistry, plGraphicsI);
     gptDraw        = pl_get_api_latest(ptApiRegistry, plDrawI);
-    gptDrawBackend = pl_get_api_latest(ptApiRegistry, plDrawBackendI);
     gptUi          = pl_get_api_latest(ptApiRegistry, plUiI);
     gptShader      = pl_get_api_latest(ptApiRegistry, plShaderI);
 
@@ -268,17 +264,17 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // initialize shader system
     static const plShaderOptions tDefaultShaderOptions = {
-        .apcIncludeDirectories = { "../../monopoly/shaders/" },
-        .apcDirectories = { "../../monopoly/shaders/" },
+        .apcIncludeDirectories = { "../../monopoly/shaders/", "../shaders/"},
+        .apcDirectories = { "../../monopoly/shaders/", "../shaders/"},
         .tFlags = PL_SHADER_FLAGS_NEVER_CACHE
     };
     gptShader->initialize(&tDefaultShaderOptions);
-
-    // initialize draw system (required before draw backend and ui)
-    gptDraw->initialize(NULL);
     
     // initialize draw backend (required for ui)
-    gptDrawBackend->initialize(ptAppData->ptDevice);
+    const plDrawInit tDrawInit = {
+        .ptDevice = ptAppData->ptDevice
+    };
+    gptDraw->initialize(&tDrawInit);
 
     // create font atlas (will be built after command pool is created)
     plFontAtlas* ptAtlas = gptDraw->create_font_atlas();
@@ -306,7 +302,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
 
     // build font atlas on gpu (now that command pool exists)
     plCommandBuffer* ptCmdFont = gptGfx->request_command_buffer(ptAppData->ptCommandPool, "font atlas");
-    gptDrawBackend->build_font_atlas(ptCmdFont, gptDraw->get_current_font_atlas());
+    gptDraw->build_font_atlas(ptCmdFont, gptDraw->get_current_font_atlas());
     gptGfx->return_command_buffer(ptCmdFont);
     
     // initialize ui (requires font atlas to be built first)
@@ -520,11 +516,10 @@ pl_app_shutdown(plAppData* ptAppData)
         gptDraw->return_2d_drawlist(ptAppData->ptTokenDrawlist);
 
     // cleanup font atlas 
-    gptDrawBackend->cleanup_font_atlas(gptDraw->get_current_font_atlas());
+    gptDraw->cleanup_font_atlas(gptDraw->get_current_font_atlas());
 
     // cleanup draw system, backend, and UI
     gptDraw->cleanup();
-    gptDrawBackend->cleanup();
     gptUi->cleanup();
 
     // cleanup textures (NOT swapchain textures)
@@ -594,7 +589,6 @@ pl_app_update(plAppData* ptAppData)
     // process input events and start frame calls
     gptIO->new_frame();
     gptDraw->new_frame();
-    gptDrawBackend->new_frame();
     gptUi->new_frame();
     handle_keyboard_input(ptAppData);
 
@@ -690,8 +684,8 @@ pl_app_update(plAppData* ptAppData)
     plDrawList2D* ptDrawlist = gptUi->get_draw_list();
     if(ptDrawlist)
     {
-        gptDrawBackend->submit_2d_drawlist(ptDrawlist, ptRender, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 1);
-        gptDrawBackend->submit_2d_drawlist(gptUi->get_debug_draw_list(), ptRender, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 1);
+        gptDraw->submit_2d_drawlist(ptDrawlist, ptRender, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 1);
+        gptDraw->submit_2d_drawlist(gptUi->get_debug_draw_list(), ptRender, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 1);
     }
 
     gptGfx->end_render_pass(ptRender);
@@ -1025,7 +1019,7 @@ draw_player_tokens(plAppData* ptAppData, plRenderEncoder* ptRender)
     }
     
     gptDraw->submit_2d_layer(ptLayer);
-    gptDrawBackend->submit_2d_drawlist(ptDrawlist, ptRender, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 1);
+    gptDraw->submit_2d_drawlist(ptDrawlist, ptRender, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 1);
 }
 
 void
