@@ -300,7 +300,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     plCommandPoolDesc tPoolDesc = {0};
     ptAppData->ptCommandPool = gptGfx->create_command_pool(ptAppData->ptDevice, &tPoolDesc);
 
-    // build font atlas on gpu (now that command pool exists)
+    // build font atlas on gpu
     plCommandBuffer* ptCmdFont = gptGfx->request_command_buffer(ptAppData->ptCommandPool, "font atlas");
     gptDraw->build_font_atlas(ptCmdFont, gptDraw->get_current_font_atlas());
     gptGfx->return_command_buffer(ptCmdFont);
@@ -483,7 +483,7 @@ pl_app_load(plApiRegistryI* ptApiRegistry, plAppData* ptAppData)
     // TODO: create menu system so player can adjust these before game starts
     // initialize monopoly game
     mGameSettings tSettings = {
-        .uStartingMoney = 200,
+        .uStartingMoney = 1500,
         .uJailFine      = 50,
         .uPlayerCount   = 2
     };
@@ -1249,7 +1249,6 @@ draw_notification(plAppData* ptAppData)
 {
     mGameData* pGame = ptAppData->pGameData;
     
-    // only show if notification flag is set
     if(!pGame->bShowNotification)
         return;
     
@@ -1361,6 +1360,7 @@ draw_dice_result(plAppData* ptAppData)
 
     gptUi->end_window();
 }
+
 void
 draw_property_management_menu(plAppData* ptAppData)
 {
@@ -1636,7 +1636,7 @@ draw_auction_menu(plAppData* ptAppData)
     snprintf(acSubmitBtn, sizeof(acSubmitBtn), "Submit Bid");
     if(gptUi->button(acSubmitBtn))
     {
-        int iBidAmount = atoi(acBidInput); // Convert string to int
+        int iBidAmount = atoi(acBidInput); // convert string to int
         if(iBidAmount > 0)
         {
             m_set_input_int(&ptAppData->tGameFlow, iBidAmount);
@@ -1718,26 +1718,26 @@ draw_trade_menu(plAppData* ptAppData)
             gptUi->separator();
             gptUi->vertical_spacing();
             
-            // two column layout: your offer | their properties (you want)
+            // two column layout: your offer | their properties
             gptUi->layout_static(0.0f, 310, 2);
             
-            // LEFT COLUMN: Your offer
+            // LEFT COLUMN: your offer
             gptUi->text("=== You Offer ===");
             
-            // RIGHT COLUMN: What you want
+            // RIGHT COLUMN: what you want
             gptUi->text("=== You Request ===");
             
             gptUi->layout_static(0.0f, 310, 2);
             
-            // LEFT: Money offer controls
+            // LEFT: money offer controls
             gptUi->text("Money: $%d", pTrade->uOfferedMoney);
             
-            // RIGHT: Money request controls
+            // RIGHT: money request controls
             gptUi->text("Money: $%d", pTrade->uRequestedMoney);
             
             gptUi->layout_static(30.0f, 150, 4);
             
-            // LEFT: Money offer buttons
+            // LEFT: money offer buttons
             if(gptUi->button("-$100##offer"))
             {
                 m_set_input_int(&ptAppData->tGameFlow, 300);
@@ -1748,7 +1748,7 @@ draw_trade_menu(plAppData* ptAppData)
                 m_set_input_int(&ptAppData->tGameFlow, 400);
             }
             
-            // RIGHT: Money request buttons
+            // RIGHT: money request buttons
             if(gptUi->button("-$100##request"))
             {
                 m_set_input_int(&ptAppData->tGameFlow, 500);
@@ -1763,16 +1763,16 @@ draw_trade_menu(plAppData* ptAppData)
             
             gptUi->layout_static(0.0f, 310, 2);
             
-            // LEFT: Your properties
+            // LEFT: your properties
             gptUi->text("--- Your Properties ---");
             
-            // RIGHT: Their properties
+            // RIGHT: their properties
             gptUi->text("--- Their Properties ---");
             
-            // Property lists
+            // property lists
             gptUi->layout_static(30.0f, 310, 2);
             
-            // LEFT COLUMN: Show current player's properties
+            // LEFT COLUMN: show current player's properties
             for(uint8_t i = 0; i < pCurrentPlayer->uPropertyCount; i++)
             {
                 uint8_t uPropIdx = pCurrentPlayer->auPropertiesOwned[i];
@@ -1804,7 +1804,7 @@ draw_trade_menu(plAppData* ptAppData)
                 }
             }
             
-            // RIGHT COLUMN: Show target player's properties
+            // RIGHT COLUMN: show target player's properties
             for(uint8_t i = 0; i < pTargetPlayer->uPropertyCount; i++)
             {
                 uint8_t uPropIdx = pTargetPlayer->auPropertiesOwned[i];
@@ -1864,7 +1864,7 @@ draw_trade_menu(plAppData* ptAppData)
             gptUi->separator();
             gptUi->vertical_spacing();
             
-            // Show what Player 1 offers
+            // show what player 1 offers
             gptUi->layout_static(0.0f, 640, 1);
             gptUi->text("Player %d offers:", pGame->uCurrentPlayerIndex + 1);
             
@@ -1886,7 +1886,7 @@ draw_trade_menu(plAppData* ptAppData)
             
             gptUi->vertical_spacing();
             
-            // Show what Player 1 wants
+            // show what player 1 wants
             gptUi->layout_static(0.0f, 640, 1);
             gptUi->text("Player %d requests:", pGame->uCurrentPlayerIndex + 1);
             

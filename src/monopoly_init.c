@@ -10,7 +10,6 @@
 #include "monopoly_init.h"
 
 
-// helper function to convert color strings to enum
 static ePropertyColor
 m_string_to_color_enum(const char* cColor)
 {
@@ -27,7 +26,6 @@ m_string_to_color_enum(const char* cColor)
     return COLOR_BROWN; // default
 }
 
-// helper function to convert type strings to enum
 static ePropertyType
 m_string_to_type_enum(const char* cType)
 {
@@ -42,7 +40,7 @@ m_string_to_type_enum(const char* cType)
 void
 m_shuffle_deck(mDeckState* pDeck)
 {
-    // initialize indices 0-15
+    // initialize indices (16 cards 0-15)
     for(uint8_t i = 0; i < 16; i++)
     {
         pDeck->auIndices[i] = i;
@@ -221,18 +219,12 @@ m_init_game(mGameSettings tSettings)
 
     // ==================== INITIALIZE OTHER COMPONENTS ==================== //
     
-    // shuffle decks
+    // initialize game state
     m_shuffle_deck(&pGame->tChanceDeck);
     m_shuffle_deck(&pGame->tCommunityChestDeck);
-
-    // initialize players
     m_init_players(pGame->amPlayers, tSettings.uPlayerCount, tSettings.uStartingMoney);
-
-    // initialize dice
     pGame->tDice.uDie1 = 1;
     pGame->tDice.uDie2 = 1;
-
-    // initialize game state
     pGame->uPlayerCount = tSettings.uPlayerCount;
     pGame->uCurrentPlayerIndex = PLAYER_ONE_ARRAY_INDEX;
     pGame->uActivePlayers = tSettings.uPlayerCount;

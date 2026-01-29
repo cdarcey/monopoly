@@ -61,11 +61,8 @@ void
 m_run_current_phase(mGameFlow* pFlow, float fDeltaTime)
 {
     if(!pFlow || !pFlow->pfCurrentPhase) return;
-
     pFlow->fAccumulatedTime += fDeltaTime;
-
     ePhaseResult tResult = pFlow->pfCurrentPhase(pFlow->pCurrentPhaseData, fDeltaTime, pFlow);
-
     if(tResult == PHASE_COMPLETE)
     {
         m_pop_phase(pFlow);
@@ -153,8 +150,7 @@ m_next_player_turn(mGameData* pGame)
     while(uAttempts < pGame->uPlayerCount)
     {
         pGame->uCurrentPlayerIndex = (pGame->uCurrentPlayerIndex + 1) % pGame->uPlayerCount;
-        // skip bankrupt players
-        if(!pGame->amPlayers[pGame->uCurrentPlayerIndex].bIsBankrupt)
+        if(!pGame->amPlayers[pGame->uCurrentPlayerIndex].bIsBankrupt) // skip bankrupt players
         {
             // increment round if we've wrapped back to the first active player after a full cycle
             // this happens when current player has a lower index than where we started
@@ -190,10 +186,8 @@ m_buy_property(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerIndex)
     mProperty* pProp = &pGame->amProperties[uPropertyIndex];
     mPlayer* pPlayer = &pGame->amPlayers[uPlayerIndex];
     
-    // check if already owned (not owned by bank)
+    // check if already owned and player can afford
     if(pProp->uOwnerIndex != BANK_PLAYER_INDEX) return false;
-    
-    // check if player can afford
     if(!m_can_afford(pPlayer, pProp->uPrice)) return false;
     
     // transfer ownership
@@ -415,7 +409,6 @@ uint8_t
 m_count_properties_of_color(mGameData* pGame, uint8_t uPlayerIndex, ePropertyColor eColor)
 {
     uint8_t uCount = 0;
-    
     for(uint8_t i = 0; i < TOTAL_PROPERTIES; i++)
     {
         if(pGame->amProperties[i].eColor == eColor && pGame->amProperties[i].uOwnerIndex == uPlayerIndex)
@@ -516,7 +509,6 @@ m_pay_rent(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPayerIndex)
     if(pProp->uOwnerIndex == BANK_PLAYER_INDEX || pProp->uOwnerIndex == uPayerIndex) return false;
     
     mPlayer* pOwner = &pGame->amPlayers[pProp->uOwnerIndex];
-    
     uint32_t uRent = m_calculate_rent(pGame, uPropertyIndex);
     
     // special case for utilities: multiply by dice roll
@@ -662,8 +654,6 @@ m_unmortgage_property(mGameData* pGame, uint8_t uPropertyIndex, uint8_t uPlayerI
     
     // calculate unmortgage cost (mortgage value + 10%)
     uint32_t uCost = pProp->uMortgageValue + (pProp->uMortgageValue / 10);
-    
-    // check if player can afford
     if(!m_can_afford(pPlayer, uCost)) return false;
     
     // unmortgage property
@@ -696,7 +686,7 @@ m_clear_notification(mGameData* pGame)
 
 // ==================== CARD EXECUTION ==================== //
 
-// Helper function to trigger bankruptcy from cards
+// helper function to trigger bankruptcy from cards
 void
 m_trigger_card_bankruptcy(mGameData* pGame, mGameFlow* pFlow, uint32_t uAmountOwed)
 {
@@ -1334,8 +1324,11 @@ m_phase_pre_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
         
         case 2:
         {
-            m_set_notification(pGame, "Trading not yet implemented");
-            pPreRoll->bShowedMenu = false;
+            mTradeData* pTradeData = malloc(sizeof(mTradeData));
+            memset(pTradeData, 0, sizeof(mTradeData));
+            pTradeData->eStep = TRADE_STEP_SELECT_PLAYER;
+            m_push_phase(pFlow, m_phase_trade, pTradeData);
+
             return PHASE_RUNNING;
         }
         
@@ -1446,7 +1439,7 @@ m_phase_post_roll(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                         mPropertyManagementData* pPropMgmt = malloc(sizeof(mPropertyManagementData));
                         memset(pPropMgmt, 0, sizeof(mPropertyManagementData));
                         m_push_phase(pFlow, m_phase_property_management, pPropMgmt);
-                        // DON'T set bHandledLanding - return to property decision after managing
+                        // don't set bHandledLanding - return to property decision after managing
                     }
                     else if(iChoice == 4) // propose trade (from property menu)
                     {
@@ -1734,7 +1727,6 @@ m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                 m_roll_dice(&pGame->tDice);
                 pJail->bRolledDice = true;
                 
-                // check for doubles
                 if(pGame->tDice.uDie1 == pGame->tDice.uDie2)
                 {
                     pPlayer->uJailTurns = 0;
@@ -1756,10 +1748,9 @@ m_phase_jail(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
                     // didn't roll doubles
                     pPlayer->uJailTurns++;
                     
-                    // check if this was third attempt
+                    // check if this was third attempt - must pay fine on third failed attempt
                     if(pPlayer->uJailTurns > 3)
                     {
-                        // must pay fine on third failed attempt
                         if(m_can_afford(pPlayer, pGame->uJailFine))
                         {
                             pPlayer->uMoney -= pGame->uJailFine;
@@ -2150,7 +2141,7 @@ m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
     uint32_t uDebtOwed = pBankruptcy->uAmountOwed;
     uint32_t uMoneyRaised = pBankruptPlayer->uMoney;
     
-    // step 1: sell all hotels back to 4 houses
+    // sell all hotels back to 4 houses
     for(uint8_t i = 0; i < pBankruptPlayer->uPropertyCount; i++)
     {
         uint8_t uPropIdx = pBankruptPlayer->auPropertiesOwned[i];
@@ -2180,7 +2171,7 @@ m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
         }
     }
     
-    // step 2: sell all houses
+    // sell all houses
     bool bSoldHouse = true;
     while(bSoldHouse && uMoneyRaised < uDebtOwed)
     {
@@ -2216,7 +2207,7 @@ m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
         }
     }
     
-    // step 3: mortgage all unmortgaged properties
+    // mortgage all unmortgaged properties
     for(uint8_t i = 0; i < pBankruptPlayer->uPropertyCount; i++)
     {
         uint8_t uPropIdx = pBankruptPlayer->auPropertiesOwned[i];
@@ -2246,7 +2237,7 @@ m_phase_bankruptcy(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
         }
     }
     
-    // step 4: still can't pay - declare bankruptcy
+    // still can't pay - declare bankruptcy
     pBankruptPlayer->bIsBankrupt = true;
     pGame->uActivePlayers--;
 
@@ -2588,8 +2579,6 @@ m_transfer_property(mGameData* pGame, uint8_t uPropIdx, uint8_t uFromPlayer, uin
     // update property ownership
     pProp->uOwnerIndex = uToPlayer;
 }
-
-// Add this to monopoly.c
 
 bool
 m_check_game_over(mGameData* pGame)

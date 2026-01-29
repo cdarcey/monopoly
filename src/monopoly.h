@@ -446,9 +446,6 @@ ePhaseResult m_phase_trade(void* pPhaseData, float fDeltaTime, mGameFlow* pFlow)
 void m_transfer_property(mGameData* pGame, uint8_t uPropIdx, uint8_t uFromPlayer, uint8_t uToPlayer);
 void m_trigger_card_bankruptcy(mGameData* pGame, mGameFlow* pFlow, uint32_t uAmountOwed);
 
-// fall through game over check 
-// Add this to monopoly.c
-
 bool
 m_check_game_over(mGameData* pGame);
 #endif // MONOPOLY_H
