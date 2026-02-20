@@ -5,6 +5,7 @@
 .idea/
 out/
 out-temp/
+cmake/
 
 # python
 scripts/__pycache__/
